@@ -1,1 +1,161 @@
+# Build directories
+build/
+build-*/
+out/
+bin/
+lib/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# IDE files
+.vscode/
+.vs/
+*.vcxproj*
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.pbxuser
+!default.mode1v3
+!default.mode2v3
+!default.perspectivev3
+xcuserdata/
+*.moved-aside
+
+# Generated documentation
+docs/html/
+docs/latex/
+doxygen_sqlite3.db
+
+# Temporary files
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+*.ko
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# Package files
+*.deb
+*.rpm
+*.pkg
+*.dmg
+*.msi
+
+# Logs
+*.log
+logs/
+
+# Test results
+test_results/
+test_detail.xml
+*.gcda
+*.gcno
+*.gcov
+
+# Coverage reports
+coverage/
+*.info
+
+# Profiling data
+*.prof
+gmon.out
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# API keys and secrets (just in case)
+*.key
+*.pem
+secrets.json
+config.json
+
+# Backup files
+*.bak
+*.backup
+
 .envrc
+.cache/
+.claude/
