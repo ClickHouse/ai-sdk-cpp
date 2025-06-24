@@ -1,0 +1,32 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+
+1. prefer one class per file.
+2. use Google C++ coding styles.
+3. make classes immutable as much as possible.
+4. follow guidelines of effective modern c++.
+
+
+Lean on auto. Let the compiler deduce obvious types and keep code DRY. 
+
+Use nullptr, never 0 or NULL. A unique keyword prevents overload ambiguities and makes pointer intent explicit. 
+
+Express ownership with smart-pointers (std::unique_ptr, std::shared_ptr, std::weak_ptr). Raw pointers say nothing about lifetime. 
+
+Move more, copy less. Pass/return by value when cheap-to-move; use std::move to convey transfer of resources. 
+
+Mark intent with keywords (const, constexpr, noexcept, override, delete). They document guarantees and enable optimisations. 
+
+Prefer brace initialisation. It prevents narrowing, works with std::initializer_list, and unifies syntax. 
+
+Capture carefully in lambdas; avoid default capture ([=], [&]). Explicit captures beat accidental lifetime bugs. 
+
+Think tasks, not threads. Launch work with std::async, std::future, or std::packaged_task; join or detach thoughtfully. 
+
+Use std::atomic for inter-thread data, not volatile. Atomics give ordering guarantees; volatile is for hardware registers. 
+
+Emplace instead of insert / push_back. Construct elements in place to avoid extra moves or copies. 

@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+when running any thing in scripts dir do "uv run <script_name.py>"
