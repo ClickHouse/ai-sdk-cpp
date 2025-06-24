@@ -9,7 +9,7 @@ struct Usage {
   int total_tokens = 0;       ///< Total tokens used (prompt + completion)
 
   /// Constructor for convenience
-  Usage(int prompt = 0, int completion = 0)
+  explicit Usage(int prompt = 0, int completion = 0)
       : prompt_tokens(prompt),
         completion_tokens(completion),
         total_tokens(prompt + completion) {}
