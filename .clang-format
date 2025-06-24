@@ -1,0 +1,31 @@
+BasedOnStyle: Chromium
+# This defaults to 'Auto'. Explicitly set it for a while, so that
+# 'vector<vector<int> >' in existing files gets formatted to
+# 'vector<vector<int>>'. ('Auto' means that clang-format will only use
+# 'int>>' if the file already contains at least one such instance.)
+Standard: Cpp11
+SortIncludes: true
+
+# Include organization settings
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Primary header (for .cc files) - highest priority
+  - Regex: '^".*\.h"$'
+    Priority: 1
+    SortPriority: 1
+    CaseSensitive: false
+  # System/standard library headers
+  - Regex: '^<[^/>]*>$'
+    Priority: 2
+    SortPriority: 2
+    CaseSensitive: false
+  # Third-party library headers (contain / but start with <)
+  - Regex: '^<.*/'
+    Priority: 3
+    SortPriority: 3
+    CaseSensitive: false
+  # Project local headers
+  - Regex: '^".*"$'
+    Priority: 4
+    SortPriority: 4
+    CaseSensitive: false
