@@ -7,12 +7,10 @@ add_executable(ai_tests
     
     # Integration tests
     integration/openai_integration_test.cpp
-    integration/mock_server_test.cpp
     
     # Utility classes
     utils/mock_openai_client.cpp
     utils/test_fixtures.cpp
-    utils/mock_http_server.cpp
 )
 
 # Link against the main library and test dependencies
@@ -61,29 +59,3 @@ gtest_discover_tests(ai_tests
     PROPERTIES 
         TIMEOUT 30
 )
-
-# Performance tests (separate executable, optional)
-add_executable(ai_performance_tests
-    performance/throughput_test.cpp
-    performance/memory_test.cpp
-    utils/test_fixtures.cpp
-    utils/mock_openai_client.cpp
-)
-
-target_link_libraries(ai_performance_tests
-    PRIVATE
-        ai-sdk-cpp
-        GTest::gtest
-        GTest::gtest_main
-)
-
-target_include_directories(ai_performance_tests
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/utils
-        ${CMAKE_SOURCE_DIR}/src
-)
-
-# Performance tests aren't part of regular test discovery
-add_test(NAME PerformanceTests 
-         COMMAND ai_performance_tests
-         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

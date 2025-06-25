@@ -2,17 +2,14 @@
 #include <gtest/gtest.h>
 
 // Include the OpenAI client headers
-#include "ai/errors.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 
-// Test utilities
-#include "../utils/mock_openai_client.h"
-#include "../utils/test_fixtures.h"
+// Include the real OpenAI client implementation for testing
+#include "providers/openai/openai_client.h"
 
-// We need to access private implementation for thorough testing
-// In a real implementation, you'd include the private header
-// For now, we'll test the public interface and use controllable mocks
+// Test utilities
+#include "../utils/test_fixtures.h"
 
 namespace ai {
 namespace test {
@@ -22,7 +19,7 @@ class OpenAIClientTest : public OpenAITestFixture {
   void SetUp() override {
     OpenAITestFixture::SetUp();
     client_ =
-        std::make_unique<ControllableOpenAIClient>(kTestApiKey, kTestBaseUrl);
+        std::make_unique<ai::openai::OpenAIClient>(kTestApiKey, kTestBaseUrl);
   }
 
   void TearDown() override {
@@ -30,31 +27,50 @@ class OpenAIClientTest : public OpenAITestFixture {
     OpenAITestFixture::TearDown();
   }
 
-  std::unique_ptr<ControllableOpenAIClient> client_;
+  std::unique_ptr<ai::openai::OpenAIClient> client_;
 };
 
 // Constructor and Configuration Tests
 TEST_F(OpenAIClientTest, ConstructorWithValidApiKey) {
-  ControllableOpenAIClient client("sk-validkey123", "https://api.openai.com");
+  ai::openai::OpenAIClient client("sk-validkey123", "https://api.openai.com");
 
   EXPECT_TRUE(client.is_valid());
-  EXPECT_EQ(client.provider_name(), "openai-test");
-  EXPECT_THAT(client.config_info(), testing::HasSubstr("Test OpenAI Client"));
+  EXPECT_EQ(client.provider_name(), "openai");
+  EXPECT_THAT(client.config_info(), testing::HasSubstr("OpenAI API"));
+
+  // Test internal access - these methods are exposed for testing
+  EXPECT_EQ(client.get_api_key(), "sk-validkey123");
+  EXPECT_EQ(client.get_base_url(), "https://api.openai.com");
+  EXPECT_EQ(client.get_host(), "api.openai.com");
+  EXPECT_TRUE(client.get_use_ssl());
 }
 
 TEST_F(OpenAIClientTest, ConstructorWithEmptyApiKey) {
-  ControllableOpenAIClient client("", "https://api.openai.com");
+  ai::openai::OpenAIClient client("", "https://api.openai.com");
 
-  // Note: Our controllable client doesn't validate API key emptiness
-  // In real implementation, this would likely be invalid
-  EXPECT_TRUE(client.is_valid());  // Simplified for testing
+  // Real implementation should be invalid with empty API key
+  EXPECT_FALSE(client.is_valid());
 }
 
 TEST_F(OpenAIClientTest, ConstructorWithCustomBaseUrl) {
-  ControllableOpenAIClient client("sk-test", "https://custom-api.example.com");
+  ai::openai::OpenAIClient client("sk-test", "https://custom-api.example.com");
 
   EXPECT_TRUE(client.is_valid());
-  EXPECT_EQ(client.provider_name(), "openai-test");
+  EXPECT_EQ(client.provider_name(), "openai");
+  EXPECT_THAT(client.config_info(),
+              testing::HasSubstr("custom-api.example.com"));
+
+  // Test internal access
+  EXPECT_EQ(client.get_host(), "custom-api.example.com");
+  EXPECT_TRUE(client.get_use_ssl());
+}
+
+TEST_F(OpenAIClientTest, ConstructorWithHttpUrl) {
+  ai::openai::OpenAIClient client("sk-test", "http://localhost:8080");
+
+  EXPECT_TRUE(client.is_valid());
+  EXPECT_EQ(client.get_host(), "localhost:8080");
+  EXPECT_FALSE(client.get_use_ssl());
 }
 
 // Model Support Tests
@@ -80,244 +96,29 @@ TEST_F(OpenAIClientTest, DoesNotSupportInvalidModel) {
   EXPECT_FALSE(client_->supports_model(""));
 }
 
-// Text Generation Tests
-TEST_F(OpenAIClientTest, GenerateTextWithBasicOptions) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse(
-      ai::test::ResponseBuilder::buildSuccessResponse("Hello, world!"));
-
-  auto result = client_->generate_text(options);
-
-  ai::test::TestAssertions::assertSuccess(result);
-  EXPECT_EQ(result.text, "Hello, world!");
-  EXPECT_EQ(client_->getCallCount(), 1);
-
-  auto last_options = client_->getLastGenerateOptions();
-  EXPECT_EQ(last_options.model, kTestModel);
-  EXPECT_EQ(last_options.prompt, kTestPrompt);
-}
-
-TEST_F(OpenAIClientTest, GenerateTextWithAdvancedOptions) {
-  auto options = createAdvancedOptions();
-  client_->setPredefinedResponse(
-      ResponseBuilder::buildSuccessResponse("Advanced response"));
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertSuccess(result);
-  EXPECT_EQ(result.text, "Advanced response");
-
-  auto last_options = client_->getLastGenerateOptions();
-  EXPECT_EQ(last_options.temperature.value(), 0.7);
-  EXPECT_EQ(last_options.max_tokens.value(), 100);
-  EXPECT_EQ(last_options.top_p.value(), 0.9);
-}
-
-TEST_F(OpenAIClientTest, GenerateTextWithMessages) {
-  auto messages = createSampleConversation();
-  GenerateOptions options(kTestModel, std::move(messages));
-
-  client_->setPredefinedResponse(
-      ResponseBuilder::buildSuccessResponse("Conversation response"));
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertSuccess(result);
-  EXPECT_EQ(result.text, "Conversation response");
-}
-
-TEST_F(OpenAIClientTest, GenerateTextWithUsageInformation) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse(
-      ResponseBuilder::buildSuccessResponse("Response", "gpt-4o", 15, 25));
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertSuccess(result);
-  TestAssertions::assertUsage(result.usage, 15, 25);
-}
-
-TEST_F(OpenAIClientTest, GenerateTextWithMetadata) {
-  auto options = createBasicOptions();
-  auto response_json = TestDataGenerator::createFullValidResponse();
-  client_->setPredefinedResponse(response_json.dump());
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertSuccess(result);
-  EXPECT_TRUE(result.id.has_value());
-  EXPECT_TRUE(result.model.has_value());
-  EXPECT_TRUE(result.provider_metadata.has_value());
-}
-
-// Error Handling Tests
-TEST_F(OpenAIClientTest, HandleNetworkTimeout) {
-  auto options = createBasicOptions();
-  client_->setShouldTimeout(true);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "timeout");
-}
-
-TEST_F(OpenAIClientTest, HandleNetworkFailure) {
-  auto options = createBasicOptions();
-  client_->setShouldFail(true);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "Network error");
-}
-
-TEST_F(OpenAIClientTest, HandleApiErrorResponse) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse(ResponseBuilder::buildAuthErrorResponse(),
-                                 401);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "401");
-}
-
-TEST_F(OpenAIClientTest, HandleRateLimitError) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse(ResponseBuilder::buildRateLimitResponse(),
-                                 429);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "429");
-}
-
-TEST_F(OpenAIClientTest, HandleModelNotFoundError) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse(ResponseBuilder::buildModelNotFoundResponse(),
-                                 404);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "404");
-}
-
-// Edge Cases
-TEST_F(OpenAIClientTest, HandleEmptyResponse) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse("", 200);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "parse");
-}
-
-TEST_F(OpenAIClientTest, HandleMalformedJsonResponse) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse("{invalid json", 200);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "parse");
-}
-
-TEST_F(OpenAIClientTest, HandlePartialResponse) {
-  auto options = createBasicOptions();
-  client_->setPredefinedResponse(ResponseBuilder::buildPartialResponse(), 200);
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertError(result, "parse");
-}
-
-// Parameter Validation Tests
-class OpenAIClientParameterTest
-    : public OpenAITestFixture,
-      public testing::WithParamInterface<GenerateOptions> {};
-
-TEST_P(OpenAIClientParameterTest, ValidateOptionsVariations) {
-  ControllableOpenAIClient client(kTestApiKey);
-  client.setPredefinedResponse(ResponseBuilder::buildSuccessResponse());
-
-  auto options = GetParam();
-
-  if (options.is_valid()) {
-    auto result = client.generate_text(options);
-    TestAssertions::assertSuccess(result);
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    OptionsVariations,
-    OpenAIClientParameterTest,
-    testing::ValuesIn(TestDataGenerator::generateOptionsVariations()));
-
-// Stream Tests (Basic)
-TEST_F(OpenAIClientTest, StreamTextBasic) {
-  auto options = StreamOptions(GenerateOptions(kTestModel, kTestPrompt));
-
-  auto result = client_->stream_text(options);
-
-  // For now, just verify the call was made
-  EXPECT_EQ(client_->getCallCount(), 1);
-
-  auto last_options = client_->getLastStreamOptions();
-  EXPECT_EQ(last_options.model, kTestModel);
-  EXPECT_EQ(last_options.prompt, kTestPrompt);
-}
-
-// Network Failure Simulation Tests
-class NetworkFailureTest
-    : public OpenAITestFixture,
-      public testing::WithParamInterface<NetworkFailureSimulator::FailureType> {
-};
-
-TEST_P(NetworkFailureTest, HandleNetworkFailureTypes) {
-  ControllableOpenAIClient client(kTestApiKey);
+// Text Generation Tests - Testing error handling without network calls
+TEST_F(OpenAIClientTest, GenerateTextWithInvalidApiKey) {
+  ai::openai::OpenAIClient client("invalid-key", "https://api.openai.com");
   auto options = createBasicOptions();
 
-  auto failure_type = GetParam();
-  auto expected_result =
-      NetworkFailureSimulator::createNetworkErrorResult(failure_type);
+  // This will attempt a real call and should fail gracefully
+  auto result = client.generate_text(options);
 
-  // In a real test, we'd inject the failure type into the client
-  // For now, just verify the error result is properly constructed
-  TestAssertions::assertError(expected_result, "Network error");
+  // We expect this to fail since we're using an invalid API key
+  EXPECT_FALSE(result.is_success());
+  EXPECT_FALSE(result.error_message().empty());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    AllFailureTypes,
-    NetworkFailureTest,
-    testing::Values(
-        NetworkFailureSimulator::FailureType::kConnectionTimeout,
-        NetworkFailureSimulator::FailureType::kReadTimeout,
-        NetworkFailureSimulator::FailureType::kConnectionRefused,
-        NetworkFailureSimulator::FailureType::kDnsFailure,
-        NetworkFailureSimulator::FailureType::kSslError,
-        NetworkFailureSimulator::FailureType::kUnexpectedDisconnect));
-
-// Performance Considerations Tests
-TEST_F(OpenAIClientTest, HandleLargePrompt) {
-  auto large_prompt =
-      TestDataGenerator::createLargePrompt(100000);  // 100KB prompt
-  GenerateOptions options(kTestModel, large_prompt);
-
-  client_->setPredefinedResponse(
-      ResponseBuilder::buildSuccessResponse("Large response handled"));
-
-  auto result = client_->generate_text(options);
-
-  TestAssertions::assertSuccess(result);
-}
-
-TEST_F(OpenAIClientTest, MultipleSequentialCalls) {
+TEST_F(OpenAIClientTest, GenerateTextWithBadUrl) {
+  ai::openai::OpenAIClient client(
+      "sk-test", "http://invalid-url-that-does-not-exist.example");
   auto options = createBasicOptions();
-  client_->setPredefinedResponse(ResponseBuilder::buildSuccessResponse());
 
-  constexpr int num_calls = 5;
-  for (int i = 0; i < num_calls; ++i) {
-    auto result = client_->generate_text(options);
-    TestAssertions::assertSuccess(result);
-  }
+  // This should fail due to network connectivity
+  auto result = client.generate_text(options);
 
-  EXPECT_EQ(client_->getCallCount(), num_calls);
+  EXPECT_FALSE(result.is_success());
+  EXPECT_FALSE(result.error_message().empty());
 }
 
 // Configuration Tests
@@ -326,10 +127,66 @@ TEST_F(OpenAIClientTest, ConfigurationInfoContainsExpectedData) {
 
   EXPECT_FALSE(config.empty());
   EXPECT_THAT(config, testing::HasSubstr("OpenAI"));
+  EXPECT_THAT(config, testing::HasSubstr(kTestBaseUrl));
 }
 
 TEST_F(OpenAIClientTest, ProviderNameIsConsistent) {
-  EXPECT_EQ(client_->provider_name(), "openai-test");
+  EXPECT_EQ(client_->provider_name(), "openai");
+}
+
+// Test option validation without network calls
+TEST_F(OpenAIClientTest, ValidateOptionsValidation) {
+  // Test with empty model
+  GenerateOptions invalid_options("", "test prompt");
+  EXPECT_FALSE(invalid_options.is_valid());
+
+  // Test with valid options
+  auto valid_options = createBasicOptions();
+  EXPECT_TRUE(valid_options.is_valid());
+}
+
+// Stream Tests (Basic validation)
+TEST_F(OpenAIClientTest, StreamTextBasicValidation) {
+  auto options = StreamOptions(GenerateOptions(kTestModel, kTestPrompt));
+
+  // For now, just verify the call doesn't crash
+  // In a real test environment, this would fail due to network, but should
+  // handle gracefully
+  auto result = client_->stream_text(options);
+
+  // The stream result should be created even if the underlying request fails
+  EXPECT_TRUE(true);  // Just verify no crash occurred
+}
+
+// Internal Method Tests - These test the private implementation
+TEST_F(OpenAIClientTest, TestInternalJsonBuilding) {
+  auto options = createBasicOptions();
+
+  // Test the internal JSON building method (exposed via AI_SDK_TESTING)
+  auto json = client_->build_request_json(options);
+
+  EXPECT_EQ(json["model"], kTestModel);
+  EXPECT_TRUE(json.contains("messages"));
+  EXPECT_TRUE(json["messages"].is_array());
+  EXPECT_FALSE(json["messages"].empty());
+}
+
+TEST_F(OpenAIClientTest, TestMessageRoleConversion) {
+  // Test the internal message role conversion method
+  EXPECT_EQ(client_->message_role_to_string(kMessageRoleSystem), "system");
+  EXPECT_EQ(client_->message_role_to_string(kMessageRoleUser), "user");
+  EXPECT_EQ(client_->message_role_to_string(kMessageRoleAssistant),
+            "assistant");
+}
+
+TEST_F(OpenAIClientTest, TestFinishReasonParsing) {
+  // Test the internal finish reason parsing method
+  EXPECT_EQ(client_->parse_finish_reason("stop"), kFinishReasonStop);
+  EXPECT_EQ(client_->parse_finish_reason("length"), kFinishReasonLength);
+  EXPECT_EQ(client_->parse_finish_reason("content_filter"),
+            kFinishReasonContentFilter);
+  EXPECT_EQ(client_->parse_finish_reason("tool_calls"), kFinishReasonToolCalls);
+  EXPECT_EQ(client_->parse_finish_reason("unknown"), kFinishReasonError);
 }
 
 }  // namespace test

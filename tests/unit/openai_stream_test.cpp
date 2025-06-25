@@ -130,8 +130,9 @@ TEST_F(StreamMockTest, MockStreamBasicOperations) {
   while (mock_stream.has_next()) {
     auto chunk = mock_stream.read_next();
     full_text += chunk;
-    if (full_text == "Hello world!")
+    if (full_text == "Hello world!") {
       break;  // Prevent infinite loop
+}
   }
 
   EXPECT_EQ(full_text, "Hello world!");
