@@ -1,6 +1,7 @@
 #include "anthropic_client.h"
 
 #include "ai/anthropic.h"
+#include "ai/tools.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_result.h"
 #include "anthropic_stream.h"
@@ -41,9 +42,30 @@ AnthropicClient::AnthropicClient(const std::string& api_key,
 }
 
 GenerateResult AnthropicClient::generate_text(const GenerateOptions& options) {
-  spdlog::debug("Starting text generation - model: {}, prompt length: {}",
-                options.model, options.prompt.length());
+  spdlog::debug(
+      "Starting text generation - model: {}, prompt length: {}, tools: {}, "
+      "max_steps: {}",
+      options.model, options.prompt.length(), options.tools.size(),
+      options.max_steps);
 
+  // Check if multi-step tool calling is enabled
+  if (options.has_tools() && options.is_multi_step()) {
+    spdlog::debug("Using multi-step tool calling with {} tools",
+                  options.tools.size());
+
+    // Use MultiStepCoordinator for complex workflows
+    return MultiStepCoordinator::execute_multi_step(
+        options, [this](const GenerateOptions& step_options) {
+          return this->generate_text_single_step(step_options);
+        });
+  } else {
+    // Single step generation
+    return generate_text_single_step(options);
+  }
+}
+
+GenerateResult AnthropicClient::generate_text_single_step(
+    const GenerateOptions& options) {
   try {
     // Build request JSON
     auto request_json = build_request_json(options);
@@ -61,7 +83,29 @@ GenerateResult AnthropicClient::generate_text(const GenerateOptions& options) {
     auto json_response = nlohmann::json::parse(result.text);
     spdlog::info("Text generation successful - model: {}, response_id: {}",
                  options.model, json_response.value("id", "unknown"));
-    return parse_messages_response(json_response);
+
+    auto parsed_result = parse_messages_response(json_response);
+
+    // Execute tools if the model made tool calls
+    if (parsed_result.has_tool_calls() && options.has_tools()) {
+      spdlog::debug("Model made {} tool calls, executing them",
+                    parsed_result.tool_calls.size());
+
+      try {
+        auto tool_results = ToolExecutor::execute_tools(
+            parsed_result.tool_calls, options.tools, options.messages);
+
+        parsed_result.tool_results = tool_results;
+        spdlog::debug("Successfully executed {} tools", tool_results.size());
+
+      } catch (const ToolError& e) {
+        spdlog::error("Tool execution failed: {}", e.what());
+        parsed_result.error = "Tool execution failed: " + std::string(e.what());
+        parsed_result.finish_reason = kFinishReasonError;
+      }
+    }
+
+    return parsed_result;
 
   } catch (const std::exception& e) {
     spdlog::error("Exception during text generation: {}", e.what());
@@ -165,6 +209,53 @@ nlohmann::json AnthropicClient::build_request_json(
     // Anthropic doesn't support seed directly, but we can add it as metadata
   }
 
+  // Add tools if specified
+  if (options.has_tools()) {
+    spdlog::debug("Adding {} tools to Anthropic request", options.tools.size());
+
+    nlohmann::json tools_array = nlohmann::json::array();
+    auto active_tool_names = options.get_active_tool_names();
+
+    for (const auto& tool_name : active_tool_names) {
+      auto it = options.tools.find(tool_name);
+      if (it != options.tools.end()) {
+        const auto& tool = it->second;
+
+        nlohmann::json tool_def = {{"name", tool_name},
+                                   {"description", tool.description},
+                                   {"input_schema", tool.parameters_schema}};
+
+        tools_array.push_back(tool_def);
+      }
+    }
+
+    if (!tools_array.empty()) {
+      request["tools"] = tools_array;
+
+      // Add tool choice if specified
+      switch (options.tool_choice.type) {
+        case ToolChoiceType::kAuto:
+          request["tool_choice"] = {{"type", "auto"}};
+          break;
+        case ToolChoiceType::kRequired:
+          request["tool_choice"] = {{"type", "any"}};
+          break;
+        case ToolChoiceType::kSpecific:
+          if (options.tool_choice.tool_name) {
+            request["tool_choice"] = {{"type", "tool"},
+                                      {"name", *options.tool_choice.tool_name}};
+          }
+          break;
+        case ToolChoiceType::kNone:
+          // Anthropic doesn't have explicit "none" - just don't send tools
+          break;
+      }
+
+      spdlog::debug("Added {} tools with choice: {}", tools_array.size(),
+                    options.tool_choice.to_string());
+    }
+  }
+
   return request;
 }
 
@@ -197,16 +288,34 @@ GenerateResult AnthropicClient::parse_messages_response(
   // Extract content from the response
   if (response.contains("content") && response["content"].is_array()) {
     std::string full_text;
+
     for (const auto& content_block : response["content"]) {
-      if (content_block.contains("type") && content_block["type"] == "text") {
-        if (content_block.contains("text")) {
+      if (content_block.contains("type")) {
+        std::string type = content_block["type"];
+
+        if (type == "text" && content_block.contains("text")) {
           full_text += content_block["text"].get<std::string>();
+        } else if (type == "tool_use") {
+          // Parse Anthropic tool use
+          if (content_block.contains("id") && content_block.contains("name") &&
+              content_block.contains("input")) {
+            std::string call_id = content_block["id"];
+            std::string function_name = content_block["name"];
+            JsonValue arguments = content_block["input"];
+
+            ToolCall tool_call(call_id, function_name, arguments);
+            result.tool_calls.push_back(tool_call);
+
+            spdlog::debug("Parsed Anthropic tool call: {} with args: {}",
+                          function_name, arguments.dump());
+          }
         }
       }
     }
+
     result.text = full_text;
-    spdlog::debug("Extracted message content - length: {}",
-                  result.text.length());
+    spdlog::debug("Extracted message content - length: {}, tool calls: {}",
+                  result.text.length(), result.tool_calls.size());
 
     // Add assistant response to messages
     if (!result.text.empty()) {

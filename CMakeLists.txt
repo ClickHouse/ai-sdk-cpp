@@ -55,6 +55,10 @@ target_sources(ai-sdk-cpp
         src/providers/anthropic/anthropic_client.cpp
         src/providers/anthropic/anthropic_stream.cpp
         src/providers/anthropic/anthropic_factory.cpp
+        
+        # Tool calling implementations
+        src/tools/tool_executor.cpp
+        src/tools/multi_step_coordinator.cpp
 )
 
 # Link dependencies (all private - not exposed to users)

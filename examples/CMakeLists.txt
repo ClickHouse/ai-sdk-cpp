@@ -38,6 +38,12 @@ add_ai_example(error_handling error_handling.cpp)
 add_ai_example(test_openai test_openai.cpp)
 add_ai_example(test_anthropic test_anthropic.cpp)
 
+# Tool calling examples
+add_ai_example(tool_calling_basic tool_calling_basic.cpp)
+add_ai_example(tool_calling_multistep tool_calling_multistep.cpp) 
+add_ai_example(tool_calling_async tool_calling_async.cpp)
+add_ai_example(test_tool_integration test_tool_integration.cpp)
+
 # Message to show how to run examples
 message(STATUS "Examples will be built in: ${CMAKE_BINARY_DIR}/examples/")
 message(STATUS "To run examples:")

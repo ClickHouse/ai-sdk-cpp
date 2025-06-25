@@ -1,6 +1,7 @@
 #include "openai_client.h"
 
 #include "ai/openai.h"
+#include "ai/tools.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_result.h"
 #include "openai_stream.h"
@@ -38,9 +39,30 @@ OpenAIClient::OpenAIClient(const std::string& api_key,
 }
 
 GenerateResult OpenAIClient::generate_text(const GenerateOptions& options) {
-  spdlog::debug("Starting text generation - model: {}, prompt length: {}",
-                options.model, options.prompt.length());
+  spdlog::debug(
+      "Starting text generation - model: {}, prompt length: {}, tools: {}, "
+      "max_steps: {}",
+      options.model, options.prompt.length(), options.tools.size(),
+      options.max_steps);
 
+  // Check if multi-step tool calling is enabled
+  if (options.has_tools() && options.is_multi_step()) {
+    spdlog::debug("Using multi-step tool calling with {} tools",
+                  options.tools.size());
+
+    // Use MultiStepCoordinator for complex workflows
+    return MultiStepCoordinator::execute_multi_step(
+        options, [this](const GenerateOptions& step_options) {
+          return this->generate_text_single_step(step_options);
+        });
+  } else {
+    // Single step generation
+    return generate_text_single_step(options);
+  }
+}
+
+GenerateResult OpenAIClient::generate_text_single_step(
+    const GenerateOptions& options) {
   try {
     // Build request JSON
     auto request_json = build_request_json(options);
@@ -59,7 +81,34 @@ GenerateResult OpenAIClient::generate_text(const GenerateOptions& options) {
     auto json_response = nlohmann::json::parse(result.text);
     spdlog::info("Text generation successful - model: {}, response_id: {}",
                  options.model, json_response.value("id", "unknown"));
-    return parse_chat_completion_response(json_response);
+
+    // Debug: print the response for tool calls
+    if (options.has_tools()) {
+      spdlog::debug("OpenAI response with tools: {}", json_response.dump(2));
+    }
+
+    auto parsed_result = parse_chat_completion_response(json_response);
+
+    // Execute tools if the model made tool calls
+    if (parsed_result.has_tool_calls() && options.has_tools()) {
+      spdlog::debug("Model made {} tool calls, executing them",
+                    parsed_result.tool_calls.size());
+
+      try {
+        auto tool_results = ToolExecutor::execute_tools(
+            parsed_result.tool_calls, options.tools, options.messages);
+
+        parsed_result.tool_results = tool_results;
+        spdlog::debug("Successfully executed {} tools", tool_results.size());
+
+      } catch (const ToolError& e) {
+        spdlog::error("Tool execution failed: {}", e.what());
+        parsed_result.error = "Tool execution failed: " + std::string(e.what());
+        parsed_result.finish_reason = kFinishReasonError;
+      }
+    }
+
+    return parsed_result;
 
   } catch (const std::exception& e) {
     spdlog::error("Exception during text generation: {}", e.what());
@@ -164,6 +213,56 @@ nlohmann::json OpenAIClient::build_request_json(
     request["seed"] = *options.seed;
   }
 
+  // Add tools if specified
+  if (options.has_tools()) {
+    spdlog::debug("Adding {} tools to request", options.tools.size());
+
+    nlohmann::json tools_array = nlohmann::json::array();
+    auto active_tool_names = options.get_active_tool_names();
+
+    for (const auto& tool_name : active_tool_names) {
+      auto it = options.tools.find(tool_name);
+      if (it != options.tools.end()) {
+        const auto& tool = it->second;
+
+        nlohmann::json tool_def = {{"type", "function"},
+                                   {"function",
+                                    {{"name", tool_name},
+                                     {"description", tool.description},
+                                     {"parameters", tool.parameters_schema}}}};
+
+        tools_array.push_back(tool_def);
+      }
+    }
+
+    if (!tools_array.empty()) {
+      request["tools"] = tools_array;
+
+      // Add tool choice if specified
+      switch (options.tool_choice.type) {
+        case ToolChoiceType::kAuto:
+          request["tool_choice"] = "auto";
+          break;
+        case ToolChoiceType::kRequired:
+          request["tool_choice"] = "required";
+          break;
+        case ToolChoiceType::kNone:
+          request["tool_choice"] = "none";
+          break;
+        case ToolChoiceType::kSpecific:
+          if (options.tool_choice.tool_name) {
+            request["tool_choice"] = {
+                {"type", "function"},
+                {"function", {{"name", *options.tool_choice.tool_name}}}};
+          }
+          break;
+      }
+
+      spdlog::debug("Added {} tools with choice: {}", tools_array.size(),
+                    options.tool_choice.to_string());
+    }
+  }
+
   return request;
 }
 
@@ -189,12 +288,65 @@ GenerateResult OpenAIClient::parse_chat_completion_response(
     // Extract message content
     if (choice.contains("message")) {
       auto& message = choice["message"];
-      result.text = message.value("content", "");
+      // Handle null content (happens when model makes tool calls)
+      if (message.contains("content") && !message["content"].is_null()) {
+        result.text = message["content"].get<std::string>();
+      } else {
+        result.text = "";
+      }
       spdlog::debug("Extracted message content - length: {}",
                     result.text.length());
 
+      // Parse tool calls if present
+      if (message.contains("tool_calls") && message["tool_calls"].is_array()) {
+        spdlog::debug("Found {} tool calls in response",
+                      message["tool_calls"].size());
+
+        for (const auto& tool_call_json : message["tool_calls"]) {
+          if (tool_call_json.contains("id") &&
+              tool_call_json.contains("function") &&
+              tool_call_json["function"].contains("name") &&
+              tool_call_json["function"].contains("arguments")) {
+            std::string call_id = tool_call_json["id"].get<std::string>();
+            std::string function_name =
+                tool_call_json["function"]["name"].get<std::string>();
+
+            // Handle arguments - they might be null, string, or object
+            std::string arguments_str;
+            if (tool_call_json["function"]["arguments"].is_null()) {
+              arguments_str = "{}";
+            } else if (tool_call_json["function"]["arguments"].is_string()) {
+              arguments_str =
+                  tool_call_json["function"]["arguments"].get<std::string>();
+            } else {
+              arguments_str = tool_call_json["function"]["arguments"].dump();
+            }
+
+            try {
+              JsonValue arguments;
+              if (arguments_str.empty() || arguments_str == "null") {
+                arguments = JsonValue::object();
+              } else {
+                arguments = JsonValue::parse(arguments_str);
+              }
+              ToolCall tool_call(call_id, function_name, arguments);
+              result.tool_calls.push_back(tool_call);
+
+              spdlog::debug("Parsed tool call: {} with args: {}", function_name,
+                            arguments_str);
+            } catch (const std::exception& e) {
+              spdlog::error("Failed to parse tool call arguments: {}",
+                            e.what());
+            }
+          }
+        }
+      }
+
       // Add assistant response to messages
-      result.response_messages.push_back({kMessageRoleAssistant, result.text});
+      if (!result.text.empty()) {
+        result.response_messages.push_back(
+            {kMessageRoleAssistant, result.text});
+      }
     }
 
     // Extract finish reason

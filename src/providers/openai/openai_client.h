@@ -32,6 +32,7 @@ class OpenAIClient : public Client {
  private:
 #endif
   nlohmann::json build_request_json(const GenerateOptions& options);
+  GenerateResult generate_text_single_step(const GenerateOptions& options);
   GenerateResult parse_chat_completion_response(const nlohmann::json& response);
   GenerateResult parse_error_response(int status_code, const std::string& body);
   std::string message_role_to_string(MessageRole role);

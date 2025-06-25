@@ -127,6 +127,107 @@ int main() {
 }
 ```
 
+#### Tool Calling
+
+The AI SDK CPP supports function calling, allowing models to interact with external systems and APIs.
+
+```cpp
+#include <ai/openai.h>
+#include <ai/generate.h>
+#include <ai/tools.h>
+#include <iostream>
+
+// Define a tool function
+ai::JsonValue get_weather(const ai::JsonValue& args, const ai::ToolExecutionContext& context) {
+    std::string location = args["location"].get<std::string>();
+    
+    // Your weather API logic here
+    return ai::JsonValue{
+        {"location", location},
+        {"temperature", 72},
+        {"condition", "Sunny"}
+    };
+}
+
+int main() {
+    auto client = ai::openai::create_client();
+    
+    // Create tools
+    ai::ToolSet tools = {
+        {"weather", ai::create_simple_tool(
+            "weather",
+            "Get current weather for a location", 
+            {{"location", "string"}},
+            get_weather
+        )}
+    };
+    
+    auto result = client.generate_text({
+        .model = ai::openai::models::kGpt4o,
+        .prompt = "What's the weather like in San Francisco?",
+        .tools = tools,
+        .max_steps = 3  // Enable multi-step tool calling
+    });
+    
+    if (result) {
+        std::cout << result->text << std::endl;
+        
+        // Inspect tool calls and results
+        for (const auto& call : result->tool_calls) {
+            std::cout << "Tool: " << call.tool_name 
+                      << ", Args: " << call.arguments.dump() << std::endl;
+        }
+    }
+    
+    return 0;
+}
+```
+
+#### Async Tool Calling
+
+For long-running operations, you can define asynchronous tools:
+
+```cpp
+#include <future>
+#include <thread>
+#include <chrono>
+
+// Async tool that returns a future
+std::future<ai::JsonValue> fetch_data_async(const ai::JsonValue& args, const ai::ToolExecutionContext& context) {
+    return std::async(std::launch::async, [args]() {
+        // Simulate async operation
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        
+        return ai::JsonValue{
+            {"data", "Fetched from API"},
+            {"timestamp", std::time(nullptr)}
+        };
+    });
+}
+
+int main() {
+    auto client = ai::openai::create_client();
+    
+    ai::ToolSet tools = {
+        {"fetch_data", ai::create_simple_async_tool(
+            "fetch_data",
+            "Fetch data from external API",
+            {{"endpoint", "string"}},
+            fetch_data_async
+        )}
+    };
+    
+    // Multiple async tools will execute in parallel
+    auto result = client.generate_text({
+        .model = ai::openai::models::kGpt4o,
+        .prompt = "Fetch data from the user and product APIs",
+        .tools = tools
+    });
+    
+    return 0;
+}
+```
+
 ## Features
 
 ### Currently Supported
@@ -136,9 +237,13 @@ int main() {
 - ✅ **Multi-turn Conversations**: Support for conversation history
 - ✅ **Error Handling**: Comprehensive error handling with optional types
 
+### Recently Added
+
+- ✅ **Tool Calling**: Function calling and tool integration with multi-step support
+- ✅ **Async Tools**: Asynchronous tool execution with parallel processing
+
 ### Coming Soon
 
-- 🚧 **Tool Calling**: Function calling and tool integration
 - 🚧 **Additional Providers**: Google, Cohere, and other providers
 - 🚧 **Embeddings**: Text embedding support
 - 🚧 **Image Generation**: Support for image generation models
@@ -147,10 +252,13 @@ int main() {
 
 Check out our [examples directory](examples/) for more comprehensive usage examples:
 
-- [Basic Chat Application](examples/basic_chat.cc)
-- [Streaming Chat](examples/streaming_chat.cc)
-- [Multi-provider Comparison](examples/multi_provider.cc)
-- [Error Handling](examples/error_handling.cc)
+- [Basic Chat Application](examples/basic_chat.cpp)
+- [Streaming Chat](examples/streaming_chat.cpp)
+- [Multi-provider Comparison](examples/multi_provider.cpp)
+- [Error Handling](examples/error_handling.cpp)
+- [Basic Tool Calling](examples/tool_calling_basic.cpp)
+- [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
+- [Async Tool Execution](examples/tool_calling_async.cpp)
 
 ## Documentation
 
