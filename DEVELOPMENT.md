@@ -298,6 +298,130 @@ uv run scripts/lint.py
 cd build && ctest
 ```
 
+## Logging
+
+### Configuring Log Levels
+
+AI SDK C++ uses [spdlog](https://github.com/gabime/spdlog) for logging.
+
+### Setting Log Levels
+
+You can control the logging verbosity by setting the spdlog level in your application:
+
+```cpp
+#include <spdlog/spdlog.h>
+
+// In your main() or initialization code:
+
+// Enable debug logging (most verbose)
+spdlog::set_level(spdlog::level::debug);
+
+// Enable info logging (operational information)
+spdlog::set_level(spdlog::level::info);
+
+// Enable warning logging (default)
+spdlog::set_level(spdlog::level::warn);
+
+// Enable error logging only
+spdlog::set_level(spdlog::level::err);
+```
+
+### Available Log Levels
+
+From most to least verbose:
+
+1. **trace**: Most detailed information (not commonly used in AI SDK)
+2. **debug**: Detailed flow information, request/response bodies, connection details
+3. **info**: Important operational events (successful completions, stream events)
+4. **warn**: Warning conditions that don't prevent operation
+5. **err**: Error conditions and exceptions
+6. **critical**: Critical failures (not commonly used in AI SDK)
+7. **off**: Disable all logging
+
+### Environment Variable Configuration
+
+You can also set the log level via environment variable:
+
+```bash
+# Enable debug logging
+export SPDLOG_LEVEL=debug
+
+# Enable info logging
+export SPDLOG_LEVEL=info
+```
+
+### Example Log Output
+
+With **debug** level enabled:
+
+```
+[2024-01-01 12:00:00.123] [debug] Initializing OpenAI client with base_url: https://api.openai.com
+[2024-01-01 12:00:00.124] [debug] OpenAI client configured - host: api.openai.com, use_ssl: true
+[2024-01-01 12:00:00.125] [debug] Starting text generation - model: gpt-4o, prompt length: 42
+[2024-01-01 12:00:00.126] [debug] Request JSON built: {"model":"gpt-4o","messages":[...]}
+[2024-01-01 12:00:00.127] [debug] Creating SSL client for host: api.openai.com
+[2024-01-01 12:00:01.234] [debug] Received response - status: 200, body length: 1234
+[2024-01-01 12:00:01.235] [info] Text generation successful - model: gpt-4o, response_id: chatcmpl-abc123
+```
+
+With **info** level enabled:
+
+```
+[2024-01-01 12:00:01.235] [info] Text generation successful - model: gpt-4o, response_id: chatcmpl-abc123
+[2024-01-01 12:00:02.456] [info] Text streaming started - model: gpt-4o-mini
+[2024-01-01 12:00:03.789] [info] Stream completed - tokens used: 150 prompt, 350 completion, 500 total
+```
+
+### Custom Logger Configuration
+
+For more advanced logging configurations:
+
+```cpp
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
+// Create a multi-sink logger (console + file)
+auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("ai_sdk.log", true);
+
+std::vector<spdlog::sink_ptr> sinks {console_sink, file_sink};
+auto logger = std::make_shared<spdlog::logger>("ai_sdk", sinks.begin(), sinks.end());
+
+// Set as default logger
+spdlog::set_default_logger(logger);
+
+// Configure format
+spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] %v");
+```
+
+### Development Recommendations
+
+- **Development**: Use `debug` level to see detailed API interactions
+- **Testing**: Use `info` level to track key operations
+- **Production**: Use `warn` or `error` level for performance
+
+### Logging in Tests
+
+When running tests, you might want to enable debug logging:
+
+```bash
+# Run tests with debug logging
+SPDLOG_LEVEL=debug ctest --verbose
+```
+
+Or programmatically in your test fixtures:
+
+```cpp
+class AITestFixture : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Enable debug logging for tests
+        spdlog::set_level(spdlog::level::debug);
+    }
+};
+```
+
 ## Dependencies
 
 ### Core Dependencies

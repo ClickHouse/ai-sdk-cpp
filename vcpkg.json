@@ -13,7 +13,8 @@
       "name": "cpp-httplib",
       "features": ["brotli", "openssl"]
     },
-    "openssl"
+    "openssl",
+    "concurrentqueue"
   ],
   "features": {
     "tests": {

@@ -22,6 +22,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 
 # Main library target
 add_library(ai-sdk-cpp)
@@ -48,7 +49,9 @@ target_sources(ai-sdk-cpp
         src/types/message.cpp
         
         # Provider implementations
-        src/providers/openai_client.cpp
+        src/providers/openai/openai_client.cpp
+        src/providers/openai/openai_stream.cpp
+        src/providers/openai/openai_factory.cpp
         src/providers/anthropic_client.cpp
 )
 
@@ -61,6 +64,7 @@ target_link_libraries(ai-sdk-cpp
         httplib::httplib
         OpenSSL::SSL
         OpenSSL::Crypto
+        unofficial::concurrentqueue::concurrentqueue
 )
 
 # Compiler-specific options

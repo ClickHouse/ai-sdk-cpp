@@ -1,9 +1,14 @@
 #include <iostream>
 
 #include <ai/ai.h>
+#include <spdlog/common.h>
+#include <spdlog/spdlog.h>
 
 int main() {
   try {
+    // Enable debug logging
+    spdlog::set_level(spdlog::level::info);
+
     // Create OpenAI client
     auto client = ai::openai::create_client();
 
@@ -28,8 +33,9 @@ int main() {
     // Test streaming
     std::cout << "\nTesting streaming...\n";
 
-    ai::GenerateOptions stream_opts(ai::openai::models::kGpt4oMini,
-                                    "Count from 1 to 5 slowly");
+    ai::GenerateOptions stream_opts(
+        ai::openai::models::kGpt4oMini,
+        "Count from 1 to 5 slowly and along with each number say 'tick'");
     ai::StreamOptions stream_options(stream_opts);
 
     auto stream = client.stream_text(stream_options);
@@ -44,6 +50,9 @@ int main() {
         std::cout << "\n\nStream finished.\n";
         if (event.usage.has_value()) {
           std::cout << "Total tokens: " << event.usage->total_tokens << "\n";
+        } else {
+          std::cout << "Note: Token usage data is not available in OpenAI's "
+                       "streaming mode.\n";
         }
       }
     }
