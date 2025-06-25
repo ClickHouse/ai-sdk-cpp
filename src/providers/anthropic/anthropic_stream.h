@@ -38,7 +38,7 @@ class AnthropicStreamImpl : public internal::StreamResultImpl {
                   const nlohmann::json& request_body);
   void parse_sse_response(const std::string& response);
   void process_sse_event(const std::string& data);
-  void push_event(StreamEvent event);
+  void push_event(const StreamEvent& event);
   void mark_complete();
 
   // Helper functions

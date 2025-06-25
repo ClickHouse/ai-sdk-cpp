@@ -209,7 +209,7 @@ void AnthropicStreamImpl::process_sse_event(const std::string& data) {
   }
 }
 
-void AnthropicStreamImpl::push_event(StreamEvent event) {
+void AnthropicStreamImpl::push_event(const StreamEvent& event) {
   event_queue_.enqueue(event);
 }
 

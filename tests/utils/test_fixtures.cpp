@@ -56,7 +56,7 @@ nlohmann::json OpenAITestFixture::createValidChatCompletionResponse() {
 }
 
 nlohmann::json OpenAITestFixture::createErrorResponse(
-    int status_code,
+    int /* status_code */,
     const std::string& message) {
   return nlohmann::json{{"error",
                          {{"message", message},
@@ -92,6 +92,76 @@ Message OpenAITestFixture::createAssistantMessage(const std::string& content) {
 }
 
 Message OpenAITestFixture::createSystemMessage(const std::string& content) {
+  return Message(kMessageRoleSystem, content);
+}
+
+// AnthropicTestFixture implementation
+void AnthropicTestFixture::SetUp() {
+  AITestFixture::SetUp();
+}
+
+GenerateOptions AnthropicTestFixture::createBasicAnthropicOptions() {
+  GenerateOptions options(kTestAnthropicModel, kTestPrompt);
+  options.max_tokens = 100;  // Required for Anthropic
+  return options;
+}
+
+GenerateOptions AnthropicTestFixture::createAdvancedAnthropicOptions() {
+  GenerateOptions options(kTestAnthropicModel, "System prompt", kTestPrompt);
+  options.temperature = 0.7;
+  options.max_tokens = 100;
+  options.top_p = 0.9;
+  // Note: top_k not available in current GenerateOptions
+  return options;
+}
+
+nlohmann::json AnthropicTestFixture::createValidAnthropicResponse() {
+  return nlohmann::json{
+      {"id", "msg_test123"},
+      {"type", "message"},
+      {"role", "assistant"},
+      {"content",
+       nlohmann::json::array(
+           {{{"type", "text"}, {"text", "Hello! How can I help you today?"}}})},
+      {"model", kTestAnthropicModel},
+      {"stop_reason", "end_turn"},
+      {"stop_sequence", nullptr},
+      {"usage", {{"input_tokens", 10}, {"output_tokens", 20}}}};
+}
+
+nlohmann::json AnthropicTestFixture::createAnthropicErrorResponse(
+    int /* status_code */,
+    const std::string& message) {
+  return nlohmann::json{
+      {"type", "error"},
+      {"error", {{"type", "invalid_request_error"}, {"message", message}}}};
+}
+
+nlohmann::json AnthropicTestFixture::createAnthropicStreamResponse() {
+  return nlohmann::json{{"type", "content_block_delta"},
+                        {"index", 0},
+                        {"delta", {{"type", "text_delta"}, {"text", "Hello"}}}};
+}
+
+Messages AnthropicTestFixture::createSampleAnthropicConversation() {
+  return {createAnthropicSystemMessage("You are a helpful assistant."),
+          createAnthropicUserMessage("Hello!"),
+          createAnthropicAssistantMessage("Hi there! How can I help you?"),
+          createAnthropicUserMessage("What's the weather like?")};
+}
+
+Message AnthropicTestFixture::createAnthropicUserMessage(
+    const std::string& content) {
+  return Message(kMessageRoleUser, content);
+}
+
+Message AnthropicTestFixture::createAnthropicAssistantMessage(
+    const std::string& content) {
+  return Message(kMessageRoleAssistant, content);
+}
+
+Message AnthropicTestFixture::createAnthropicSystemMessage(
+    const std::string& content) {
   return Message(kMessageRoleSystem, content);
 }
 
@@ -194,6 +264,31 @@ std::vector<std::string> TestDataGenerator::createStreamingEvents() {
       "\"created\":1234567890,\"model\":\"gpt-4o\",\"choices\":[{\"index\":0,"
       "\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}]}\n\n",
       "data: [DONE]\n\n"};
+}
+
+std::vector<std::string> TestDataGenerator::createAnthropicStreamingEvents() {
+  return {
+      "data: "
+      "{\"type\":\"message_start\",\"message\":{\"id\":\"msg_stream1\","
+      "\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"model\":"
+      "\"claude-3-5-sonnet-20241022\",\"stop_reason\":null,\"stop_sequence\":"
+      "null,\"usage\":{\"input_tokens\":25,\"output_tokens\":1}}}\n\n",
+      "data: "
+      "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{"
+      "\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "data: "
+      "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":"
+      "\"text_delta\",\"text\":\"Hello\"}}\n\n",
+      "data: "
+      "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":"
+      "\"text_delta\",\"text\":\" world\"}}\n\n",
+      "data: "
+      "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":"
+      "\"text_delta\",\"text\":\"!\"}}\n\n",
+      "data: "
+      "{\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "data: "
+      "{\"type\":\"message_stop\"}\n\n"};
 }
 
 GenerateOptions TestDataGenerator::createEdgeCaseOptions() {
