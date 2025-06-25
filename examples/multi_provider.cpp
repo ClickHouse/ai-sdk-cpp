@@ -222,7 +222,7 @@ int main() {
           std::cout << openai_models[i];
           if (i < 2 && i < openai_models.size() - 1) {
             std::cout << ", ";
-}
+          }
         }
         std::cout << "...\n";
       }

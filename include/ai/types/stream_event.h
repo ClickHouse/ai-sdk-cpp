@@ -28,13 +28,13 @@ struct StreamEvent {
   explicit StreamEvent(StreamEventType event_type) : type(event_type) {}
 
   /// Check if this is a text delta event
-  bool isTextDelta() const { return type == kStreamEventTypeTextDelta; }
+  bool is_text_delta() const { return type == kStreamEventTypeTextDelta; }
 
   /// Check if this is an error event
-  bool isError() const { return type == kStreamEventTypeError; }
+  bool is_error() const { return type == kStreamEventTypeError; }
 
   /// Check if this is a finish event
-  bool isFinish() const { return type == kStreamEventTypeFinish; }
+  bool is_finish() const { return type == kStreamEventTypeFinish; }
 
   StreamEventType type;              ///< Type of stream event
   std::string text_delta;            ///< Text chunk (for TextDelta events)

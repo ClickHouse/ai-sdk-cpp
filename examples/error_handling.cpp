@@ -130,13 +130,13 @@ void demonstrate_streaming_errors() {
   } else {
     // Process stream and handle errors during iteration
     for (const auto& event : stream) {
-      if (event.isError()) {
+      if (event.is_error()) {
         std::cout << "Stream event error: " << event.error.value_or("Unknown")
                   << "\n";
         break;
-      } else if (event.isTextDelta()) {
+      } else if (event.is_text_delta()) {
         std::cout << event.text_delta;
-      } else if (event.isFinish()) {
+      } else if (event.is_finish()) {
         std::cout << "\nStream completed successfully\n";
         break;
       }

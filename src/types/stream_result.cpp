@@ -71,7 +71,7 @@ void StreamResult::for_each(
 std::string StreamResult::collect_all() const {
   std::string result;
   for (const auto& event : *this) {
-    if (event.isTextDelta()) {
+    if (event.is_text_delta()) {
       result += event.text_delta;
     }
   }
@@ -81,7 +81,7 @@ std::string StreamResult::collect_all() const {
 bool StreamResult::has_error() const {
   // Check if any event was an error
   for (const auto& event : *this) {
-    if (event.isError()) {
+    if (event.is_error()) {
       return true;
     }
   }
@@ -90,7 +90,7 @@ bool StreamResult::has_error() const {
 
 std::string StreamResult::error_message() const {
   for (const auto& event : *this) {
-    if (event.isError() && event.error.has_value()) {
+    if (event.is_error() && event.error.has_value()) {
       return event.error.value();
     }
   }

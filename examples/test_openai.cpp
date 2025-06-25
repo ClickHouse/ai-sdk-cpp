@@ -35,12 +35,12 @@ int main() {
     auto stream = client.stream_text(stream_options);
 
     for (const auto& event : stream) {
-      if (event.isTextDelta()) {
+      if (event.is_text_delta()) {
         std::cout << event.text_delta << std::flush;
-      } else if (event.isError()) {
+      } else if (event.is_error()) {
         std::cout << "\nStream error: " << event.error.value_or("unknown")
                   << "\n";
-      } else if (event.isFinish()) {
+      } else if (event.is_finish()) {
         std::cout << "\n\nStream finished.\n";
         if (event.usage.has_value()) {
           std::cout << "Total tokens: " << event.usage->total_tokens << "\n";

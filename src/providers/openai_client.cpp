@@ -109,7 +109,7 @@ class OpenAIStreamImpl : public internal::StreamResultImpl {
             std::lock_guard<std::mutex> lock(queue_mutex_);
             if (should_stop_) {
               return false;
-}
+            }
           }
 
           parse_sse_line(line);
@@ -168,7 +168,7 @@ class OpenAIStreamImpl : public internal::StreamResultImpl {
             finish_reason = kFinishReasonLength;
           } else if (finish_reason_str == "content_filter") {
             finish_reason = kFinishReasonContentFilter;
-}
+          }
 
           // Parse usage if available
           Usage usage;
@@ -252,7 +252,7 @@ class OpenAIClient : public Client {
                                request_json.dump(), "application/json");
         if (res) {
           response = std::make_unique<httplib::Response>(*res);
-}
+        }
       } else {
         httplib::Client client(host_);
         client.set_connection_timeout(30);
@@ -262,7 +262,7 @@ class OpenAIClient : public Client {
                                request_json.dump(), "application/json");
         if (res) {
           response = std::make_unique<httplib::Response>(*res);
-}
+        }
       }
 
       if (!response) {
@@ -455,16 +455,16 @@ class OpenAIClient : public Client {
   FinishReason parse_finish_reason(const std::string& reason) {
     if (reason == "stop") {
       return kFinishReasonStop;
-}
+    }
     if (reason == "length") {
       return kFinishReasonLength;
-}
+    }
     if (reason == "content_filter") {
       return kFinishReasonContentFilter;
-}
+    }
     if (reason == "tool_calls") {
       return kFinishReasonToolCalls;
-}
+    }
     return kFinishReasonError;
   }
 

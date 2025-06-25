@@ -38,12 +38,12 @@ int main() {
   auto stream1 = client.stream_text(options1);
 
   for (const auto& event : stream1) {
-    if (event.isTextDelta()) {
+    if (event.is_text_delta()) {
       std::cout << event.text_delta << std::flush;
-    } else if (event.isError()) {
+    } else if (event.is_error()) {
       std::cout << "\nError: " << event.error.value_or("Unknown error") << "\n";
       break;
-    } else if (event.isFinish()) {
+    } else if (event.is_finish()) {
       std::cout << "\n\n[Stream finished]\n\n";
       break;
     }
