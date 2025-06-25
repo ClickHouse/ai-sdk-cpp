@@ -52,7 +52,9 @@ target_sources(ai-sdk-cpp
         src/providers/openai/openai_client.cpp
         src/providers/openai/openai_stream.cpp
         src/providers/openai/openai_factory.cpp
-        src/providers/anthropic_client.cpp
+        src/providers/anthropic/anthropic_client.cpp
+        src/providers/anthropic/anthropic_stream.cpp
+        src/providers/anthropic/anthropic_factory.cpp
 )
 
 # Link dependencies (all private - not exposed to users)

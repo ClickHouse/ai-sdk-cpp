@@ -34,8 +34,9 @@ add_ai_example(multi_provider multi_provider.cpp)
 # Error handling demonstration
 add_ai_example(error_handling error_handling.cpp)
 
-# Simple test example
+# Simple test examples
 add_ai_example(test_openai test_openai.cpp)
+add_ai_example(test_anthropic test_anthropic.cpp)
 
 # Message to show how to run examples
 message(STATUS "Examples will be built in: ${CMAKE_BINARY_DIR}/examples/")
@@ -46,3 +47,4 @@ message(STATUS "       ./examples/streaming_chat")
 message(STATUS "       ./examples/multi_provider")
 message(STATUS "       ./examples/error_handling")
 message(STATUS "       ./examples/test_openai")
+message(STATUS "       ./examples/test_anthropic")

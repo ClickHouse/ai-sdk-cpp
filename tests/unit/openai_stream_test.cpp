@@ -132,7 +132,7 @@ TEST_F(StreamMockTest, MockStreamBasicOperations) {
     full_text += chunk;
     if (full_text == "Hello world!") {
       break;  // Prevent infinite loop
-}
+    }
   }
 
   EXPECT_EQ(full_text, "Hello world!");
