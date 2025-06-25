@@ -10,7 +10,6 @@
 #include <memory>
 
 #include <spdlog/spdlog.h>
-
 namespace ai {
 namespace openai {
 
@@ -45,55 +44,19 @@ GenerateResult OpenAIClient::generate_text(const GenerateOptions& options) {
   try {
     // Build request JSON
     auto request_json = build_request_json(options);
-    spdlog::debug("Request JSON built: {}", request_json.dump());
+    std::string json_body = request_json.dump();
+    spdlog::debug("Request JSON built: {}", json_body);
 
-    // Make HTTP request
-    httplib::Headers headers = {{"Authorization", "Bearer " + api_key_},
-                                {"Content-Type", "application/json"}};
+    // Make the request
+    auto result = make_request(json_body);
 
-    std::unique_ptr<httplib::Response> response;
-
-    if (use_ssl_) {
-      spdlog::debug("Creating SSL client for host: {}", host_);
-      httplib::SSLClient client(host_);
-      client.set_connection_timeout(30);
-      client.set_read_timeout(120);
-
-      auto res = client.Post("/v1/chat/completions", headers,
-                             request_json.dump(), "application/json");
-      if (res) {
-        response = std::make_unique<httplib::Response>(*res);
-      }
-    } else {
-      spdlog::debug("Creating HTTP client for host: {}", host_);
-      httplib::Client client(host_);
-      client.set_connection_timeout(30);
-      client.set_read_timeout(120);
-
-      auto res = client.Post("/v1/chat/completions", headers,
-                             request_json.dump(), "application/json");
-      if (res) {
-        response = std::make_unique<httplib::Response>(*res);
-      }
+    if (!result.is_success()) {
+      return result;
     }
 
-    if (!response) {
-      spdlog::error("Network error: Failed to connect to OpenAI API at {}",
-                    host_);
-      return GenerateResult("Network error: Failed to connect to OpenAI API");
-    }
-
-    spdlog::debug("Received response - status: {}, body length: {}",
-                  response->status, response->body.length());
-
-    if (response->status != 200) {
-      spdlog::error("OpenAI API returned error status: {} - {}",
-                    response->status, response->body);
-      return parse_error_response(response->status, response->body);
-    }
-
-    // Parse successful response
-    auto json_response = nlohmann::json::parse(response->body);
+    // Parse the response JSON from result.text (which contains the raw
+    // response)
+    auto json_response = nlohmann::json::parse(result.text);
     spdlog::info("Text generation successful - model: {}, response_id: {}",
                  options.model, json_response.value("id", "unknown"));
     return parse_chat_completion_response(json_response);
@@ -317,6 +280,66 @@ FinishReason OpenAIClient::parse_finish_reason(const std::string& reason) {
     return kFinishReasonToolCalls;
   }
   return kFinishReasonError;
+}
+
+GenerateResult OpenAIClient::make_request(const std::string& json_body) {
+  try {
+    spdlog::debug("Making request with body size: {}", json_body.size());
+
+    // Common headers for all requests
+    httplib::Headers headers = {{"Authorization", "Bearer " + api_key_},
+                                {"Content-Type", "application/json"}};
+
+    // Common request handler
+    auto handle_response = [this](
+                               const httplib::Result& res,
+                               const std::string& protocol) -> GenerateResult {
+      if (!res) {
+        spdlog::error("{} request failed - no response", protocol);
+        return GenerateResult("Network error: Failed to connect to OpenAI API");
+      }
+
+      spdlog::debug("Got response: status={}, body_size={}", res->status,
+                    res->body.size());
+
+      if (res->status == 200) {
+        GenerateResult result;
+        result.text = res->body;
+        return result;
+      }
+
+      return parse_error_response(res->status, res->body);
+    };
+
+    // Make request based on SSL setting
+    if (use_ssl_) {
+      spdlog::debug("Making HTTPS request to host: {}", host_);
+      httplib::SSLClient cli(host_);
+      cli.set_connection_timeout(30, 0);
+      cli.set_read_timeout(120, 0);
+      cli.enable_server_certificate_verification(false);
+
+      auto res = cli.Post("/v1/chat/completions", headers, json_body,
+                          "application/json");
+      return handle_response(res, "HTTPS");
+    } else {
+      spdlog::debug("Making HTTP request to host: {}", host_);
+      httplib::Client cli(host_);
+      cli.set_connection_timeout(30, 0);
+      cli.set_read_timeout(120, 0);
+
+      auto res = cli.Post("/v1/chat/completions", headers, json_body,
+                          "application/json");
+      return handle_response(res, "HTTP");
+    }
+
+  } catch (const std::exception& e) {
+    spdlog::error("Exception in make_request: {}", e.what());
+    return GenerateResult(std::string("Request failed: ") + e.what());
+  } catch (...) {
+    spdlog::error("Unknown exception in make_request");
+    return GenerateResult("Request failed: Unknown error");
+  }
 }
 
 }  // namespace openai

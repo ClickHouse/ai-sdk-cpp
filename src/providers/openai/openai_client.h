@@ -31,6 +31,8 @@ class OpenAIClient : public Client {
   std::string message_role_to_string(MessageRole role);
   FinishReason parse_finish_reason(const std::string& reason);
 
+  GenerateResult make_request(const std::string& json_body);
+
   std::string api_key_;
   std::string base_url_;
   std::string host_;

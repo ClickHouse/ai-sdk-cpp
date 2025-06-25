@@ -1,0 +1,121 @@
+#pragma once
+
+#include "ai/types/generate_options.h"
+#include "ai/types/stream_options.h"
+#include "ai/types/stream_result.h"
+
+#include <functional>
+#include <map>
+#include <string>
+
+#include <gmock/gmock.h>
+
+namespace ai {
+namespace test {
+
+// Mock HTTP client for testing network interactions
+class MockHTTPClient {
+ public:
+  // Using simple function signatures to avoid GMock template issues
+  virtual ~MockHTTPClient() = default;
+  virtual bool post(const std::string& url,
+                    const std::map<std::string, std::string>& headers,
+                    const std::string& body,
+                    std::string& response_body,
+                    int& status_code) = 0;
+
+  virtual bool stream_post(
+      const std::string& url,
+      const std::map<std::string, std::string>& headers,
+      const std::string& body,
+      const std::function<void(const std::string&)>& callback) = 0;
+};
+
+// Controllable OpenAI client for testing
+class ControllableOpenAIClient {
+ private:
+  std::string predefined_response_;
+  int predefined_status_code_;
+  bool should_fail_;
+  bool should_timeout_;
+
+ public:
+  explicit ControllableOpenAIClient(
+      const std::string& api_key = "test-key",
+      const std::string& base_url = "https://api.openai.com");
+
+  // Control behavior
+  void setPredefinedResponse(const std::string& response,
+                             int status_code = 200);
+  void setShouldFail(bool fail);
+  void setShouldTimeout(bool timeout);
+
+  // Reset to default behavior
+  void reset();
+
+  // Simulate OpenAI client methods
+  GenerateResult generate_text(const GenerateOptions& options);
+  StreamResult stream_text(const StreamOptions& options);
+
+  // Configuration methods (same interface as real client)
+  bool is_valid() const;
+  std::string provider_name() const;
+  std::vector<std::string> supported_models() const;
+  bool supports_model(const std::string& model_name) const;
+  std::string config_info() const;
+
+  // Test inspection methods
+  GenerateOptions getLastGenerateOptions() const;
+  GenerateOptions getLastStreamOptions()
+      const;  // Return just the GenerateOptions part
+  int getCallCount() const;
+
+ private:
+  mutable GenerateOptions last_generate_options_;
+  mutable GenerateOptions
+      last_stream_options_;  // Store just the GenerateOptions part
+  mutable int call_count_;
+};
+
+// Test doubles for network failures
+class NetworkFailureSimulator {
+ public:
+  enum class FailureType {
+    kConnectionTimeout,
+    kReadTimeout,
+    kConnectionRefused,
+    kDnsFailure,
+    kSslError,
+    kUnexpectedDisconnect
+  };
+
+  static std::string simulateFailure(FailureType type);
+  static GenerateResult createNetworkErrorResult(FailureType type);
+};
+
+// Response builders for test scenarios
+class ResponseBuilder {
+ public:
+  static std::string buildSuccessResponse(
+      const std::string& content = "Test response",
+      const std::string& model = "gpt-4o",
+      int prompt_tokens = 10,
+      int completion_tokens = 20);
+
+  static std::string buildErrorResponse(
+      int status_code,
+      const std::string& error_type = "invalid_request_error",
+      const std::string& message = "Test error");
+
+  static std::string buildPartialResponse();  // For testing malformed responses
+
+  static std::vector<std::string> buildStreamingResponse(
+      const std::string& content = "Hello world!");
+
+  static std::string buildRateLimitResponse();
+  static std::string buildAuthErrorResponse();
+  static std::string buildModelNotFoundResponse();
+};
+
+}  // namespace test
+}  // namespace ai

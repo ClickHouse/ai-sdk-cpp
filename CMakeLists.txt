@@ -67,6 +67,14 @@ target_link_libraries(ai-sdk-cpp
         unofficial::concurrentqueue::concurrentqueue
 )
 
+# Define httplib configuration
+target_compile_definitions(ai-sdk-cpp
+    PRIVATE
+        CPPHTTPLIB_OPENSSL_SUPPORT=1
+        CPPHTTPLIB_BROTLI_SUPPORT=1
+        CPPHTTPLIB_THREAD_POOL_COUNT=8
+)
+
 # Compiler-specific options
 target_compile_features(ai-sdk-cpp PRIVATE cxx_std_20)
 
@@ -99,8 +107,7 @@ endif()
 if(BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
     enable_testing()
-    # TODO: Add tests
-    # add_subdirectory(tests)
+    add_subdirectory(tests)
 endif()
 
 # Installation rules
