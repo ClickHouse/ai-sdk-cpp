@@ -1,6 +1,7 @@
 #pragma once
 
 #include "enums.h"
+#include "usage.h"
 
 #include <optional>
 #include <string>
@@ -17,6 +18,12 @@ struct StreamEvent {
   StreamEvent(StreamEventType event_type, std::string error_msg)
       : type(event_type), error(std::move(error_msg)) {}
 
+  /// Constructor for finish events with usage
+  StreamEvent(StreamEventType event_type,
+              Usage usage_stats,
+              FinishReason reason)
+      : type(event_type), usage(usage_stats), finish_reason(reason) {}
+
   /// Constructor for other event types
   explicit StreamEvent(StreamEventType event_type) : type(event_type) {}
 
@@ -29,9 +36,13 @@ struct StreamEvent {
   /// Check if this is a finish event
   bool isFinish() const { return type == kStreamEventTypeFinish; }
 
-  const StreamEventType type;    ///< Type of stream event
-  const std::string text_delta;  ///< Text chunk (for TextDelta events)
-  const std::optional<std::string> error;  ///< Error message (for Error events)
+  StreamEventType type;              ///< Type of stream event
+  std::string text_delta;            ///< Text chunk (for TextDelta events)
+  std::optional<std::string> error;  ///< Error message (for Error events)
+  std::optional<Usage> usage;        ///< Usage statistics (for Finish events)
+  std::optional<FinishReason>
+      finish_reason;                    ///< Finish reason (for Finish events)
+  std::optional<std::string> metadata;  ///< Additional metadata as JSON string
 };
 
 }  // namespace ai

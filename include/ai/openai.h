@@ -7,6 +7,15 @@
 namespace ai {
 namespace openai {
 
+namespace models {
+/// Common OpenAI model identifiers
+constexpr const char* kGpt4o = "gpt-4o";
+constexpr const char* kGpt4oMini = "gpt-4o-mini";
+constexpr const char* kGpt4Turbo = "gpt-4-turbo";
+constexpr const char* kGpt35Turbo = "gpt-3.5-turbo";
+constexpr const char* kGpt4 = "gpt-4";
+}  // namespace models
+
 /// Create an OpenAI client with default configuration
 /// Reads API key from OPENAI_API_KEY environment variable
 /// @return Configured OpenAI client

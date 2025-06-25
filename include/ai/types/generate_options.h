@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ai {
 
@@ -56,8 +57,25 @@ struct GenerateOptions {
 struct GenerateResult {
   std::string text;                                 ///< Generated text content
   FinishReason finish_reason = kFinishReasonError;  ///< Why generation stopped
-  Usage usage;                       ///< Token consumption statistics
-  std::optional<std::string> error;  ///< Error message if generation failed
+  Usage usage;  ///< Token consumption statistics
+
+  /// Additional metadata (like TypeScript SDK)
+  std::optional<std::string> id;     ///< Unique identifier for the completion
+  std::optional<std::string> model;  ///< Model used for generation
+  std::optional<int64_t> created;    ///< Unix timestamp of creation
+  std::optional<std::string>
+      system_fingerprint;  ///< System configuration fingerprint
+
+  /// Error handling
+  std::optional<std::string> error;   ///< Error message if generation failed
+  std::vector<std::string> warnings;  ///< Any warnings from the API
+
+  /// Provider-specific metadata
+  std::optional<std::string>
+      provider_metadata;  ///< JSON string of provider metadata
+
+  /// Response messages for multi-turn (includes the assistant's response)
+  Messages response_messages;  ///< Full conversation including response
 
   /// Default constructor (indicates error state)
   GenerateResult() = default;

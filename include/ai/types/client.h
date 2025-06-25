@@ -1,55 +1,88 @@
 #pragma once
 
+#include "generate_options.h"
+#include "stream_options.h"
+#include "stream_result.h"
+
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace ai {
 
-/// Forward declaration for client implementation
-namespace internal {
-class ClientImpl;
-}
-
-/// Handle for an AI provider client (PIMPL pattern)
+/// Abstract base class for AI provider clients
 class Client {
  public:
-  /// Constructor (implementation will be in source file)
-  Client();
+  /// Virtual destructor
+  virtual ~Client() = default;
 
-  /// Destructor
-  ~Client();
+  /// Default constructor
+  Client() = default;
 
-  /// Move constructor
-  Client(Client&& other) noexcept;
-
-  /// Move assignment operator
-  Client& operator=(Client&& other) noexcept;
+  /// Constructor that takes ownership of implementation (for factory functions)
+  explicit Client(std::unique_ptr<Client> impl) : pimpl_(std::move(impl)) {}
 
   /// Delete copy constructor and assignment (clients manage unique resources)
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
 
+  /// Move constructor
+  Client(Client&& other) noexcept = default;
+
+  /// Move assignment operator
+  Client& operator=(Client&& other) noexcept = default;
+
+  /// Generate text using the provider's API
+  virtual GenerateResult generate_text(const GenerateOptions& options) {
+    if (pimpl_)
+      return pimpl_->generate_text(options);
+    return GenerateResult("Client not initialized");
+  }
+
+  /// Stream text generation using the provider's API
+  virtual StreamResult stream_text(const StreamOptions& options) {
+    if (pimpl_)
+      return pimpl_->stream_text(options);
+    return StreamResult();
+  }
+
   /// Check if client is valid and ready to use
-  bool is_valid() const;
+  virtual bool is_valid() const {
+    if (pimpl_)
+      return pimpl_->is_valid();
+    return false;
+  }
 
   /// Get the provider name for this client
-  std::string provider_name() const;
-
-  /// Create a model identifier for this provider
-  std::string model(const std::string& model_name) const;
+  virtual std::string provider_name() const {
+    if (pimpl_)
+      return pimpl_->provider_name();
+    return "unknown";
+  }
 
   /// Get list of supported models (if available from provider)
-  std::vector<std::string> supported_models() const;
+  virtual std::vector<std::string> supported_models() const {
+    if (pimpl_)
+      return pimpl_->supported_models();
+    return {};
+  }
 
   /// Check if a specific model is supported
-  bool supports_model(const std::string& model_name) const;
+  virtual bool supports_model(const std::string& model_name) const {
+    if (pimpl_)
+      return pimpl_->supports_model(model_name);
+    return false;
+  }
 
   /// Get provider-specific configuration info
-  std::string config_info() const;
+  virtual std::string config_info() const {
+    if (pimpl_)
+      return pimpl_->config_info();
+    return "No configuration";
+  }
 
  private:
-  std::unique_ptr<internal::ClientImpl> client_impl_;
+  std::unique_ptr<Client> pimpl_;  ///< Pointer to implementation
 };
 
 }  // namespace ai

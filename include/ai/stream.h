@@ -1,6 +1,5 @@
 #pragma once
 
-#include "types/stream_event.h"
 #include "types/stream_options.h"
 #include "types/stream_result.h"
 

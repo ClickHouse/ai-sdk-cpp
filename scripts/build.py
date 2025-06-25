@@ -182,6 +182,10 @@ def main(mode: str, tests: bool, clean: bool, verbose: bool, export_compile_comm
         if toolchain_file:
             cmake_args.append(f'-DCMAKE_TOOLCHAIN_FILE={toolchain_file}')
         
+        # Add vcpkg manifest features for tests
+        if tests:
+            cmake_args.append('-DVCPKG_MANIFEST_FEATURES=tests')
+        
         # Add export compile commands option
         if export_compile_commands:
             cmake_args.append('-DCMAKE_EXPORT_COMPILE_COMMANDS=ON')

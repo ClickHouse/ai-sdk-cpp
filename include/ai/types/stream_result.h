@@ -12,8 +12,14 @@ namespace ai {
 
 /// Forward declaration for StreamResult implementation
 namespace internal {
-class StreamResultImpl;
-}
+class StreamResultImpl {
+ public:
+  virtual ~StreamResultImpl() = default;
+  virtual StreamEvent get_next_event() = 0;
+  virtual bool has_more_events() const = 0;
+  virtual void stop_stream() = 0;
+};
+}  // namespace internal
 
 /// Result from streaming text generation
 class StreamResult {
@@ -46,6 +52,9 @@ class StreamResult {
 
   /// Constructor (implementation will be in source file)
   StreamResult();
+
+  /// Constructor that takes implementation
+  explicit StreamResult(std::unique_ptr<internal::StreamResultImpl> impl);
 
   /// Destructor
   ~StreamResult();

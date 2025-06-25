@@ -23,6 +23,8 @@ enum StreamEventType {
   kStreamEventTypeTextDelta,   ///< New text chunk received
   kStreamEventTypeToolCall,    ///< Tool/function call initiated
   kStreamEventTypeToolResult,  ///< Result from tool execution
+  kStreamEventTypeStepStart,   ///< Step started (for multi-step generation)
+  kStreamEventTypeStepFinish,  ///< Step finished
   kStreamEventTypeFinish,      ///< Stream completed successfully
   kStreamEventTypeError        ///< Error occurred in stream
 };

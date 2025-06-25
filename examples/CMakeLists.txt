@@ -1,0 +1,48 @@
+# Examples for AI SDK C++
+
+# Helper function to create examples
+function(add_ai_example name source_file)
+    add_executable(${name} ${source_file})
+    target_link_libraries(${name} PRIVATE ai::sdk)
+    
+    # Set output directory
+    set_target_properties(${name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/examples
+    )
+    
+    # Copy to examples directory for easy running
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(EXAMPLE_SUFFIX "_debug")
+    else()
+        set(EXAMPLE_SUFFIX "")
+    endif()
+    
+    set_target_properties(${name} PROPERTIES
+        OUTPUT_NAME "${name}${EXAMPLE_SUFFIX}"
+    )
+endfunction()
+
+# Basic chat example
+add_ai_example(basic_chat basic_chat.cpp)
+
+# Streaming chat example  
+add_ai_example(streaming_chat streaming_chat.cpp)
+
+# Multi-provider comparison
+add_ai_example(multi_provider multi_provider.cpp)
+
+# Error handling demonstration
+add_ai_example(error_handling error_handling.cpp)
+
+# Simple test example
+add_ai_example(test_openai test_openai.cpp)
+
+# Message to show how to run examples
+message(STATUS "Examples will be built in: ${CMAKE_BINARY_DIR}/examples/")
+message(STATUS "To run examples:")
+message(STATUS "  Set environment variables: OPENAI_API_KEY, ANTHROPIC_API_KEY")
+message(STATUS "  Run: ./examples/basic_chat")
+message(STATUS "       ./examples/streaming_chat")
+message(STATUS "       ./examples/multi_provider")
+message(STATUS "       ./examples/error_handling")
+message(STATUS "       ./examples/test_openai")

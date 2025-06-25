@@ -1,0 +1,30 @@
+@PACKAGE_INIT@
+
+# AI SDK C++ Package Configuration
+
+set(AI_SDK_VERSION "@PROJECT_VERSION@")
+
+# Find dependencies
+find_dependency(fmt CONFIG REQUIRED)
+find_dependency(nlohmann_json CONFIG REQUIRED)
+find_dependency(spdlog CONFIG REQUIRED)
+find_dependency(httplib CONFIG REQUIRED)
+find_dependency(OpenSSL REQUIRED)
+
+# Include the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/ai-sdk-cpp-targets.cmake")
+
+# Check that all components are available
+check_required_components(ai-sdk-cpp)
+
+# Set convenience variables
+set(AI_SDK_FOUND TRUE)
+set(AI_SDK_LIBRARIES ai::sdk)
+set(AI_SDK_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+
+# Provide information about the package
+if(NOT TARGET ai::sdk)
+    message(FATAL_ERROR "ai::sdk target not found. Make sure ai-sdk-cpp was properly installed.")
+endif()
+
+message(STATUS "Found AI SDK C++: ${CMAKE_CURRENT_LIST_DIR} (found version \"${AI_SDK_VERSION}\")") 

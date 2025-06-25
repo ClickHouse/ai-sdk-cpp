@@ -33,8 +33,8 @@ int main() {
     // Ensure OPENAI_API_KEY environment variable is set
     auto client = ai::openai::create_client();
     
-    auto result = ai::generate_text({
-        .model = client.model("gpt-4o"),
+    auto result = client.generate_text({
+        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
         .system = "You are a friendly assistant!",
         .prompt = "Why is the sky blue?"
     });
@@ -57,9 +57,8 @@ int main() {
 int main() {
     // Ensure ANTHROPIC_API_KEY environment variable is set
     auto client = ai::anthropic::create_client();
-    
-    auto result = ai::generate_text({
-        .model = client.model("claude-3-5-sonnet-20241022"),
+    auto result = client.generate_text({
+        .model = ai::anthropic::models::kClaude35Sonnet,
         .system = "You are a helpful assistant.",
         .prompt = "Explain quantum computing in simple terms."
     });
@@ -82,8 +81,8 @@ int main() {
 int main() {
     auto client = ai::openai::create_client();
     
-    auto stream = ai::stream_text({
-        .model = client.model("gpt-4o"),
+    auto stream = client.stream_text({
+        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
         .system = "You are a helpful assistant.",
         .prompt = "Write a short story about a robot."
     });
@@ -115,8 +114,8 @@ int main() {
         {"user", "Now what is 4 + 4?"}
     };
     
-    auto result = ai::generate_text({
-        .model = client.model("gpt-4o"),
+    auto result = client.generate_text({
+        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
         .messages = messages
     });
     

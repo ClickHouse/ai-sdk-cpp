@@ -11,6 +11,8 @@ alwaysApply: true
 4. follow guidelines of effective modern c++.
 
 
+Name methods (casing, etc) like "is_valid", "stream_text"
+
 Lean on auto. Let the compiler deduce obvious types and keep code DRY. 
 
 Use nullptr, never 0 or NULL. A unique keyword prevents overload ambiguities and makes pointer intent explicit. 

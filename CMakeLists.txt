@@ -41,25 +41,15 @@ target_include_directories(ai-sdk-cpp
 # Source files will be added here
 target_sources(ai-sdk-cpp
     PRIVATE
-        # Core implementation
-        src/generate.cpp
-        src/stream.cpp
-        
         # Type implementations
         src/types/generate_options.cpp
         src/types/stream_options.cpp
+        src/types/stream_result.cpp
         src/types/message.cpp
         
         # Provider implementations
         src/providers/openai_client.cpp
         src/providers/anthropic_client.cpp
-        
-        # Internal utilities
-        src/internal/http_client.cpp
-        src/internal/json_parser.cpp
-        src/internal/json_serializer.cpp
-        src/internal/utils/string_utils.cpp
-        src/internal/utils/logging.cpp
 )
 
 # Link dependencies (all private - not exposed to users)
@@ -105,7 +95,8 @@ endif()
 if(BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
     enable_testing()
-    add_subdirectory(tests)
+    # TODO: Add tests
+    # add_subdirectory(tests)
 endif()
 
 # Installation rules

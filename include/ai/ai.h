@@ -27,29 +27,53 @@
 ///
 /// Usage Examples:
 ///
-/// Basic text generation:
+/// OpenAI Integration:
 /// ```cpp
 /// #include <ai/ai.h>
+/// #include <iostream>
 ///
-/// auto result = ai::generate_text("gpt-4o", "Hello, world!");
+/// // Ensure OPENAI_API_KEY environment variable is set
+/// auto client = ai::openai::create_client();
+///
+/// auto result = client.generate_text({
+///     .model = ai::openai::models::kGpt4o,
+///     .system = "You are a friendly assistant!",
+///     .prompt = "Why is the sky blue?"
+/// });
+///
 /// if (result) {
-///     std::cout << result.text << std::endl;
+///     std::cout << result->text << std::endl;
 /// }
 /// ```
 ///
 /// Streaming text generation:
 /// ```cpp
-/// auto stream = ai::stream_text("gpt-4o", "Write a story");
-/// for (const auto& event : stream) {
-///     if (event.is_text_delta()) {
-///         std::cout << event.text_delta << std::flush;
+/// auto client = ai::openai::create_client();
+///
+/// auto stream = client.stream_text({
+///     .model = ai::openai::models::kGpt4o,
+///     .system = "You are a helpful assistant.",
+///     .prompt = "Write a short story about a robot."
+/// });
+///
+/// for (const auto& chunk : stream) {
+///     if (chunk.text) {
+///         std::cout << chunk.text.value() << std::flush;
 ///     }
 /// }
 /// ```
 ///
-/// Provider-specific clients:
+/// Anthropic Integration:
 /// ```cpp
-/// auto client = ai::openai::create_client();
-/// auto result = ai::generate_text(client.model("gpt-4o"), "Hello!");
+/// auto client = ai::anthropic::create_client();
+/// auto result = client.generate_text({
+///     .model = ai::anthropic::models::kClaude35Sonnet,
+///     .system = "You are a helpful assistant.",
+///     .prompt = "Explain quantum computing in simple terms."
+/// });
+///
+/// if (result) {
+///     std::cout << result->text << std::endl;
+/// }
 /// ```
 namespace ai {}
