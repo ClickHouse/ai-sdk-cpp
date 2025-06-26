@@ -383,11 +383,10 @@ TEST_F(OpenAIIntegrationTest, NetworkFailure) {
 
   TestAssertions::assertError(result);
   EXPECT_THAT(result.error_message(),
-              testing::AnyOf(testing::HasSubstr("Network"),
-                             testing::HasSubstr("network"),
-                             testing::HasSubstr("connection"),
-                             testing::HasSubstr("refused"),
-                             testing::HasSubstr("failed")));
+              testing::AnyOf(
+                  testing::HasSubstr("Network"), testing::HasSubstr("network"),
+                  testing::HasSubstr("connection"),
+                  testing::HasSubstr("refused"), testing::HasSubstr("failed")));
 }
 
 // Environment Configuration Test

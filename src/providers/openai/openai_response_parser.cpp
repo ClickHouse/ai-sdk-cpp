@@ -91,12 +91,14 @@ GenerateResult OpenAIResponseParser::parse_success_response(
     }
 
     // Extract finish reason
-    if (choice.contains("finish_reason") && !choice["finish_reason"].is_null()) {
+    if (choice.contains("finish_reason") &&
+        !choice["finish_reason"].is_null()) {
       auto finish_reason_str = choice["finish_reason"].get<std::string>();
       result.finish_reason = parse_finish_reason(finish_reason_str);
       spdlog::debug("Finish reason: {}", finish_reason_str);
     } else {
-      result.finish_reason = kFinishReasonStop;  // Default to stop if null or missing
+      result.finish_reason =
+          kFinishReasonStop;  // Default to stop if null or missing
       spdlog::debug("Finish reason was null or missing, defaulting to stop");
     }
   }

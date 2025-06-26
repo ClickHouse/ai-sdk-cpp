@@ -72,7 +72,16 @@ GenerateResult BaseProviderClient::generate_text_single_step(
     }
 
     // Parse the response JSON from result.text
-    auto json_response = nlohmann::json::parse(result.text);
+    nlohmann::json json_response;
+    try {
+      json_response = nlohmann::json::parse(result.text);
+    } catch (const nlohmann::json::exception& e) {
+      spdlog::error("Failed to parse response JSON: {}", e.what());
+      spdlog::debug("Raw response text: {}", result.text);
+      return GenerateResult("Failed to parse response: " +
+                            std::string(e.what()));
+    }
+
     spdlog::info("Text generation successful - model: {}, response_id: {}",
                  options.model, json_response.value("id", "unknown"));
 
