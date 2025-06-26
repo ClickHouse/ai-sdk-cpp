@@ -10,6 +10,7 @@ add_executable(ai_tests
     # Integration tests
     integration/openai_integration_test.cpp
     integration/anthropic_integration_test.cpp
+    integration/tool_calling_integration_test.cpp
     
     # Utility classes
     utils/mock_openai_client.cpp

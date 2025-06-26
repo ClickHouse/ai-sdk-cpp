@@ -22,14 +22,19 @@ ToolResult ToolExecutor::execute_tool(const ToolCall& tool_call,
   // Check if tool exists
   auto tool_it = tools.find(tool_call.tool_name);
   if (tool_it == tools.end()) {
-    throw NoSuchToolError(tool_call.tool_name);
+    return ToolResult(
+        tool_call.id, tool_call.tool_name, tool_call.arguments,
+        std::string("Tool not found: '" + tool_call.tool_name + "'"));
   }
 
   const Tool& tool = tool_it->second;
 
   // Validate arguments against schema
   if (!validate_tool_call(tool_call, tool)) {
-    throw InvalidToolArgumentsError(tool_call.tool_name, tool_call.arguments);
+    return ToolResult(
+        tool_call.id, tool_call.tool_name, tool_call.arguments,
+        std::string("Invalid arguments for tool '" + tool_call.tool_name +
+                    "': " + tool_call.arguments.dump()));
   }
 
   // Check if tool has execution function
@@ -53,7 +58,10 @@ ToolResult ToolExecutor::execute_tool(const ToolCall& tool_call,
       return execute_sync_tool(tool_call, tool, context);
     }
   } catch (const std::exception& e) {
-    throw ToolExecutionError(tool_call.tool_name, tool_call.id, e.what());
+    // Return error result instead of throwing to allow graceful handling
+    return ToolResult(
+        tool_call.id, tool_call.tool_name, tool_call.arguments,
+        std::string("Tool execution failed: " + std::string(e.what())));
   }
 }
 

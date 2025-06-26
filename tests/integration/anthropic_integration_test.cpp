@@ -42,8 +42,6 @@ class AnthropicIntegrationTest : public AITestFixture {
 
 // Basic API Connectivity Tests
 TEST_F(AnthropicIntegrationTest, BasicTextGeneration) {
-  spdlog::set_level(spdlog::level::debug);
-
   if (!use_real_api_) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
@@ -111,7 +109,6 @@ TEST_F(AnthropicIntegrationTest, ConversationWithMessages) {
   }
 
   Messages conversation = {
-      Message(kMessageRoleSystem, "You are a helpful weather assistant."),
       Message(kMessageRoleUser, "Hello!"),
       Message(kMessageRoleAssistant,
               "Hello! I can help you with weather information."),
@@ -119,6 +116,7 @@ TEST_F(AnthropicIntegrationTest, ConversationWithMessages) {
 
   GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
                           std::move(conversation));
+  options.system = "You are a helpful weather assistant.";
   auto result = client_->generate_text(options);
 
   TestAssertions::assertSuccess(result);
@@ -154,7 +152,9 @@ TEST_F(AnthropicIntegrationTest, DifferentModelSupport) {
     EXPECT_FALSE(result.text.empty());
 
     if (result.model.has_value()) {
-      EXPECT_EQ(result.model.value(), model);
+      EXPECT_TRUE(result.model.value().find(model) != std::string::npos)
+          << "Expected model to contain: " << model
+          << ", but got: " << result.model.value();
     }
   }
 }

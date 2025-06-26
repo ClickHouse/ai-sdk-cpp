@@ -85,24 +85,31 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
     if (step_result.finish_reason == kFinishReasonToolCalls &&
         step_result.has_tool_calls()) {
       // Execute tools and prepare for next step
-      try {
-        std::vector<ToolResult> tool_results = ToolExecutor::execute_tools(
-            step_result.tool_calls, initial_options.tools,
-            current_options.messages);
+      std::vector<ToolResult> tool_results = ToolExecutor::execute_tools(
+          step_result.tool_calls, initial_options.tools,
+          current_options.messages);
 
-        // Create next step options
-        current_options = create_next_step_options(initial_options, step_result,
-                                                   tool_results);
+      // Store tool results in the step
+      final_result.steps.back().tool_results = tool_results;
 
-        // Store tool results in the step
-        final_result.steps.back().tool_results = tool_results;
+      // Check if all tools failed
+      bool all_failed = true;
+      for (const auto& result : tool_results) {
+        if (result.is_success()) {
+          all_failed = false;
+          break;
+        }
+      }
 
-      } catch (const ToolError& e) {
-        // Tool execution failed
-        final_result.error = "Tool execution failed: " + std::string(e.what());
+      if (all_failed && !tool_results.empty()) {
+        // All tools failed, we might want to stop here
         final_result.finish_reason = kFinishReasonError;
         break;
       }
+
+      // Create next step options with tool results (including errors)
+      current_options =
+          create_next_step_options(initial_options, step_result, tool_results);
     } else {
       // No tool calls to execute, we're done
       break;

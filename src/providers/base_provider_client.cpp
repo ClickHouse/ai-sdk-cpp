@@ -85,17 +85,26 @@ GenerateResult BaseProviderClient::generate_text_single_step(
       spdlog::debug("Model made {} tool calls, executing them",
                     parsed_result.tool_calls.size());
 
-      try {
-        auto tool_results = ToolExecutor::execute_tools(
-            parsed_result.tool_calls, options.tools, options.messages);
+      auto tool_results = ToolExecutor::execute_tools(
+          parsed_result.tool_calls, options.tools, options.messages);
 
-        parsed_result.tool_results = tool_results;
-        spdlog::debug("Successfully executed {} tools", tool_results.size());
+      parsed_result.tool_results = tool_results;
+      spdlog::debug("Executed {} tools", tool_results.size());
 
-      } catch (const ToolError& e) {
-        spdlog::error("Tool execution failed: {}", e.what());
-        parsed_result.error = "Tool execution failed: " + std::string(e.what());
-        parsed_result.finish_reason = kFinishReasonError;
+      // Check if any tool execution failed
+      int failed_count = 0;
+      for (const auto& result : tool_results) {
+        if (!result.is_success()) {
+          failed_count++;
+          spdlog::warn("Tool '{}' execution failed: {}", result.tool_name,
+                       result.error_message());
+        }
+      }
+
+      if (failed_count > 0) {
+        spdlog::info(
+            "Some tools failed ({}/{}), but overall result is still successful",
+            failed_count, tool_results.size());
       }
     }
 

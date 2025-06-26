@@ -10,6 +10,7 @@
  *
  * Usage:
  *   export OPENAI_API_KEY=your_key_here
+ *   export ANTHROPIC_API_KEY=your_key_here
  *   ./tool_calling_async
  */
 
@@ -20,6 +21,7 @@
 #include <thread>
 #include <vector>
 
+#include <ai/anthropic.h>
 #include <ai/generate.h>
 #include <ai/openai.h>
 #include <ai/tools.h>
@@ -96,6 +98,7 @@ ai::JsonValue calculate_stats(const ai::JsonValue& args,
   ai::JsonValue data = args["data"];
 
   std::cout << "🧮 Calculating statistics (sync)..." << std::endl;
+  std::cout << "   Data received: " << data.dump() << std::endl;
 
   if (!data.is_array()) {
     return ai::JsonValue{{"error", "Data must be an array"}};
@@ -112,6 +115,9 @@ ai::JsonValue calculate_stats(const ai::JsonValue& args,
   }
 
   double average = count > 0 ? sum / count : 0.0;
+
+  std::cout << "   Statistics calculated: sum=" << sum << ", count=" << count
+            << ", avg=" << average << std::endl;
 
   return ai::JsonValue{{"sum", sum}, {"count", count}, {"average", average}};
 }
@@ -176,10 +182,18 @@ int main() {
            "query_database", "Execute a database query and return results",
            {{"query", "string"}}, query_database_async)},
       {"calculate_stats",
-       ai::create_simple_tool(
-           "calculate_stats",
+       ai::create_tool(
            "Calculate statistics (sum, count, average) for an array of numbers",
-           {{"data", "array"}}, calculate_stats)},
+           ai::JsonValue{
+               {"type", "object"},
+               {"properties",
+                {{"data",
+                  {{"type", "array"},
+                   {"items", {{"type", "number"}}},
+                   {"description",
+                    "Array of numbers to calculate statistics for"}}}}},
+               {"required", {"data"}}},
+           calculate_stats)},
       {"process_file", ai::create_simple_async_tool(
                            "process_file",
                            "Process a file with the specified operation "
@@ -317,6 +331,101 @@ int main() {
   std::cout << "  ✓ Performance benefits of parallel execution\n";
   std::cout << "  ✓ Long-running operation handling\n";
   std::cout << "  ✓ Execution time monitoring\n";
+
+  // Test with Anthropic
+  std::cout << "\n\n4. Testing with Anthropic:\n";
+  std::cout << "========================================\n";
+
+  auto anthropic_client = ai::anthropic::create_client();
+
+  std::cout << "Testing async tools with Claude 3.5 Sonnet\n\n";
+
+  start_time = std::chrono::high_resolution_clock::now();
+
+  ai::GenerateOptions anthropic_options;
+  anthropic_options.model = ai::anthropic::models::kClaude35Sonnet;
+  anthropic_options.prompt = R"(
+    Please help me with these THREE tasks. You MUST use the tools to complete ALL of them:
+    1. Use the fetch_news tool to get tech news articles  
+    2. Use the calculate_stats tool to calculate statistics for these numbers: [15, 25, 35, 45, 55]
+    3. Use the query_database tool to query for orders
+    
+    Important: Call all three tools to complete all three tasks.
+  )";
+  anthropic_options.tools = tools;
+  anthropic_options.max_tokens = 600;
+  anthropic_options.max_steps = 3;  // Enable multi-step for Anthropic
+
+  auto anthropic_result = anthropic_client.generate_text(anthropic_options);
+
+  end_time = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                   start_time);
+
+  if (anthropic_result) {
+    std::cout << "Assistant (Claude): " << anthropic_result.text << "\n";
+    std::cout << "Tool calls made: " << anthropic_result.tool_calls.size()
+              << "\n";
+    std::cout << "Total execution time: " << duration.count() << "ms\n";
+
+    // Show multi-step information if available
+    if (anthropic_result.is_multi_step()) {
+      std::cout << "\nMulti-step execution details:\n";
+      std::cout << "Total steps: " << anthropic_result.steps.size() << "\n";
+
+      for (size_t i = 0; i < anthropic_result.steps.size(); ++i) {
+        const auto& step = anthropic_result.steps[i];
+        std::cout << "\nStep " << (i + 1) << ":\n";
+        if (!step.text.empty()) {
+          std::cout << "  Text: " << step.text.substr(0, 100) << "...\n";
+        }
+        std::cout << "  Tool calls in step: " << step.tool_calls.size() << "\n";
+        for (const auto& call : step.tool_calls) {
+          std::cout << "    - " << call.tool_name << " (id: " << call.id
+                    << ")\n";
+        }
+      }
+
+      std::cout << "\nAll tool calls across steps:\n";
+      auto all_calls = anthropic_result.get_all_tool_calls();
+      for (const auto& call : all_calls) {
+        std::cout << "  - " << call.tool_name
+                  << " with args: " << call.arguments.dump() << "\n";
+      }
+    }
+
+    if (anthropic_result.has_tool_results()) {
+      std::cout << "\nTool Execution Results:\n";
+      auto all_results = anthropic_result.get_all_tool_results();
+      for (const auto& result : all_results) {
+        std::cout << "  - " << result.tool_name << ": ";
+        if (result.is_success()) {
+          if (result.result.contains("processing_time_ms")) {
+            std::cout << "completed in " << result.result["processing_time_ms"]
+                      << "ms";
+          } else if (result.result.contains("fetch_time_ms")) {
+            std::cout << "completed in " << result.result["fetch_time_ms"]
+                      << "ms";
+          } else if (result.result.contains("execution_time_ms")) {
+            std::cout << "completed in " << result.result["execution_time_ms"]
+                      << "ms";
+          } else {
+            std::cout << "completed (sync)";
+          }
+        } else {
+          std::cout << "failed - " << result.error_message();
+        }
+        std::cout << "\n";
+      }
+    }
+
+    std::cout << "Usage: " << anthropic_result.usage.total_tokens
+              << " tokens\n";
+  } else {
+    std::cout << "Error: " << anthropic_result.error_message() << "\n";
+  }
+
+  std::cout << "\nAnthropic async tool calling test completed!\n";
 
   return 0;
 }
