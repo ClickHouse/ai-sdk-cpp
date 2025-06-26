@@ -131,7 +131,9 @@ struct GenerateResult {
       : error(std::move(error_message)) {}
 
   /// Check if generation was successful
-  bool is_success() const { return !error.has_value(); }
+  bool is_success() const { 
+    return !error.has_value() && finish_reason != kFinishReasonError; 
+  }
 
   /// Implicit bool conversion for easy checking
   explicit operator bool() const { return is_success(); }

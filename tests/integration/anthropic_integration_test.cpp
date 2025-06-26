@@ -375,10 +375,10 @@ TEST_F(AnthropicIntegrationTest, NetworkFailure) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  // Test with invalid base URL to simulate network failure
+  // Test with localhost on unused port to simulate connection refused quickly
   const char* api_key = std::getenv("ANTHROPIC_API_KEY");
   auto failing_client = ai::anthropic::create_client(
-      api_key, "https://invalid-url-that-does-not-exist.com");
+      api_key, "http://localhost:59999");  // Very unlikely port to be in use
 
   GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
                           "Test network failure");
@@ -389,7 +389,7 @@ TEST_F(AnthropicIntegrationTest, NetworkFailure) {
       result.error_message(),
       testing::AnyOf(
           testing::HasSubstr("Network"), testing::HasSubstr("network"),
-          testing::HasSubstr("connection"), testing::HasSubstr("resolve"),
+          testing::HasSubstr("connection"), testing::HasSubstr("refused"),
           testing::HasSubstr("failed"), testing::HasSubstr("Failed")));
 }
 

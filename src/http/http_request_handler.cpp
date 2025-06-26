@@ -52,6 +52,7 @@ GenerateResult HttpRequestHandler::post(const std::string& path,
     if (res->status == 200) {
       GenerateResult result;
       result.text = res->body;
+      result.finish_reason = kFinishReasonStop;  // HTTP request succeeded
       return result;
     }
 

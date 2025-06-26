@@ -372,10 +372,10 @@ TEST_F(OpenAIIntegrationTest, NetworkFailure) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  // Test with invalid base URL to simulate network failure
+  // Test with localhost on unused port to simulate connection refused quickly
   const char* api_key = std::getenv("OPENAI_API_KEY");
   auto failing_client = ai::openai::create_client(
-      api_key, "https://invalid-url-that-does-not-exist.com");
+      api_key, "http://localhost:59999");  // Very unlikely port to be in use
 
   GenerateOptions options(ai::openai::models::kGpt4oMini,
                           "Test network failure");
@@ -383,9 +383,10 @@ TEST_F(OpenAIIntegrationTest, NetworkFailure) {
 
   TestAssertions::assertError(result);
   EXPECT_THAT(result.error_message(),
-              testing::AnyOf(testing::HasSubstr("network"),
+              testing::AnyOf(testing::HasSubstr("Network"),
+                             testing::HasSubstr("network"),
                              testing::HasSubstr("connection"),
-                             testing::HasSubstr("resolve"),
+                             testing::HasSubstr("refused"),
                              testing::HasSubstr("failed")));
 }
 
