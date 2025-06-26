@@ -48,11 +48,19 @@ target_sources(ai-sdk-cpp
         src/types/stream_result.cpp
         src/types/message.cpp
         
+        # HTTP and base provider infrastructure
+        src/http/http_request_handler.cpp
+        src/providers/base_provider_client.cpp
+        
         # Provider implementations
         src/providers/openai/openai_client.cpp
+        src/providers/openai/openai_request_builder.cpp
+        src/providers/openai/openai_response_parser.cpp
         src/providers/openai/openai_stream.cpp
         src/providers/openai/openai_factory.cpp
         src/providers/anthropic/anthropic_client.cpp
+        src/providers/anthropic/anthropic_request_builder.cpp
+        src/providers/anthropic/anthropic_response_parser.cpp
         src/providers/anthropic/anthropic_stream.cpp
         src/providers/anthropic/anthropic_factory.cpp
         
