@@ -18,7 +18,6 @@
 #include <iostream>
 #include <string>
 
-#include <ai/generate.h>
 #include <ai/openai.h>
 #include <ai/tools.h>
 
