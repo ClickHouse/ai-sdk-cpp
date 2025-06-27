@@ -10,21 +10,65 @@ find_dependency(nlohmann_json CONFIG REQUIRED)
 find_dependency(spdlog CONFIG REQUIRED)
 find_dependency(httplib CONFIG REQUIRED)
 find_dependency(OpenSSL REQUIRED)
+find_dependency(unofficial-concurrentqueue CONFIG REQUIRED)
 
 # Include the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/ai-sdk-cpp-targets.cmake")
+
+# Available components
+set(AI_SDK_AVAILABLE_COMPONENTS core openai anthropic)
+
+# Check requested components
+set(AI_SDK_REQUESTED_COMPONENTS ${ai-sdk-cpp_FIND_COMPONENTS})
+
+# If no components requested, use all available
+if(NOT AI_SDK_REQUESTED_COMPONENTS)
+    set(AI_SDK_REQUESTED_COMPONENTS ${AI_SDK_AVAILABLE_COMPONENTS})
+endif()
+
+# Check that all requested components are available
+foreach(component ${AI_SDK_REQUESTED_COMPONENTS})
+    if(NOT component IN_LIST AI_SDK_AVAILABLE_COMPONENTS)
+        set(ai-sdk-cpp_FOUND FALSE)
+        set(ai-sdk-cpp_NOT_FOUND_MESSAGE "Unsupported component: ${component}")
+        return()
+    endif()
+    
+    # Check if component target exists
+    set(component_target "ai::${component}")
+    if(NOT TARGET ${component_target})
+        set(ai-sdk-cpp_FOUND FALSE)
+        set(ai-sdk-cpp_NOT_FOUND_MESSAGE "Component target ${component_target} not found")
+        return()
+    endif()
+    
+    # Mark component as found
+    set(ai-sdk-cpp_${component}_FOUND TRUE)
+endforeach()
 
 # Check that all components are available
 check_required_components(ai-sdk-cpp)
 
 # Set convenience variables
 set(AI_SDK_FOUND TRUE)
-set(AI_SDK_LIBRARIES ai::sdk)
+set(AI_SDK_LIBRARIES)
 set(AI_SDK_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
 
+# Add requested component libraries
+foreach(component ${AI_SDK_REQUESTED_COMPONENTS})
+    list(APPEND AI_SDK_LIBRARIES ai::${component})
+endforeach()
+
+# Always add main library if no specific components requested
+if("core" IN_LIST AI_SDK_REQUESTED_COMPONENTS AND 
+   "openai" IN_LIST AI_SDK_REQUESTED_COMPONENTS AND 
+   "anthropic" IN_LIST AI_SDK_REQUESTED_COMPONENTS)
+    list(APPEND AI_SDK_LIBRARIES ai::sdk)
+endif()
+
 # Provide information about the package
-if(NOT TARGET ai::sdk)
-    message(FATAL_ERROR "ai::sdk target not found. Make sure ai-sdk-cpp was properly installed.")
+if(NOT TARGET ai::core)
+    message(FATAL_ERROR "ai::core target not found. Make sure ai-sdk-cpp was properly installed.")
 endif()
 
 message(STATUS "Found AI SDK C++: ${CMAKE_CURRENT_LIST_DIR} (found version \"${AI_SDK_VERSION}\")") 

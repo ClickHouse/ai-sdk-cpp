@@ -95,7 +95,8 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
   spdlog::debug("Stream thread started - connecting to {}", kOpenAIHost);
 
   try {
-    httplib::SSLClient client(kOpenAIHost);
+    httplib::Client client(kOpenAIHost);
+    client.enable_server_certificate_verification(true);
     client.set_connection_timeout(kConnectionTimeout);
     client.set_read_timeout(kReadTimeout);
 

@@ -3,9 +3,14 @@
 /// Main convenience header for AI SDK C++
 /// Include this header to get access to all public APIs
 
-// Provider-specific clients
-#include "anthropic.h"
+// Provider-specific clients (conditionally included)
+#ifdef AI_SDK_HAS_OPENAI
 #include "openai.h"
+#endif
+
+#ifdef AI_SDK_HAS_ANTHROPIC
+#include "anthropic.h"
+#endif
 
 // Type definitions
 #include "types/client.h"

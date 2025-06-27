@@ -44,6 +44,11 @@ add_ai_example(tool_calling_multistep tool_calling_multistep.cpp)
 add_ai_example(tool_calling_async tool_calling_async.cpp)
 add_ai_example(test_tool_integration test_tool_integration.cpp)
 
+# Component-specific examples
+add_subdirectory(components/openai)
+add_subdirectory(components/anthropic) 
+add_subdirectory(components/all)
+
 # Message to show how to run examples
 message(STATUS "Examples will be built in: ${CMAKE_BINARY_DIR}/examples/")
 message(STATUS "To run examples:")
@@ -54,3 +59,8 @@ message(STATUS "       ./examples/multi_provider")
 message(STATUS "       ./examples/error_handling")
 message(STATUS "       ./examples/test_openai")
 message(STATUS "       ./examples/test_anthropic")
+message(STATUS "")
+message(STATUS "Component-specific examples:")
+message(STATUS "  ./examples/components/openai/openai_component_demo     (OpenAI + Core only)")
+message(STATUS "  ./examples/components/anthropic/anthropic_component_demo (Anthropic + Core only)")
+message(STATUS "  ./examples/components/all/all_components_demo          (All components)")
