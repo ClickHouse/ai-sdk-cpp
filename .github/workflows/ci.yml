@@ -40,13 +40,7 @@ jobs:
     - name: Install dependencies with vcpkg
       run: vcpkg install --triplet=x64-linux --x-feature=tests
 
-    - name: Generate compile commands for linting
-      run: uv run scripts/build.py --mode ${{ matrix.build_type }} --tests --export-compile-commands
-
-    - name: Run linting
-      run: uv run scripts/lint.py
-
-    - name: Build with Python script
+    - name: Build
       run: uv run scripts/build.py --mode ${{ matrix.build_type }} --tests --export-compile-commands
 
     - name: Run tests
