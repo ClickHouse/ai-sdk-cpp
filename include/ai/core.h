@@ -22,14 +22,14 @@
 #include "errors.h"
 
 /// AI SDK C++ Core - Base functionality
-/// 
+///
 /// This header provides access to core types and functionality
 /// without pulling in specific provider implementations.
 ///
 /// Usage:
 /// ```cpp
 /// #include <ai/core.h>
-/// 
+///
 /// // Use core types like ai::GenerateOptions, ai::Message, etc.
 /// ai::GenerateOptions options{
 ///     .model = "some-model",

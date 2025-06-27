@@ -1,7 +1,8 @@
 #pragma once
 
 #ifndef AI_SDK_HAS_ANTHROPIC
-#error "Anthropic component not available. Link with ai::anthropic or ai::sdk to use Anthropic functionality."
+#error \
+    "Anthropic component not available. Link with ai::anthropic or ai::sdk to use Anthropic functionality."
 #endif
 
 #include "types/client.h"
