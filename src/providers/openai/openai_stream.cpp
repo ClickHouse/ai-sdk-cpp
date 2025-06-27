@@ -96,6 +96,7 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
 
   try {
     httplib::SSLClient client(kOpenAIHost);
+    client.enable_server_certificate_verification(true);
     client.set_connection_timeout(kConnectionTimeout);
     client.set_read_timeout(kReadTimeout);
 
@@ -192,7 +193,7 @@ void OpenAIStreamImpl::parse_sse_line(const std::string& line) {
 
       if (!choices.empty() && choices[0].contains("delta")) {
         auto& delta = choices[0]["delta"];
-        if (delta.contains("content")) {
+        if (delta.contains("content") && !delta["content"].is_null()) {
           std::string content = delta["content"].get<std::string>();
           spdlog::debug("Received content chunk - length: {}",
                         content.length());

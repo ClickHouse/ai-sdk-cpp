@@ -3,13 +3,14 @@
 /// Main convenience header for AI SDK C++
 /// Include this header to get access to all public APIs
 
-// Core API functions
-#include "generate.h"
-#include "stream.h"
-
-// Provider-specific clients
-#include "anthropic.h"
+// Provider-specific clients (conditionally included)
+#ifdef AI_SDK_HAS_OPENAI
 #include "openai.h"
+#endif
+
+#ifdef AI_SDK_HAS_ANTHROPIC
+#include "anthropic.h"
+#endif
 
 // Type definitions
 #include "types/client.h"
@@ -17,8 +18,14 @@
 #include "types/generate_options.h"
 #include "types/message.h"
 #include "types/model.h"
+#include "types/stream_event.h"
 #include "types/stream_options.h"
+#include "types/stream_result.h"
+#include "types/tool.h"
 #include "types/usage.h"
+
+// Tool functionality
+#include "tools.h"
 
 // Error handling
 #include "errors.h"

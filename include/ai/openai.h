@@ -1,5 +1,10 @@
 #pragma once
 
+#ifndef AI_SDK_HAS_OPENAI
+#error \
+    "OpenAI component not available. Link with ai::openai or ai::sdk to use OpenAI functionality."
+#endif
+
 #include "types/client.h"
 
 #include <string>

@@ -175,6 +175,7 @@ def main(mode: str, tests: bool, clean: bool, verbose: bool, export_compile_comm
         cmake_args = [
             'cmake',
             str(project_root),
+            '-G', 'Ninja',
             f'-DCMAKE_BUILD_TYPE={mode.title()}',
         ]
         
