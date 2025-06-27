@@ -103,7 +103,7 @@ void AnthropicStreamImpl::run_stream(const std::string& url,
 
   try {
     if (use_ssl) {
-      httplib::Client client(host);
+      httplib::SSLClient client(host);
       client.enable_server_certificate_verification(true);
       client.set_connection_timeout(30, 0);
       client.set_read_timeout(120, 0);

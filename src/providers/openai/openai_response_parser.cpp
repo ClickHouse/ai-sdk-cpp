@@ -44,9 +44,9 @@ GenerateResult OpenAIResponseParser::parse_success_response(
                       message["tool_calls"].size());
 
         for (const auto& tool_call_json : message["tool_calls"]) {
-          if (tool_call_json.contains("id") &&
+          if (tool_call_json.contains("id") && !tool_call_json["id"].is_null() &&
               tool_call_json.contains("function") &&
-              tool_call_json["function"].contains("name") &&
+              tool_call_json["function"].contains("name") && !tool_call_json["function"]["name"].is_null() &&
               tool_call_json["function"].contains("arguments")) {
             std::string call_id = tool_call_json["id"].get<std::string>();
             std::string function_name =

@@ -136,8 +136,8 @@ TEST_F(OpenAIIntegrationTest, DifferentModelSupport) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  std::vector<std::string> models_to_test = {ai::openai::models::kGpt4oMini,
-                                             ai::openai::models::kGpt35Turbo};
+  std::vector<std::string> models_to_test = {ai::openai::models::kGpt4o,
+                                             ai::openai::models::kGpt4oMini};
 
   for (const auto& model : models_to_test) {
     if (!client_->supports_model(model)) {
