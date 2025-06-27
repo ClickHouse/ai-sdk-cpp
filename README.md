@@ -10,8 +10,6 @@ C++ developers have long lacked a first-class, convenient way to interact with m
 - **Modern C++**: Built with C++20 features for clean, expressive code
 - **Minimal Dependencies**: Minimal external dependencies for easy integration
 
-To learn more about how to use AI SDK CPP, check out our [Documentation](docs/).
-
 ## Installation
 
 You will need a C++20 compatible compiler and CMake 3.16+ installed on your development machine.
@@ -260,15 +258,6 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
 - [Async Tool Execution](examples/tool_calling_async.cpp)
 
-## Documentation
-
-Comprehensive documentation is available in the [`docs/`](docs/) directory:
-
-- [Getting Started Guide](docs/getting-started.md)
-- [API Reference](docs/api-reference.md)
-- [Provider Configuration](docs/providers.md)
-- [Advanced Usage](docs/advanced.md)
-- [Migration Guide](docs/migration.md)
 
 ## Requirements
 
