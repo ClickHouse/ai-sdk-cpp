@@ -12,7 +12,7 @@ env:
 jobs:
   ci:
     name: CI Pipeline
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, builder]
     
     strategy:
       fail-fast: false
