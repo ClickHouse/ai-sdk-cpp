@@ -10,7 +10,6 @@
 
 namespace ai {
 
-/// Forward declaration for StreamResult implementation
 namespace internal {
 class StreamResultImpl {
  public:
@@ -21,10 +20,8 @@ class StreamResultImpl {
 };
 }  // namespace internal
 
-/// Result from streaming text generation
 class StreamResult {
  public:
-  /// Iterator for consuming stream events
   class iterator {
    public:
     using iterator_category = std::input_iterator_tag;
@@ -50,44 +47,31 @@ class StreamResult {
     void advance();
   };
 
-  /// Constructor (implementation will be in source file)
   StreamResult();
 
-  /// Constructor that takes implementation
   explicit StreamResult(std::unique_ptr<internal::StreamResultImpl> impl);
 
-  /// Destructor
   ~StreamResult();
 
-  /// Move constructor
   StreamResult(StreamResult&& other) noexcept;
 
-  /// Move assignment operator
   StreamResult& operator=(StreamResult&& other) noexcept;
 
-  /// Delete copy constructor and assignment (streams are not copyable)
   StreamResult(const StreamResult&) = delete;
   StreamResult& operator=(const StreamResult&) = delete;
 
-  /// Begin iterator
   iterator begin() const;
 
-  /// End iterator
   iterator end() const;
 
-  /// Process all events with a callback function
   void for_each(std::function<void(const StreamEvent&)> callback) const;
 
-  /// Collect all text from the stream (blocks until completion)
   std::string collect_all() const;
 
-  /// Check if stream has encountered an error
   bool has_error() const;
 
-  /// Get error message if any
   std::string error_message() const;
 
-  /// Check if stream is complete
   bool is_complete() const;
 
  private:
