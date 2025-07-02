@@ -25,7 +25,6 @@ set(HTTPLIB_DEFINITIONS
 )
 
 # Find required packages through vcpkg
-find_package(fmt CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
@@ -127,7 +126,6 @@ target_sources(ai-sdk-cpp-anthropic
 # Link dependencies for core component
 target_link_libraries(ai-sdk-cpp-core
     PRIVATE
-        fmt::fmt
         nlohmann_json::nlohmann_json
         spdlog::spdlog
         httplib::httplib
@@ -141,7 +139,6 @@ target_link_libraries(ai-sdk-cpp-openai
     PUBLIC
         ai::core
     PRIVATE
-        fmt::fmt
         nlohmann_json::nlohmann_json
         spdlog::spdlog
 )
@@ -159,7 +156,6 @@ target_link_libraries(ai-sdk-cpp-anthropic
     PUBLIC
         ai::core
     PRIVATE
-        fmt::fmt
         nlohmann_json::nlohmann_json
         spdlog::spdlog
 )
