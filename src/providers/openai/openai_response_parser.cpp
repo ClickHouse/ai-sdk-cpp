@@ -9,8 +9,6 @@ namespace openai {
 
 GenerateResult OpenAIResponseParser::parse_success_response(
     const nlohmann::json& response) {
-  spdlog::debug("Parsing OpenAI chat completion response");
-
   GenerateResult result;
 
   // Extract basic fields
@@ -18,9 +16,6 @@ GenerateResult OpenAIResponseParser::parse_success_response(
   result.model = response.value("model", "");
   result.created = response.value("created", 0);
   result.system_fingerprint = response.value("system_fingerprint", "");
-
-  spdlog::debug("Response ID: {}, Model: {}", result.id.value_or("none"),
-                result.model.value_or("unknown"));
 
   // Extract choices
   if (response.contains("choices") && !response["choices"].empty()) {
@@ -35,14 +30,9 @@ GenerateResult OpenAIResponseParser::parse_success_response(
       } else {
         result.text = "";
       }
-      spdlog::debug("Extracted message content - length: {}",
-                    result.text.length());
 
       // Parse tool calls if present
       if (message.contains("tool_calls") && message["tool_calls"].is_array()) {
-        spdlog::debug("Found {} tool calls in response",
-                      message["tool_calls"].size());
-
         for (const auto& tool_call_json : message["tool_calls"]) {
           if (tool_call_json.contains("id") &&
               !tool_call_json["id"].is_null() &&
@@ -75,8 +65,6 @@ GenerateResult OpenAIResponseParser::parse_success_response(
               ToolCall tool_call(call_id, function_name, arguments);
               result.tool_calls.push_back(tool_call);
 
-              spdlog::debug("Parsed tool call: {} with args: {}", function_name,
-                            arguments_str);
             } catch (const std::exception& e) {
               spdlog::error("Failed to parse tool call arguments: {}",
                             e.what());
@@ -97,11 +85,9 @@ GenerateResult OpenAIResponseParser::parse_success_response(
         !choice["finish_reason"].is_null()) {
       auto finish_reason_str = choice["finish_reason"].get<std::string>();
       result.finish_reason = parse_finish_reason(finish_reason_str);
-      spdlog::debug("Finish reason: {}", finish_reason_str);
     } else {
       result.finish_reason =
           kFinishReasonStop;  // Default to stop if null or missing
-      spdlog::debug("Finish reason was null or missing, defaulting to stop");
     }
   }
 
@@ -111,9 +97,6 @@ GenerateResult OpenAIResponseParser::parse_success_response(
     result.usage.prompt_tokens = usage.value("prompt_tokens", 0);
     result.usage.completion_tokens = usage.value("completion_tokens", 0);
     result.usage.total_tokens = usage.value("total_tokens", 0);
-    spdlog::debug("Token usage - prompt: {}, completion: {}, total: {}",
-                  result.usage.prompt_tokens, result.usage.completion_tokens,
-                  result.usage.total_tokens);
   }
 
   // Store full metadata

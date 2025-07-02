@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <memory>
 
-#include <spdlog/spdlog.h>
-
 namespace ai {
 namespace anthropic {
 
@@ -24,18 +22,12 @@ AnthropicClient::AnthropicClient(const std::string& api_key,
               .auth_header_prefix = "",
               .extra_headers = {{"anthropic-version", "2023-06-01"}}},
           std::make_unique<AnthropicRequestBuilder>(),
-          std::make_unique<AnthropicResponseParser>()) {
-  spdlog::debug("Anthropic client initialized with base_url: {}", base_url);
-}
+          std::make_unique<AnthropicResponseParser>()) {}
 
 StreamResult AnthropicClient::stream_text(const StreamOptions& options) {
-  spdlog::debug("Starting text streaming - model: {}, prompt length: {}",
-                options.model, options.prompt.length());
-
   // Build request with stream: true
   auto request_json = request_builder_->build_request_json(options);
   request_json["stream"] = true;
-  spdlog::debug("Stream request JSON built with stream=true");
 
   // Create headers
   auto headers = request_builder_->build_headers(config_);
@@ -45,8 +37,6 @@ StreamResult AnthropicClient::stream_text(const StreamOptions& options) {
   auto impl = std::make_unique<AnthropicStreamImpl>();
   impl->start_stream(config_.base_url + config_.endpoint_path, headers,
                      request_json);
-
-  spdlog::info("Text streaming started - model: {}", options.model);
 
   // Return StreamResult with implementation
   return StreamResult(std::move(impl));

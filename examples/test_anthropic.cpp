@@ -1,14 +1,9 @@
 #include <iostream>
 
 #include <ai/ai.h>
-#include <spdlog/common.h>
-#include <spdlog/spdlog.h>
 
 int main() {
   try {
-    // Enable debug logging
-    spdlog::set_level(spdlog::level::info);
-
     // Create Anthropic client
     auto client = ai::anthropic::create_client();
 

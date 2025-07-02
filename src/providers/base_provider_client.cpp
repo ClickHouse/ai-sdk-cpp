@@ -17,24 +17,12 @@ BaseProviderClient::BaseProviderClient(
   // Initialize HTTP handler with parsed config
   auto http_config = http::HttpRequestHandler::parse_base_url(config.base_url);
   http_handler_ = std::make_unique<http::HttpRequestHandler>(http_config);
-
-  spdlog::debug("BaseProviderClient initialized - base_url: {}, endpoint: {}",
-                config.base_url, config.endpoint_path);
 }
 
 GenerateResult BaseProviderClient::generate_text(
     const GenerateOptions& options) {
-  spdlog::debug(
-      "Starting text generation - model: {}, prompt length: {}, tools: {}, "
-      "max_steps: {}",
-      options.model, options.prompt.length(), options.tools.size(),
-      options.max_steps);
-
   // Check if multi-step tool calling is enabled
   if (options.has_tools() && options.is_multi_step()) {
-    spdlog::debug("Using multi-step tool calling with {} tools",
-                  options.tools.size());
-
     // Use MultiStepCoordinator for complex workflows
     return MultiStepCoordinator::execute_multi_step(
         options, [this](const GenerateOptions& step_options) {
@@ -52,7 +40,6 @@ GenerateResult BaseProviderClient::generate_text_single_step(
     // Build request JSON using the provider-specific builder
     auto request_json = request_builder_->build_request_json(options);
     std::string json_body = request_json.dump();
-    spdlog::debug("Request JSON built: {}", json_body);
 
     // Build headers
     auto headers = request_builder_->build_headers(config_);
@@ -77,13 +64,9 @@ GenerateResult BaseProviderClient::generate_text_single_step(
       json_response = nlohmann::json::parse(result.text);
     } catch (const nlohmann::json::exception& e) {
       spdlog::error("Failed to parse response JSON: {}", e.what());
-      spdlog::debug("Raw response text: {}", result.text);
       return GenerateResult("Failed to parse response: " +
                             std::string(e.what()));
     }
-
-    spdlog::info("Text generation successful - model: {}, response_id: {}",
-                 options.model, json_response.value("id", "unknown"));
 
     // Parse using provider-specific parser
     auto parsed_result =
@@ -91,29 +74,20 @@ GenerateResult BaseProviderClient::generate_text_single_step(
 
     // Execute tools if the model made tool calls
     if (parsed_result.has_tool_calls() && options.has_tools()) {
-      spdlog::debug("Model made {} tool calls, executing them",
-                    parsed_result.tool_calls.size());
-
       auto tool_results = ToolExecutor::execute_tools(
           parsed_result.tool_calls, options.tools, options.messages);
 
       parsed_result.tool_results = tool_results;
-      spdlog::debug("Executed {} tools", tool_results.size());
 
       // Check if any tool execution failed
       int failed_count = 0;
       for (const auto& result : tool_results) {
         if (!result.is_success()) {
           failed_count++;
-          spdlog::warn("Tool '{}' execution failed: {}", result.tool_name,
-                       result.error_message());
         }
       }
 
       if (failed_count > 0) {
-        spdlog::info(
-            "Some tools failed ({}/{}), but overall result is still successful",
-            failed_count, tool_results.size());
       }
     }
 

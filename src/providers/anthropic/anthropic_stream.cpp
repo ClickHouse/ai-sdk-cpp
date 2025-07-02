@@ -21,8 +21,6 @@ AnthropicStreamImpl::~AnthropicStreamImpl() {
 void AnthropicStreamImpl::start_stream(const std::string& url,
                                        const httplib::Headers& headers,
                                        const nlohmann::json& request_body) {
-  spdlog::debug("Starting Anthropic stream to URL: {}", url);
-
   // Start streaming in a separate thread
   stream_thread_ = std::thread([this, url, headers, request_body]() {
     try {
@@ -44,7 +42,6 @@ StreamEvent AnthropicStreamImpl::get_next_event() {
   while (!event_queue_.try_dequeue(event)) {
     if (stream_complete_ && event_queue_.size_approx() == 0) {
       // Stream is complete and queue is empty
-      spdlog::debug("Stream complete and queue empty, returning empty event");
       return StreamEvent("");
     }
 
@@ -59,7 +56,6 @@ StreamEvent AnthropicStreamImpl::get_next_event() {
     std::this_thread::sleep_for(kSleepInterval);
   }
 
-  spdlog::debug("Dequeued event type: {}", static_cast<int>(event.type));
   return event;
 }
 
@@ -68,7 +64,6 @@ bool AnthropicStreamImpl::has_more_events() const {
 }
 
 void AnthropicStreamImpl::stop_stream() {
-  spdlog::debug("Stopping Anthropic stream");
   stop_requested_ = true;
   if (stream_thread_.joinable()) {
     stream_thread_.join();
@@ -78,8 +73,6 @@ void AnthropicStreamImpl::stop_stream() {
 void AnthropicStreamImpl::run_stream(const std::string& url,
                                      const httplib::Headers& headers,
                                      const nlohmann::json& request_body) {
-  spdlog::debug("Performing stream request");
-
   // Parse URL to extract host and path
   std::string host, path;
   bool use_ssl = true;
@@ -98,8 +91,6 @@ void AnthropicStreamImpl::run_stream(const std::string& url,
   } else {
     path = "/v1/messages";
   }
-
-  spdlog::debug("Stream host: {}, path: {}, SSL: {}", host, path, use_ssl);
 
   try {
     if (use_ssl) {
@@ -141,8 +132,6 @@ void AnthropicStreamImpl::run_stream(const std::string& url,
 }
 
 void AnthropicStreamImpl::parse_sse_response(const std::string& response) {
-  spdlog::debug("Processing SSE response, size: {}", response.size());
-
   std::istringstream stream(response);
   std::string line;
   std::string event_data;
@@ -158,21 +147,16 @@ void AnthropicStreamImpl::parse_sse_response(const std::string& response) {
       event_data = line.substr(6);
     }
   }
-
-  spdlog::debug("SSE processing complete");
 }
 
 void AnthropicStreamImpl::process_sse_event(const std::string& data) {
   if (data == "[DONE]") {
-    spdlog::debug("Received SSE [DONE] event");
     return;
   }
 
   try {
     auto json_event = nlohmann::json::parse(data);
     std::string event_type = json_event.value("type", "");
-
-    spdlog::debug("Processing SSE event type: {}", event_type);
 
     if (event_type == "message_start") {
       // Start of message - could extract metadata here
@@ -188,8 +172,6 @@ void AnthropicStreamImpl::process_sse_event(const std::string& data) {
 
         StreamEvent event(text);
         push_event(event);
-
-        spdlog::debug("Enqueued text delta: '{}'", text);
       }
     } else if (event_type == "content_block_stop") {
       // End of content block
@@ -201,8 +183,6 @@ void AnthropicStreamImpl::process_sse_event(const std::string& data) {
       // End of message
       StreamEvent event(kStreamEventTypeFinish, Usage{}, kFinishReasonStop);
       push_event(event);
-
-      spdlog::debug("Enqueued finish event");
     }
   } catch (const std::exception& e) {
     spdlog::error("Failed to parse SSE event: {}", e.what());

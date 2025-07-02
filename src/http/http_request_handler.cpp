@@ -6,10 +6,7 @@ namespace ai {
 namespace http {
 
 HttpRequestHandler::HttpRequestHandler(const HttpConfig& config)
-    : config_(config) {
-  spdlog::debug("HttpRequestHandler initialized - host: {}, use_ssl: {}",
-                config_.host, config_.use_ssl);
-}
+    : config_(config) {}
 
 HttpConfig HttpRequestHandler::parse_base_url(const std::string& base_url) {
   HttpConfig config;
@@ -46,9 +43,6 @@ GenerateResult HttpRequestHandler::post(const std::string& path,
       return GenerateResult("Network error: Failed to connect to API");
     }
 
-    spdlog::debug("Got response: status={}, body_size={}", res->status,
-                  res->body.size());
-
     if (res->status == 200) {
       GenerateResult result;
       result.text = res->body;
@@ -73,10 +67,6 @@ GenerateResult HttpRequestHandler::make_request(const std::string& path,
                                                 const std::string& content_type,
                                                 ResponseHandler handler) {
   try {
-    spdlog::debug("Making {} request to {}:{}{}",
-                  config_.use_ssl ? "HTTPS" : "HTTP", config_.host, path,
-                  " with body size: " + std::to_string(body.size()));
-
     if (config_.use_ssl) {
       httplib::SSLClient cli(config_.host);
       cli.set_connection_timeout(config_.connection_timeout_sec, 0);

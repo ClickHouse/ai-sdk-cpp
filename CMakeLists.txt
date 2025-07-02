@@ -7,6 +7,17 @@ project(ai-sdk-cpp
     LANGUAGES CXX
 )
 
+# External dependency options:
+# AI_SDK_EXTERNAL_OPENSSL - Use system OpenSSL instead of vcpkg (default: OFF)
+# AI_SDK_EXTERNAL_BROTLI - Use system Brotli instead of vcpkg (default: OFF)
+# 
+# When using external dependencies, the parent project must ensure that:
+# - OpenSSL can be found via find_package(OpenSSL)
+# - Brotli can be found via pkg-config (libbrotlienc and libbrotlidec)
+#
+# Example usage with external dependencies:
+#   cmake -DAI_SDK_EXTERNAL_OPENSSL=ON -DAI_SDK_EXTERNAL_BROTLI=ON ..
+
 # C++20 requirement
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,8 +25,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Build options
 option(BUILD_TESTS "Build tests" OFF)
-option(BUILD_EXAMPLES "Build example applications" ON)
+option(BUILD_EXAMPLES "Build example applications" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+option(AI_SDK_EXTERNAL_OPENSSL "Use external OpenSSL instead of vcpkg" OFF)
+option(AI_SDK_EXTERNAL_BROTLI "Use external Brotli instead of vcpkg" OFF)
 
 # Common httplib configuration definitions
 set(HTTPLIB_DEFINITIONS
@@ -24,13 +37,24 @@ set(HTTPLIB_DEFINITIONS
     CPPHTTPLIB_THREAD_POOL_COUNT=8
 )
 
-# Find required packages through vcpkg
-find_package(fmt CONFIG REQUIRED)
+# Find required packages
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(httplib CONFIG REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(unofficial-concurrentqueue CONFIG REQUIRED)
+
+# Handle OpenSSL
+if(AI_SDK_EXTERNAL_OPENSSL)
+    find_package(OpenSSL REQUIRED)
+else()
+    find_package(OpenSSL REQUIRED CONFIG)
+endif()
+
+# Handle httplib and Brotli
+find_package(httplib CONFIG REQUIRED)
+if(AI_SDK_EXTERNAL_BROTLI)
+    find_package(PkgConfig)
+    pkg_check_modules(BROTLI REQUIRED libbrotlienc libbrotlidec)
+endif()
 
 # Core library target (always built)
 add_library(ai-sdk-cpp-core)
@@ -127,7 +151,6 @@ target_sources(ai-sdk-cpp-anthropic
 # Link dependencies for core component
 target_link_libraries(ai-sdk-cpp-core
     PRIVATE
-        fmt::fmt
         nlohmann_json::nlohmann_json
         spdlog::spdlog
         httplib::httplib
@@ -136,12 +159,17 @@ target_link_libraries(ai-sdk-cpp-core
         unofficial::concurrentqueue::concurrentqueue
 )
 
+# Link external Brotli if requested
+if(AI_SDK_EXTERNAL_BROTLI)
+    target_link_libraries(ai-sdk-cpp-core PRIVATE ${BROTLI_LIBRARIES})
+    target_include_directories(ai-sdk-cpp-core PRIVATE ${BROTLI_INCLUDE_DIRS})
+endif()
+
 # Link dependencies for OpenAI component
 target_link_libraries(ai-sdk-cpp-openai
     PUBLIC
         ai::core
     PRIVATE
-        fmt::fmt
         nlohmann_json::nlohmann_json
         spdlog::spdlog
 )
@@ -159,7 +187,6 @@ target_link_libraries(ai-sdk-cpp-anthropic
     PUBLIC
         ai::core
     PRIVATE
-        fmt::fmt
         nlohmann_json::nlohmann_json
         spdlog::spdlog
 )
@@ -295,5 +322,7 @@ message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build examples: ${BUILD_EXAMPLES}")
 message(STATUS "  Build tests: ${BUILD_TESTS}")
+message(STATUS "  External OpenSSL: ${AI_SDK_EXTERNAL_OPENSSL}")
+message(STATUS "  External Brotli: ${AI_SDK_EXTERNAL_BROTLI}")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "")
