@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
-
 jobs:
   ci:
     name: CI Pipeline
@@ -26,19 +23,13 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v6
 
-    - name: Install clang-format, clang-tidy, and ninja
+    - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy ninja-build
 
     - name: Check code formatting
       run: uv run scripts/format.py --check
 
     - uses: lukka/get-cmake@latest
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-
-    - name: Install dependencies with vcpkg
-      run: vcpkg install --triplet=x64-linux --x-feature=tests
 
     - name: Build
       run: uv run scripts/build.py --mode ${{ matrix.build_type }} --tests --export-compile-commands

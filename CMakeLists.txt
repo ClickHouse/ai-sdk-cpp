@@ -26,6 +26,7 @@ set(HTTPLIB_DEFINITIONS
 
 include(cmake/CPM.cmake)
 
+# Fetch all dependencies using CPM instead of vcpkg
 CPMAddPackage(
     NAME nlohmann_json
     GITHUB_REPOSITORY nlohmann/json
@@ -35,10 +36,34 @@ CPMAddPackage(
         "JSON_Install ON"
 )
 
-# Find required packages through vcpkg
-find_package(httplib CONFIG REQUIRED)
+# Fetch cpp-httplib
+CPMAddPackage(
+    NAME httplib
+    GITHUB_REPOSITORY yhirose/cpp-httplib
+    VERSION 0.15.3
+    OPTIONS
+        "HTTPLIB_REQUIRE_OPENSSL ON"
+        "HTTPLIB_REQUIRE_ZLIB ON"
+        "HTTPLIB_COMPILE ON"
+)
+
+# Fetch concurrentqueue
+CPMAddPackage(
+    NAME concurrentqueue
+    GITHUB_REPOSITORY cameron314/concurrentqueue
+    VERSION 1.0.4
+)
+
+# Create an interface library for concurrentqueue if it doesn't exist
+if(TARGET concurrentqueue AND NOT TARGET concurrentqueue::concurrentqueue)
+    add_library(concurrentqueue::concurrentqueue ALIAS concurrentqueue)
+elseif(NOT TARGET concurrentqueue)
+    add_library(concurrentqueue INTERFACE)
+    target_include_directories(concurrentqueue INTERFACE ${concurrentqueue_SOURCE_DIR})
+endif()
+
+# Find OpenSSL (usually system-provided)
 find_package(OpenSSL REQUIRED)
-find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 
 # Core library target (always built)
 add_library(ai-sdk-cpp-core)
@@ -140,7 +165,7 @@ target_link_libraries(ai-sdk-cpp-core
         httplib::httplib
         OpenSSL::SSL
         OpenSSL::Crypto
-        unofficial::concurrentqueue::concurrentqueue
+        concurrentqueue
 )
 
 # Link dependencies for OpenAI component
@@ -150,6 +175,7 @@ target_link_libraries(ai-sdk-cpp-openai
         nlohmann_json::nlohmann_json
     PRIVATE
         httplib::httplib
+        concurrentqueue
 )
 
 # Define component availability for OpenAI
@@ -167,6 +193,7 @@ target_link_libraries(ai-sdk-cpp-anthropic
         nlohmann_json::nlohmann_json
     PRIVATE
         httplib::httplib
+        concurrentqueue
 )
 
 # Define component availability for Anthropic

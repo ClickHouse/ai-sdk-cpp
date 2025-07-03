@@ -8,7 +8,6 @@ This document provides comprehensive information about developing, building, and
 
 - **C++ Compiler**: C++20 compatible compiler (GCC 10+, Clang 12+, MSVC 2019+)
 - **CMake**: Version 3.16 or higher
-- **vcpkg**: Package manager for C++ dependencies
 - **Python**: 3.8+ with uv package manager for development scripts
 - **Git**: For version control
 
@@ -27,41 +26,7 @@ git clone https://github.com/ai-sdk/ai-sdk-cpp.git
 cd ai-sdk-cpp
 ```
 
-### 2. Install vcpkg
-
-If you don't have vcpkg installed:
-
-```bash
-# Clone vcpkg
-git clone https://github.com/Microsoft/vcpkg.git
-cd vcpkg
-
-# Bootstrap vcpkg
-./bootstrap-vcpkg.sh  # Linux/macOS
-# or
-./bootstrap-vcpkg.bat  # Windows
-
-# Set environment variable (add to your shell profile)
-export VCPKG_ROOT=$(pwd)
-```
-
-### 3. Install Dependencies
-
-Install the base dependencies:
-
-```bash
-vcpkg install --triplet=x64-linux  # or x64-osx, x64-windows
-```
-
-To include test dependencies:
-
-```bash
-vcpkg install --x-feature=tests --triplet=x64-linux
-```
-
-This will install all dependencies including Google Test for running unit tests.
-
-### 4. Install Python Dependencies
+### 2. Install Python Dependencies
 
 We use `uv` for managing Python development tools:
 
@@ -133,7 +98,6 @@ If you prefer using CMake directly:
 ```bash
 # Configure
 cmake -B build -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
   -DBUILD_TESTS=ON \
   -DBUILD_EXAMPLES=ON \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -141,6 +105,8 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug \
 # Build
 cmake --build build --parallel $(nproc)
 ```
+
+Note: Dependencies will be automatically fetched and built using CPM.cmake during the configuration step.
 
 ## Development Scripts
 
@@ -167,7 +133,7 @@ uv run scripts/build.py --clean --export-compile-commands  # Clean + IDE support
 - ✅ Clean builds
 - ✅ Export compile commands for IDEs
 - ✅ Parallel building
-- ✅ vcpkg integration
+- ✅ Automatic dependency management via CPM.cmake
 - ✅ Rich terminal output with progress indicators
 
 ### 🎨 format.py - Code Formatting
@@ -185,7 +151,7 @@ uv run scripts/format.py --check
 
 **Features**:
 - ✅ Formats all C++ files (`.h`, `.hpp`, `.cc`, `.cpp`, `.cxx`)
-- ✅ Excludes build directories and vcpkg files
+- ✅ Excludes build directories and dependency files
 - ✅ Check mode for CI/CD
 - ✅ Progress indicators
 
@@ -236,14 +202,13 @@ ctest --parallel $(nproc)
 
 ### Test Dependencies
 
-Tests use Google Test framework. Install test dependencies with:
+Tests use Google Test framework, which is automatically fetched when you build with tests enabled:
 
 ```bash
-vcpkg install --x-feature=tests
+uv run scripts/build.py --tests
 ```
 
-The `tests` feature in `vcpkg.json` includes:
-- **Google Test**: Unit testing framework
+The build system will automatically download and configure Google Test via CPM.cmake.
 
 ### Writing Tests
 
@@ -450,19 +415,19 @@ protected:
 
 ### Core Dependencies
 
-Managed via `vcpkg.json`:
+Managed automatically via CPM.cmake:
 
-- **fmt**: Fast formatting library
-- **nlohmann-json**: JSON parsing and generation
+- **nlohmann-json**: JSON parsing and generation (fetched from GitHub)
+- **cpp-httplib**: HTTP client library with OpenSSL support (fetched from GitHub)
+- **concurrentqueue**: Lock-free concurrent queue (fetched from GitHub)
+- **openssl**: Cryptographic library (system-provided)
 - **Built-in logging**: ai::logger provides flexible logging capabilities
-- **cpp-httplib**: HTTP client library with OpenSSL and Brotli support
-- **openssl**: Cryptographic library
 
 ### Test Dependencies
 
-Available via the `tests` feature:
+Automatically fetched when tests are enabled:
 
-- **gtest**: Google's C++ testing framework
+- **gtest**: Google's C++ testing framework (fetched from GitHub via CPM.cmake)
 
 ### Development Dependencies
 

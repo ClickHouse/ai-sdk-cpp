@@ -7,7 +7,7 @@
 #include <mutex>
 #include <thread>
 
-#include <concurrentqueue/concurrentqueue.h>
+#include <concurrentqueue.h>
 #include <nlohmann/json.hpp>
 
 namespace ai {
