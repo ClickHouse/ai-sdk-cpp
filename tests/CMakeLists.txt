@@ -22,6 +22,8 @@ add_executable(ai_tests
 target_link_libraries(ai_tests
     PRIVATE
         ai-sdk-cpp
+        httplib::httplib  # Need direct access to httplib for internal headers
+        concurrentqueue   # Need direct access to concurrentqueue
         GTest::gtest
         GTest::gtest_main
         GTest::gmock

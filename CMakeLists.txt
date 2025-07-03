@@ -269,7 +269,16 @@ endif()
 
 # Tests
 if(BUILD_TESTS)
-    find_package(GTest CONFIG REQUIRED)
+    # Fetch Google Test using CPM
+    CPMAddPackage(
+        NAME googletest
+        GITHUB_REPOSITORY google/googletest
+        VERSION 1.14.0
+        OPTIONS
+            "INSTALL_GTEST OFF"
+            "gtest_force_shared_crt ON"
+    )
+    
     enable_testing()
     add_subdirectory(tests)
 endif()
