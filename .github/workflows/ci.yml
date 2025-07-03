@@ -24,7 +24,7 @@ jobs:
       uses: astral-sh/setup-uv@v6
 
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy ninja-build
+      run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy ninja-build openssl libssl-dev
 
     - name: Check code formatting
       run: uv run scripts/format.py --check
