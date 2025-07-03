@@ -17,19 +17,14 @@ option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
-# Common httplib configuration definitions
-set(HTTPLIB_DEFINITIONS
-    CPPHTTPLIB_OPENSSL_SUPPORT=1
-    CPPHTTPLIB_BROTLI_SUPPORT=1
-    CPPHTTPLIB_THREAD_POOL_COUNT=8
-)
+# Include CPM package manager
+include(cmake/CPM.cmake)
 
-# Find required packages through vcpkg
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
-find_package(httplib CONFIG REQUIRED)
-find_package(OpenSSL REQUIRED)
-find_package(unofficial-concurrentqueue CONFIG REQUIRED)
+# Include all dependencies
+include(cmake/dependencies/nlohmann_json.cmake)
+include(cmake/dependencies/openssl.cmake)
+include(cmake/dependencies/httplib.cmake)  # This will include zlib and brotli
+include(cmake/dependencies/concurrentqueue.cmake)
 
 # Core library target (always built)
 add_library(ai-sdk-cpp-core)
@@ -125,22 +120,23 @@ target_sources(ai-sdk-cpp-anthropic
 
 # Link dependencies for core component
 target_link_libraries(ai-sdk-cpp-core
-    PRIVATE
+    PUBLIC
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
+    PRIVATE
         httplib::httplib
         OpenSSL::SSL
         OpenSSL::Crypto
-        unofficial::concurrentqueue::concurrentqueue
+        concurrentqueue
 )
 
 # Link dependencies for OpenAI component
 target_link_libraries(ai-sdk-cpp-openai
     PUBLIC
         ai::core
-    PRIVATE
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
+    PRIVATE
+        httplib::httplib
+        concurrentqueue
 )
 
 # Define component availability for OpenAI
@@ -155,9 +151,10 @@ target_compile_definitions(ai-sdk-cpp-openai
 target_link_libraries(ai-sdk-cpp-anthropic
     PUBLIC
         ai::core
-    PRIVATE
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
+    PRIVATE
+        httplib::httplib
+        concurrentqueue
 )
 
 # Define component availability for Anthropic
@@ -233,8 +230,7 @@ endif()
 
 # Tests
 if(BUILD_TESTS)
-    find_package(GTest CONFIG REQUIRED)
-    enable_testing()
+    include(cmake/dependencies/googletest.cmake)
     add_subdirectory(tests)
 endif()
 

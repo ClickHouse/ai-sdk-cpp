@@ -17,7 +17,7 @@ Examples:
     uv run scripts/build.py --mode debug --tests --clean --export-compile-commands
 
 This script handles:
-- CMake configuration with vcpkg toolchain
+- CMake configuration with automatic dependency fetching via CPM
 - Building in Debug or Release mode
 - Optional test building
 - Clean builds
@@ -59,27 +59,6 @@ def run_command(cmd: list[str], cwd: Optional[Path] = None, check: bool = True) 
         sys.exit(1)
 
 
-def find_vcpkg_toolchain() -> Optional[str]:
-    """Find the vcpkg toolchain file."""
-    possible_locations = [
-        "vcpkg/scripts/buildsystems/vcpkg.cmake",  # Local vcpkg
-        Path.home() / "vcpkg" / "scripts" / "buildsystems" / "vcpkg.cmake",  # User vcpkg
-        "/usr/local/share/vcpkg/scripts/buildsystems/vcpkg.cmake",  # System vcpkg on Linux/macOS
-        "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",  # System vcpkg on Windows
-    ]
-    
-    for location in possible_locations:
-        if Path(location).exists():
-            return str(Path(location).resolve())
-    
-    # Check environment variable
-    vcpkg_root = os.environ.get("VCPKG_ROOT")
-    if vcpkg_root:
-        toolchain = Path(vcpkg_root) / "scripts" / "buildsystems" / "vcpkg.cmake"
-        if toolchain.exists():
-            return str(toolchain.resolve())
-    
-    return None
 
 
 @click.command()
@@ -154,14 +133,7 @@ def main(mode: str, tests: bool, clean: bool, verbose: bool, export_compile_comm
     # Create build directory
     build_dir.mkdir(exist_ok=True)
     
-    # Find vcpkg toolchain
-    toolchain_file = find_vcpkg_toolchain()
-    if not toolchain_file:
-        console.print("[yellow]⚠ Warning: vcpkg toolchain not found. Dependencies may not be available.[/yellow]")
-        console.print("[dim]Please ensure vcpkg is installed and VCPKG_ROOT is set, or vcpkg is in a standard location.[/dim]")
-    else:
-        console.print(f"[green]✓[/green] Using vcpkg toolchain: [cyan]{toolchain_file}[/cyan]")
-    
+    console.print("[green]✓[/green] Dependencies will be automatically fetched via CPM.cmake")
     console.print()
     
     # Configure CMake
@@ -178,14 +150,6 @@ def main(mode: str, tests: bool, clean: bool, verbose: bool, export_compile_comm
             '-G', 'Ninja',
             f'-DCMAKE_BUILD_TYPE={mode.title()}',
         ]
-        
-        # Add vcpkg toolchain if found
-        if toolchain_file:
-            cmake_args.append(f'-DCMAKE_TOOLCHAIN_FILE={toolchain_file}')
-        
-        # Add vcpkg manifest features for tests
-        if tests:
-            cmake_args.append('-DVCPKG_MANIFEST_FEATURES=tests')
         
         # Add export compile commands option
         if export_compile_commands:

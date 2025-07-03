@@ -3,8 +3,7 @@
 add_executable(openai_component_demo main.cpp)
 target_link_libraries(openai_component_demo PRIVATE 
     ai::core 
-    ai::openai 
-    spdlog::spdlog
+    ai::openai
 )
 
 set_target_properties(openai_component_demo PROPERTIES

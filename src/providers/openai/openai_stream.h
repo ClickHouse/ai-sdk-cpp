@@ -3,11 +3,11 @@
 #include "ai/types/stream_result.h"
 
 #include <atomic>
+#include <concurrentqueue.h>
 #include <httplib.h>
 #include <mutex>
 #include <thread>
 
-#include <concurrentqueue/concurrentqueue.h>
 #include <nlohmann/json.hpp>
 
 namespace ai {

@@ -1,15 +1,14 @@
 #include "anthropic_response_parser.h"
 
 #include "../../utils/response_utils.h"
-
-#include <spdlog/spdlog.h>
+#include "ai/logger.h"
 
 namespace ai {
 namespace anthropic {
 
 GenerateResult AnthropicResponseParser::parse_success_response(
     const nlohmann::json& response) {
-  spdlog::debug("Parsing Anthropic messages response");
+  ai::logger::log_debug("Parsing Anthropic messages response");
 
   GenerateResult result;
 
@@ -17,8 +16,9 @@ GenerateResult AnthropicResponseParser::parse_success_response(
   result.id = response.value("id", "");
   result.model = response.value("model", "");
 
-  spdlog::debug("Response ID: {}, Model: {}", result.id.value_or("none"),
-                result.model.value_or("unknown"));
+  ai::logger::log_debug("Response ID: {}, Model: {}",
+                        result.id.value_or("none"),
+                        result.model.value_or("unknown"));
 
   // Extract content from the response
   if (response.contains("content") && response["content"].is_array()) {
@@ -41,16 +41,18 @@ GenerateResult AnthropicResponseParser::parse_success_response(
             ToolCall tool_call(call_id, function_name, arguments);
             result.tool_calls.push_back(tool_call);
 
-            spdlog::debug("Parsed Anthropic tool call: {} with args: {}",
-                          function_name, arguments.dump());
+            ai::logger::log_debug(
+                "Parsed Anthropic tool call: {} with args: {}", function_name,
+                arguments.dump());
           }
         }
       }
     }
 
     result.text = full_text;
-    spdlog::debug("Extracted message content - length: {}, tool calls: {}",
-                  result.text.length(), result.tool_calls.size());
+    ai::logger::log_debug(
+        "Extracted message content - length: {}, tool calls: {}",
+        result.text.length(), result.tool_calls.size());
 
     // Add assistant response to messages
     if (!result.text.empty()) {
@@ -62,7 +64,7 @@ GenerateResult AnthropicResponseParser::parse_success_response(
   if (response.contains("stop_reason")) {
     std::string stop_reason = response["stop_reason"];
     result.finish_reason = parse_stop_reason(stop_reason);
-    spdlog::debug("Stop reason: {}", stop_reason);
+    ai::logger::log_debug("Stop reason: {}", stop_reason);
   }
 
   // Extract usage
@@ -72,9 +74,10 @@ GenerateResult AnthropicResponseParser::parse_success_response(
     result.usage.completion_tokens = usage.value("output_tokens", 0);
     result.usage.total_tokens =
         result.usage.prompt_tokens + result.usage.completion_tokens;
-    spdlog::debug("Token usage - input: {}, output: {}, total: {}",
-                  result.usage.prompt_tokens, result.usage.completion_tokens,
-                  result.usage.total_tokens);
+    ai::logger::log_debug("Token usage - input: {}, output: {}, total: {}",
+                          result.usage.prompt_tokens,
+                          result.usage.completion_tokens,
+                          result.usage.total_tokens);
   }
 
   // Store full metadata

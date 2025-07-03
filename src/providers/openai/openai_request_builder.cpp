@@ -1,8 +1,7 @@
 #include "openai_request_builder.h"
 
+#include "ai/logger.h"
 #include "utils/message_utils.h"
-
-#include <spdlog/spdlog.h>
 
 namespace ai {
 namespace openai {
@@ -60,7 +59,7 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
 
   // Add tools if specified
   if (options.has_tools()) {
-    spdlog::debug("Adding {} tools to request", options.tools.size());
+    ai::logger::log_debug("Adding {} tools to request", options.tools.size());
 
     nlohmann::json tools_array = nlohmann::json::array();
     auto active_tool_names = options.get_active_tool_names();
@@ -103,8 +102,9 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
           break;
       }
 
-      spdlog::debug("Added {} tools with choice: {}", tools_array.size(),
-                    options.tool_choice.to_string());
+      ai::logger::log_debug("Added {} tools with choice: {}",
+                            tools_array.size(),
+                            options.tool_choice.to_string());
     }
   }
 
