@@ -1,4 +1,5 @@
 #include "../utils/test_fixtures.h"
+#include "ai/logger.h"
 #include "ai/openai.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
@@ -9,7 +10,6 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
 
 // Note: These tests connect to the real OpenAI API when OPENAI_API_KEY is set
 // Otherwise they are skipped

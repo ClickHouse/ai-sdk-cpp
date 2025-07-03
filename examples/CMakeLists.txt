@@ -3,7 +3,7 @@
 # Helper function to create examples
 function(add_ai_example name source_file)
     add_executable(${name} ${source_file})
-    target_link_libraries(${name} PRIVATE ai::sdk spdlog::spdlog)
+    target_link_libraries(${name} PRIVATE ai::sdk)
     
     # Set output directory
     set_target_properties(${name} PROPERTIES

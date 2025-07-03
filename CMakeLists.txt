@@ -24,9 +24,18 @@ set(HTTPLIB_DEFINITIONS
     CPPHTTPLIB_THREAD_POOL_COUNT=8
 )
 
+include(cmake/CPM.cmake)
+
+CPMAddPackage(
+    NAME nlohmann_json
+    GITHUB_REPOSITORY nlohmann/json
+    VERSION 3.11.3
+    OPTIONS 
+        "JSON_BuildTests OFF"
+        "JSON_Install ON"
+)
+
 # Find required packages through vcpkg
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(unofficial-concurrentqueue CONFIG REQUIRED)
@@ -125,9 +134,9 @@ target_sources(ai-sdk-cpp-anthropic
 
 # Link dependencies for core component
 target_link_libraries(ai-sdk-cpp-core
-    PRIVATE
+    PUBLIC
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
+    PRIVATE
         httplib::httplib
         OpenSSL::SSL
         OpenSSL::Crypto
@@ -138,9 +147,9 @@ target_link_libraries(ai-sdk-cpp-core
 target_link_libraries(ai-sdk-cpp-openai
     PUBLIC
         ai::core
-    PRIVATE
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
+    PRIVATE
+        httplib::httplib
 )
 
 # Define component availability for OpenAI
@@ -155,9 +164,9 @@ target_compile_definitions(ai-sdk-cpp-openai
 target_link_libraries(ai-sdk-cpp-anthropic
     PUBLIC
         ai::core
-    PRIVATE
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
+    PRIVATE
+        httplib::httplib
 )
 
 # Define component availability for Anthropic

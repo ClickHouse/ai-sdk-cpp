@@ -3,7 +3,6 @@
 add_executable(all_components_demo main.cpp)
 target_link_libraries(all_components_demo PRIVATE 
     ai::sdk  # This includes all components
-    spdlog::spdlog
 )
 
 set_target_properties(all_components_demo PROPERTIES

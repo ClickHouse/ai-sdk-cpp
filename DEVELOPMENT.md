@@ -302,52 +302,55 @@ cd build && ctest
 
 ### Configuring Log Levels
 
-AI SDK C++ uses [spdlog](https://github.com/gabime/spdlog) for logging.
+AI SDK C++ uses a built-in logging system defined in `ai/logger.h`.
 
 ### Setting Log Levels
 
-You can control the logging verbosity by setting the spdlog level in your application:
+You can control the logging verbosity by configuring the logger in your application:
 
 ```cpp
-#include <spdlog/spdlog.h>
+#include "ai/logger.h"
 
 // In your main() or initialization code:
 
 // Enable debug logging (most verbose)
-spdlog::set_level(spdlog::level::debug);
+ai::logger::install_logger(
+    std::make_shared<ai::logger::ConsoleLogger>(ai::logger::LogLevel::kLogLevelDebug)
+);
 
 // Enable info logging (operational information)
-spdlog::set_level(spdlog::level::info);
+ai::logger::install_logger(
+    std::make_shared<ai::logger::ConsoleLogger>(ai::logger::LogLevel::kLogLevelInfo)
+);
 
 // Enable warning logging (default)
-spdlog::set_level(spdlog::level::warn);
+ai::logger::install_logger(
+    std::make_shared<ai::logger::ConsoleLogger>(ai::logger::LogLevel::kLogLevelWarn)
+);
 
 // Enable error logging only
-spdlog::set_level(spdlog::level::err);
+ai::logger::install_logger(
+    std::make_shared<ai::logger::ConsoleLogger>(ai::logger::LogLevel::kLogLevelError)
+);
 ```
 
 ### Available Log Levels
 
 From most to least verbose:
 
-1. **trace**: Most detailed information (not commonly used in AI SDK)
-2. **debug**: Detailed flow information, request/response bodies, connection details
-3. **info**: Important operational events (successful completions, stream events)
-4. **warn**: Warning conditions that don't prevent operation
-5. **err**: Error conditions and exceptions
-6. **critical**: Critical failures (not commonly used in AI SDK)
-7. **off**: Disable all logging
+1. **debug**: Detailed flow information, request/response bodies, connection details
+2. **info**: Important operational events (successful completions, stream events)
+3. **warn**: Warning conditions that don't prevent operation
+4. **error**: Error conditions and exceptions
 
-### Environment Variable Configuration
+### Null Logger
 
-You can also set the log level via environment variable:
+To disable all logging, you can install a null logger:
 
-```bash
-# Enable debug logging
-export SPDLOG_LEVEL=debug
-
-# Enable info logging
-export SPDLOG_LEVEL=info
+```cpp
+ai::logger::install_logger(
+    std::make_shared<ai::logger::NullLogger>()
+);
 ```
 
 ### Example Log Output
@@ -374,25 +377,44 @@ With **info** level enabled:
 
 ### Custom Logger Configuration
 
-For more advanced logging configurations:
+You can create your own logger by implementing the `ai::logger::Logger` interface:
 
 ```cpp
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include "ai/logger.h"
+#include <fstream>
 
-// Create a multi-sink logger (console + file)
-auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("ai_sdk.log", true);
+class FileLogger : public ai::logger::Logger {
+public:
+    FileLogger(const std::string& filename)
+        : file_(filename, std::ios::app) {}
+    
+    void log(ai::logger::LogLevel level, std::string_view message) override {
+        if (is_enabled(level)) {
+            file_ << "[" << level_to_string(level) << "] " << message << std::endl;
+        }
+    }
+    
+    bool is_enabled(ai::logger::LogLevel level) const override {
+        return level >= min_level_;
+    }
+    
+private:
+    std::ofstream file_;
+    ai::logger::LogLevel min_level_ = ai::logger::LogLevel::kLogLevelInfo;
+    
+    static std::string_view level_to_string(ai::logger::LogLevel level) {
+        switch (level) {
+            case ai::logger::LogLevel::kLogLevelDebug: return "DEBUG";
+            case ai::logger::LogLevel::kLogLevelInfo: return "INFO";
+            case ai::logger::LogLevel::kLogLevelWarn: return "WARN";
+            case ai::logger::LogLevel::kLogLevelError: return "ERROR";
+        }
+        return "UNKNOWN";
+    }
+};
 
-std::vector<spdlog::sink_ptr> sinks {console_sink, file_sink};
-auto logger = std::make_shared<spdlog::logger>("ai_sdk", sinks.begin(), sinks.end());
-
-// Set as default logger
-spdlog::set_default_logger(logger);
-
-// Configure format
-spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] %v");
+// Install custom logger
+ai::logger::install_logger(std::make_shared<FileLogger>("ai_sdk.log"));
 ```
 
 ### Development Recommendations
@@ -417,7 +439,9 @@ class AITestFixture : public ::testing::Test {
 protected:
     void SetUp() override {
         // Enable debug logging for tests
-        spdlog::set_level(spdlog::level::debug);
+        ai::logger::install_logger(
+            std::make_shared<ai::logger::ConsoleLogger>(ai::logger::LogLevel::kLogLevelDebug)
+        );
     }
 };
 ```
@@ -430,7 +454,7 @@ Managed via `vcpkg.json`:
 
 - **fmt**: Fast formatting library
 - **nlohmann-json**: JSON parsing and generation
-- **spdlog**: Fast logging library
+- **Built-in logging**: ai::logger provides flexible logging capabilities
 - **cpp-httplib**: HTTP client library with OpenSSL and Brotli support
 - **openssl**: Cryptographic library
 

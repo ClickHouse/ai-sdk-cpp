@@ -3,8 +3,7 @@
 add_executable(anthropic_component_demo main.cpp)
 target_link_libraries(anthropic_component_demo PRIVATE 
     ai::core 
-    ai::anthropic 
-    spdlog::spdlog
+    ai::anthropic
 )
 
 set_target_properties(anthropic_component_demo PROPERTIES

@@ -1,9 +1,9 @@
 #include "openai_stream.h"
 
+#include "ai/logger.h"
+
 #include <chrono>
 #include <mutex>
-
-#include <spdlog/spdlog.h>
 
 namespace {
 constexpr auto kEventTimeout = static_cast<std::chrono::seconds>(30);
@@ -24,12 +24,13 @@ OpenAIStreamImpl::~OpenAIStreamImpl() {
 void OpenAIStreamImpl::start_stream(const std::string& url,
                                     const httplib::Headers& headers,
                                     const nlohmann::json& request_body) {
-  spdlog::debug("Starting OpenAI stream - URL: {}", url);
+  ai::logger::log_debug("Starting OpenAI stream - URL: {}", url);
 
   std::lock_guard<std::mutex> lock(thread_mutex_);
 
   if (stream_thread_.joinable()) {
-    spdlog::debug("Stream thread already running, not starting new one");
+    ai::logger::log_debug(
+        "Stream thread already running, not starting new one");
     return;  // Already running
   }
 
@@ -38,7 +39,7 @@ void OpenAIStreamImpl::start_stream(const std::string& url,
   is_complete_ = false;
   finish_event_pushed_ = false;
 
-  spdlog::info("Launching stream thread for OpenAI API");
+  ai::logger::log_info("Launching stream thread for OpenAI API");
 
   stream_thread_ = std::thread([this, url, headers, request_body]() {
     run_stream(url, headers, request_body);
@@ -52,14 +53,16 @@ StreamEvent OpenAIStreamImpl::get_next_event() {
   while (!event_queue_.try_dequeue(event)) {
     if (is_complete_ && event_queue_.size_approx() == 0) {
       // Stream is complete and queue is empty
-      spdlog::debug("Stream complete and queue empty, returning empty event");
+      ai::logger::log_debug(
+          "Stream complete and queue empty, returning empty event");
       return StreamEvent("");
     }
 
     // Check for timeout
     if (std::chrono::steady_clock::now() - start_time > kEventTimeout) {
-      spdlog::error("Timeout waiting for next stream event after {} seconds",
-                    kEventTimeout.count());
+      ai::logger::log_error(
+          "Timeout waiting for next stream event after {} seconds",
+          kEventTimeout.count());
       return StreamEvent(kStreamEventTypeError,
                          "Timeout waiting for next event");
     }
@@ -67,7 +70,8 @@ StreamEvent OpenAIStreamImpl::get_next_event() {
     std::this_thread::sleep_for(kSleepInterval);
   }
 
-  spdlog::debug("Dequeued event type: {}", static_cast<int>(event.type));
+  ai::logger::log_debug("Dequeued event type: {}",
+                        static_cast<int>(event.type));
   return event;
 }
 
@@ -77,22 +81,23 @@ bool OpenAIStreamImpl::has_more_events() const {
 }
 
 void OpenAIStreamImpl::stop_stream() {
-  spdlog::debug("Stopping OpenAI stream");
+  ai::logger::log_debug("Stopping OpenAI stream");
 
   should_stop_ = true;  // Atomic write
 
   std::lock_guard<std::mutex> lock(thread_mutex_);
   if (stream_thread_.joinable()) {
-    spdlog::debug("Waiting for stream thread to finish");
+    ai::logger::log_debug("Waiting for stream thread to finish");
     stream_thread_.join();
-    spdlog::info("OpenAI stream stopped successfully");
+    ai::logger::log_info("OpenAI stream stopped successfully");
   }
 }
 
 void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
                                   const httplib::Headers& headers,
                                   const nlohmann::json& request_body) {
-  spdlog::debug("Stream thread started - connecting to {}", kOpenAIHost);
+  ai::logger::log_debug("Stream thread started - connecting to {}",
+                        kOpenAIHost);
 
   try {
     httplib::SSLClient client(kOpenAIHost);
@@ -100,7 +105,7 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
     client.set_connection_timeout(kConnectionTimeout);
     client.set_read_timeout(kReadTimeout);
 
-    spdlog::debug(
+    ai::logger::log_debug(
         "SSL client created with connection_timeout: {}s, read_timeout: {}s",
         kConnectionTimeout, kReadTimeout);
 
@@ -114,8 +119,9 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
     req.body = request_body.dump();
     req.set_header("Content-Type", "application/json");
 
-    spdlog::debug("Stream request prepared - path: {}, body size: {} bytes",
-                  kChatCompletionsPath, req.body.length());
+    ai::logger::log_debug(
+        "Stream request prepared - path: {}, body size: {} bytes",
+        kChatCompletionsPath, req.body.length());
 
     // Set content receiver for streaming response
     req.content_receiver = [this, &accumulated_data](
@@ -124,7 +130,7 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
       // Accumulate data and process complete lines
       accumulated_data.append(data, data_length);
 
-      spdlog::debug("Received {} bytes of stream data", data_length);
+      ai::logger::log_debug("Received {} bytes of stream data", data_length);
 
       // Process complete lines
       size_t pos = 0;
@@ -138,7 +144,8 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
 
         // Check if we should stop - atomic read, no lock needed
         if (should_stop_) {
-          spdlog::debug("Stream stop requested, ending content receiver");
+          ai::logger::log_debug(
+              "Stream stop requested, ending content receiver");
           return false;
         }
 
@@ -151,37 +158,38 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
     httplib::Response res;
     httplib::Error error;
 
-    spdlog::info("Sending stream request to OpenAI API");
+    ai::logger::log_info("Sending stream request to OpenAI API");
 
     if (!client.send(req, res, error)) {
       std::string error_msg = "Network error: " + httplib::to_string(error);
-      spdlog::error("Failed to send stream request: {}", error_msg);
+      ai::logger::log_error("Failed to send stream request: {}", error_msg);
       push_event(create_error_event(error_msg));
     } else if (res.status != 200) {
-      spdlog::error("OpenAI stream API returned status {} - body: {}",
-                    res.status, res.body);
+      ai::logger::log_error("OpenAI stream API returned status {} - body: {}",
+                            res.status, res.body);
       push_event(create_error_event("HTTP " + std::to_string(res.status) +
                                     " error: " + res.body));
     } else {
-      spdlog::info("Stream completed successfully");
+      ai::logger::log_info("Stream completed successfully");
     }
   } catch (const std::exception& e) {
-    spdlog::error("Exception in stream thread: {}", e.what());
+    ai::logger::log_error("Exception in stream thread: {}", e.what());
     push_event(create_error_event(e.what()));
   }
 
   mark_complete();
-  spdlog::debug("Stream thread exiting");
+  ai::logger::log_debug("Stream thread exiting");
 }
 
 void OpenAIStreamImpl::parse_sse_line(const std::string& line) {
   if (line.starts_with("data: ")) {
     auto data = line.substr(6);
 
-    spdlog::debug("Processing SSE line - data length: {}", data.length());
+    ai::logger::log_debug("Processing SSE line - data length: {}",
+                          data.length());
 
     if (data == "[DONE]") {
-      spdlog::debug("Received [DONE] signal, stream ending");
+      ai::logger::log_debug("Received [DONE] signal, stream ending");
       push_finish_event_if_needed();
       mark_complete();
       return;
@@ -195,8 +203,8 @@ void OpenAIStreamImpl::parse_sse_line(const std::string& line) {
         auto& delta = choices[0]["delta"];
         if (delta.contains("content") && !delta["content"].is_null()) {
           std::string content = delta["content"].get<std::string>();
-          spdlog::debug("Received content chunk - length: {}",
-                        content.length());
+          ai::logger::log_debug("Received content chunk - length: {}",
+                                content.length());
           push_event(StreamEvent(content));
         }
       }
@@ -207,13 +215,14 @@ void OpenAIStreamImpl::parse_sse_line(const std::string& line) {
         auto finish_reason_str = choices[0]["finish_reason"].get<std::string>();
         auto finish_reason = parse_finish_reason(finish_reason_str);
 
-        spdlog::debug("Stream finished with reason: {}", finish_reason_str);
+        ai::logger::log_debug("Stream finished with reason: {}",
+                              finish_reason_str);
 
         finish_event_pushed_ = true;
 
         if (json.contains("usage")) {
           auto usage = parse_usage(json["usage"]);
-          spdlog::info(
+          ai::logger::log_info(
               "Stream completed - tokens used: {} prompt, {} completion, {} "
               "total",
               usage.prompt_tokens, usage.completion_tokens, usage.total_tokens);
@@ -223,11 +232,11 @@ void OpenAIStreamImpl::parse_sse_line(const std::string& line) {
         }
       }
     } catch (const std::exception& e) {
-      spdlog::error("Failed to parse SSE line: {} - Line content: {}", e.what(),
-                    data);
+      ai::logger::log_error("Failed to parse SSE line: {} - Line content: {}",
+                            e.what(), data);
     }
   } else if (!line.empty()) {
-    spdlog::debug("Ignoring non-data SSE line: {}", line);
+    ai::logger::log_debug("Ignoring non-data SSE line: {}", line);
   }
 }
 
@@ -238,10 +247,10 @@ void OpenAIStreamImpl::push_event(StreamEvent event) {
 void OpenAIStreamImpl::push_finish_event_if_needed() {
   bool expected = false;
   if (finish_event_pushed_.compare_exchange_strong(expected, true)) {
-    spdlog::debug("Pushing finish event to queue");
+    ai::logger::log_debug("Pushing finish event to queue");
     event_queue_.enqueue(StreamEvent(kStreamEventTypeFinish));
   } else {
-    spdlog::debug("Finish event already pushed, skipping");
+    ai::logger::log_debug("Finish event already pushed, skipping");
   }
 }
 
@@ -250,7 +259,7 @@ void OpenAIStreamImpl::mark_complete() {
 }
 
 StreamEvent OpenAIStreamImpl::create_error_event(const std::string& message) {
-  spdlog::debug("Creating error event: {}", message);
+  ai::logger::log_debug("Creating error event: {}", message);
   return StreamEvent(kStreamEventTypeError, message);
 }
 

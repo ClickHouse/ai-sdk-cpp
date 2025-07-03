@@ -1,14 +1,15 @@
 #include "http_request_handler.h"
 
-#include <spdlog/spdlog.h>
+#include "ai/logger.h"
 
 namespace ai {
 namespace http {
 
 HttpRequestHandler::HttpRequestHandler(const HttpConfig& config)
     : config_(config) {
-  spdlog::debug("HttpRequestHandler initialized - host: {}, use_ssl: {}",
-                config_.host, config_.use_ssl);
+  ai::logger::log_debug(
+      "HttpRequestHandler initialized - host: {}, use_ssl: {}", config_.host,
+      config_.use_ssl);
 }
 
 HttpConfig HttpRequestHandler::parse_base_url(const std::string& base_url) {
@@ -42,12 +43,12 @@ GenerateResult HttpRequestHandler::post(const std::string& path,
   auto handler = [](const httplib::Result& res,
                     const std::string& protocol) -> GenerateResult {
     if (!res) {
-      spdlog::error("{} request failed - no response", protocol);
+      ai::logger::log_error("{} request failed - no response", protocol);
       return GenerateResult("Network error: Failed to connect to API");
     }
 
-    spdlog::debug("Got response: status={}, body_size={}", res->status,
-                  res->body.size());
+    ai::logger::log_debug("Got response: status={}, body_size={}", res->status,
+                          res->body.size());
 
     if (res->status == 200) {
       GenerateResult result;
@@ -73,9 +74,9 @@ GenerateResult HttpRequestHandler::make_request(const std::string& path,
                                                 const std::string& content_type,
                                                 ResponseHandler handler) {
   try {
-    spdlog::debug("Making {} request to {}:{}{}",
-                  config_.use_ssl ? "HTTPS" : "HTTP", config_.host, path,
-                  " with body size: " + std::to_string(body.size()));
+    ai::logger::log_debug(
+        "Making {} request to {}:{}{}", config_.use_ssl ? "HTTPS" : "HTTP",
+        config_.host, path, " with body size: " + std::to_string(body.size()));
 
     if (config_.use_ssl) {
       httplib::SSLClient cli(config_.host);
@@ -94,10 +95,10 @@ GenerateResult HttpRequestHandler::make_request(const std::string& path,
       return handler(res, "HTTP");
     }
   } catch (const std::exception& e) {
-    spdlog::error("Exception in make_request: {}", e.what());
+    ai::logger::log_error("Exception in make_request: {}", e.what());
     return GenerateResult(std::string("Request failed: ") + e.what());
   } catch (...) {
-    spdlog::error("Unknown exception in make_request");
+    ai::logger::log_error("Unknown exception in make_request");
     return GenerateResult("Request failed: Unknown error");
   }
 }

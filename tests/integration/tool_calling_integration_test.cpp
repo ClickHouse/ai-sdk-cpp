@@ -1,5 +1,6 @@
 #include "../utils/test_fixtures.h"
 #include "ai/anthropic.h"
+#include "ai/logger.h"
 #include "ai/openai.h"
 #include "ai/tools.h"
 #include "ai/types/generate_options.h"
@@ -14,7 +15,6 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
 
 namespace ai {
 namespace test {
