@@ -17,53 +17,14 @@ option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
-# Common httplib configuration definitions
-set(HTTPLIB_DEFINITIONS
-    CPPHTTPLIB_OPENSSL_SUPPORT=1
-    CPPHTTPLIB_BROTLI_SUPPORT=1
-    CPPHTTPLIB_THREAD_POOL_COUNT=8
-)
-
+# Include CPM package manager
 include(cmake/CPM.cmake)
 
-# Fetch all dependencies using CPM instead of vcpkg
-CPMAddPackage(
-    NAME nlohmann_json
-    GITHUB_REPOSITORY nlohmann/json
-    VERSION 3.11.3
-    OPTIONS 
-        "JSON_BuildTests OFF"
-        "JSON_Install ON"
-)
-
-# Fetch cpp-httplib
-CPMAddPackage(
-    NAME httplib
-    GITHUB_REPOSITORY yhirose/cpp-httplib
-    VERSION 0.15.3
-    OPTIONS
-        "HTTPLIB_REQUIRE_OPENSSL ON"
-        "HTTPLIB_REQUIRE_ZLIB ON"
-        "HTTPLIB_COMPILE ON"
-)
-
-# Fetch concurrentqueue
-CPMAddPackage(
-    NAME concurrentqueue
-    GITHUB_REPOSITORY cameron314/concurrentqueue
-    VERSION 1.0.4
-)
-
-# Create an interface library for concurrentqueue if it doesn't exist
-if(TARGET concurrentqueue AND NOT TARGET concurrentqueue::concurrentqueue)
-    add_library(concurrentqueue::concurrentqueue ALIAS concurrentqueue)
-elseif(NOT TARGET concurrentqueue)
-    add_library(concurrentqueue INTERFACE)
-    target_include_directories(concurrentqueue INTERFACE ${concurrentqueue_SOURCE_DIR})
-endif()
-
-# Find OpenSSL (usually system-provided)
-find_package(OpenSSL REQUIRED)
+# Include all dependencies
+include(cmake/dependencies/nlohmann_json.cmake)
+include(cmake/dependencies/openssl.cmake)
+include(cmake/dependencies/httplib.cmake)  # This will include zlib and brotli
+include(cmake/dependencies/concurrentqueue.cmake)
 
 # Core library target (always built)
 add_library(ai-sdk-cpp-core)
@@ -269,17 +230,7 @@ endif()
 
 # Tests
 if(BUILD_TESTS)
-    # Fetch Google Test using CPM
-    CPMAddPackage(
-        NAME googletest
-        GITHUB_REPOSITORY google/googletest
-        VERSION 1.14.0
-        OPTIONS
-            "INSTALL_GTEST OFF"
-            "gtest_force_shared_crt ON"
-    )
-    
-    enable_testing()
+    include(cmake/dependencies/googletest.cmake)
     add_subdirectory(tests)
 endif()
 
