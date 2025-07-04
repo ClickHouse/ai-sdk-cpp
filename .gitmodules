@@ -4,3 +4,9 @@
 [submodule "third_party/concurrentqueue"]
 	path = third_party/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue.git
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "third_party/brotli"]
+	path = third_party/brotli
+	url = https://github.com/google/brotli.git

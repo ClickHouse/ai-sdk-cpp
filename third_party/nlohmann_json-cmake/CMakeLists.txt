@@ -1,8 +1,3 @@
-cmake_minimum_required(VERSION 3.16)
-
-# Wrapper project for nlohmann/json library
-project(nlohmann_json_wrapper)
-
 # Configure nlohmann/json build options
 set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON tests")
 set(JSON_Install    ON  CACHE INTERNAL "Enable JSON installation")

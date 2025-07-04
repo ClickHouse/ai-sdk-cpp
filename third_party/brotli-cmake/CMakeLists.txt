@@ -1,11 +1,11 @@
-# Fetch brotli (needed by httplib)
-CPMAddPackage(
-    NAME brotli
-    GITHUB_REPOSITORY google/brotli
-    VERSION 1.1.0
-    OPTIONS
-        "BROTLI_BUILD_TOOLS OFF"
-        "BROTLI_BUNDLED_MODE ON"
+# Configure brotli build options
+set(BROTLI_BUILD_TOOLS OFF CACHE INTERNAL "Disable brotli tools")
+set(BROTLI_BUNDLED_MODE ON CACHE INTERNAL "Enable bundled mode")
+
+# Add brotli as subdirectory
+add_subdirectory(
+    ${AI_SDK_THIRD_PARTY_DIR}/brotli 
+    ${CMAKE_CURRENT_BINARY_DIR}/brotli
 )
 
 # Brotli doesn't create the expected aliases, so we need to create them
