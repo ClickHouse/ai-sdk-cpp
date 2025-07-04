@@ -1,3 +1,4 @@
+#include <ai/logger.h>
 #include <ai/tools.h>
 #include <ai/types/enums.h>
 #include <ai/types/tool.h>
@@ -16,6 +17,9 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
   GenerateOptions current_options = initial_options;
 
   for (int step = 0; step < initial_options.max_steps; ++step) {
+    ai::logger::log_debug("Executing step {} of {}", step + 1,
+                          initial_options.max_steps);
+
     // Execute the current step
     GenerateResult step_result = generate_func(current_options);
 
@@ -85,9 +89,10 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
     if (step_result.finish_reason == kFinishReasonToolCalls &&
         step_result.has_tool_calls()) {
       // Execute tools and prepare for next step
-      std::vector<ToolResult> tool_results = ToolExecutor::execute_tools(
-          step_result.tool_calls, initial_options.tools,
-          current_options.messages);
+      // Use sequential execution to avoid thread-safety issues
+      std::vector<ToolResult> tool_results =
+          ToolExecutor::execute_tools_with_options(step_result.tool_calls,
+                                                   initial_options, false);
 
       // Store tool results in the step
       final_result.steps.back().tool_results = tool_results;
@@ -114,6 +119,13 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
       // No tool calls to execute, we're done
       break;
     }
+  }
+
+  // Log if we hit the max steps limit
+  if (final_result.steps.size() == initial_options.max_steps &&
+      final_result.finish_reason != kFinishReasonStop) {
+    ai::logger::log_debug("Reached max steps limit ({}) without completion",
+                          initial_options.max_steps);
   }
 
   return final_result;

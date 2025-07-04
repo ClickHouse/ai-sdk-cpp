@@ -90,13 +90,18 @@ GenerateResult BaseProviderClient::generate_text_single_step(
     auto parsed_result =
         response_parser_->parse_success_response(json_response);
 
+    if (parsed_result.has_tool_calls()) {
+      ai::logger::log_debug("Model made {} tool calls",
+                            parsed_result.tool_calls.size());
+    }
+
     // Execute tools if the model made tool calls
     if (parsed_result.has_tool_calls() && options.has_tools()) {
       ai::logger::log_debug("Model made {} tool calls, executing them",
                             parsed_result.tool_calls.size());
 
-      auto tool_results = ToolExecutor::execute_tools(
-          parsed_result.tool_calls, options.tools, options.messages);
+      auto tool_results = ToolExecutor::execute_tools_with_options(
+          parsed_result.tool_calls, options, false);
 
       parsed_result.tool_results = tool_results;
       ai::logger::log_debug("Executed {} tools", tool_results.size());

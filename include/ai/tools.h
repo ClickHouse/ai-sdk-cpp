@@ -24,12 +24,24 @@ class ToolExecutor {
   /// @param tools Available tools
   /// @param messages Context messages
   /// @param parallel Whether to execute in parallel (default: true)
+  /// @param options Optional generate options containing callbacks
   /// @return Vector of tool execution results
   static std::vector<ToolResult> execute_tools(
       const std::vector<ToolCall>& tool_calls,
       const ToolSet& tools,
       const Messages& messages = {},
-      bool parallel = true);
+      bool parallel = true,
+      const GenerateOptions* options = nullptr);
+
+  /// Execute multiple tool calls with options (simplified interface)
+  /// @param tool_calls Vector of tool calls to execute
+  /// @param options Generate options containing tools, messages, and callbacks
+  /// @param parallel Whether to execute in parallel (default: false for safety)
+  /// @return Vector of tool execution results
+  static std::vector<ToolResult> execute_tools_with_options(
+      const std::vector<ToolCall>& tool_calls,
+      const GenerateOptions& options,
+      bool parallel = false);
 
   /// Validate tool call arguments against tool schema
   /// @param tool_call The tool call to validate
