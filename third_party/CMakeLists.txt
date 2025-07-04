@@ -7,3 +7,6 @@ set(AI_SDK_THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Third party d
 
 # Add nlohmann_json
 add_subdirectory(nlohmann_json-cmake)
+
+# Add concurrentqueue
+add_subdirectory(concurrentqueue-cmake)

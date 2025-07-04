@@ -26,7 +26,6 @@ add_subdirectory(third_party)
 # Include remaining CPM dependencies
 include(cmake/dependencies/openssl.cmake)
 include(cmake/dependencies/httplib.cmake)  # This will include zlib and brotli
-include(cmake/dependencies/concurrentqueue.cmake)
 
 # Core library target (always built)
 add_library(ai-sdk-cpp-core)
