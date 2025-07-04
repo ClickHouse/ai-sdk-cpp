@@ -17,62 +17,48 @@ option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
-# Include CPM package manager
-include(cmake/CPM.cmake)
-
 # Add third party directory with submodules
 add_subdirectory(third_party)
 
-# Include remaining CPM dependencies
-include(cmake/dependencies/openssl.cmake)
-include(cmake/dependencies/httplib.cmake)  # This will include zlib and brotli
+# Find system OpenSSL
+find_package(OpenSSL REQUIRED)
 
-# Core library target (always built)
+# Helper function to configure component libraries
+function(configure_ai_component target_name)
+    target_include_directories(${target_name}
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include>
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+endfunction()
+
+# Common compile definitions for HTTP support
+set(HTTPLIB_COMPILE_DEFS
+    CPPHTTPLIB_OPENSSL_SUPPORT=1
+    CPPHTTPLIB_BROTLI_SUPPORT=1
+    CPPHTTPLIB_THREAD_POOL_COUNT=8
+)
+
+# Create libraries
 add_library(ai-sdk-cpp-core)
-
-# OpenAI component library
 add_library(ai-sdk-cpp-openai)
-
-# Anthropic component library  
 add_library(ai-sdk-cpp-anthropic)
-
-# Main library target (includes all components) - interface library
 add_library(ai-sdk-cpp INTERFACE)
 
-# Set library aliases for consistent naming
+# Set library aliases
 add_library(ai::sdk ALIAS ai-sdk-cpp)
 add_library(ai::core ALIAS ai-sdk-cpp-core)
 add_library(ai::openai ALIAS ai-sdk-cpp-openai)
 add_library(ai::anthropic ALIAS ai-sdk-cpp-anthropic)
 
-# Configure core library
-target_include_directories(ai-sdk-cpp-core 
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
+# Configure all component libraries
+configure_ai_component(ai-sdk-cpp-core)
+configure_ai_component(ai-sdk-cpp-openai)
+configure_ai_component(ai-sdk-cpp-anthropic)
 
-# Configure OpenAI component library
-target_include_directories(ai-sdk-cpp-openai 
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-# Configure Anthropic component library  
-target_include_directories(ai-sdk-cpp-anthropic 
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-# Configure main library (includes all components) - interface only
+# Configure main interface library
 target_include_directories(ai-sdk-cpp 
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -97,76 +83,65 @@ target_sources(ai-sdk-cpp-core
         src/tools/multi_step_coordinator.cpp
 )
 
-# OpenAI component sources
-target_sources(ai-sdk-cpp-openai
-    PRIVATE
-        # OpenAI provider implementations
-        src/providers/openai/openai_client.cpp
-        src/providers/openai/openai_request_builder.cpp
-        src/providers/openai/openai_response_parser.cpp
-        src/providers/openai/openai_stream.cpp
-        src/providers/openai/openai_factory.cpp
+# Provider-specific sources
+set(OPENAI_SOURCES
+    src/providers/openai/openai_client.cpp
+    src/providers/openai/openai_request_builder.cpp
+    src/providers/openai/openai_response_parser.cpp
+    src/providers/openai/openai_stream.cpp
+    src/providers/openai/openai_factory.cpp
 )
 
-# Anthropic component sources  
-target_sources(ai-sdk-cpp-anthropic
-    PRIVATE
-        # Anthropic provider implementations
-        src/providers/anthropic/anthropic_client.cpp
-        src/providers/anthropic/anthropic_request_builder.cpp
-        src/providers/anthropic/anthropic_response_parser.cpp
-        src/providers/anthropic/anthropic_stream.cpp
-        src/providers/anthropic/anthropic_factory.cpp
+set(ANTHROPIC_SOURCES
+    src/providers/anthropic/anthropic_client.cpp
+    src/providers/anthropic/anthropic_request_builder.cpp
+    src/providers/anthropic/anthropic_response_parser.cpp
+    src/providers/anthropic/anthropic_stream.cpp
+    src/providers/anthropic/anthropic_factory.cpp
 )
 
-# Link dependencies for core component
+target_sources(ai-sdk-cpp-openai PRIVATE ${OPENAI_SOURCES})
+target_sources(ai-sdk-cpp-anthropic PRIVATE ${ANTHROPIC_SOURCES})
+
+# Link dependencies
 target_link_libraries(ai-sdk-cpp-core
     PUBLIC
         nlohmann_json::nlohmann_json
     PRIVATE
-        httplib::httplib
-        OpenSSL::SSL
-        OpenSSL::Crypto
-        concurrentqueue
+        $<BUILD_INTERFACE:httplib::httplib>
+        $<BUILD_INTERFACE:OpenSSL::SSL>
+        $<BUILD_INTERFACE:OpenSSL::Crypto>
+        $<BUILD_INTERFACE:concurrentqueue>
 )
 
-# Link dependencies for OpenAI component
-target_link_libraries(ai-sdk-cpp-openai
-    PUBLIC
-        ai::core
-        nlohmann_json::nlohmann_json
+# Provider components link to core and share common dependencies
+foreach(provider openai anthropic)
+    target_link_libraries(ai-sdk-cpp-${provider}
+        PUBLIC
+            ai::core
+            nlohmann_json::nlohmann_json
+        PRIVATE
+            $<BUILD_INTERFACE:httplib::httplib>
+            $<BUILD_INTERFACE:concurrentqueue>
+    )
+    
+    # Set component availability and HTTP definitions
+    string(TOUPPER ${provider} PROVIDER_UPPER)
+    target_compile_definitions(ai-sdk-cpp-${provider}
+        PUBLIC
+            AI_SDK_HAS_${PROVIDER_UPPER}=1
+        PRIVATE
+            ${HTTPLIB_COMPILE_DEFS}
+    )
+endforeach()
+
+# Core needs HTTP definitions too
+target_compile_definitions(ai-sdk-cpp-core
     PRIVATE
-        httplib::httplib
-        concurrentqueue
+        ${HTTPLIB_COMPILE_DEFS}
 )
 
-# Define component availability for OpenAI
-target_compile_definitions(ai-sdk-cpp-openai
-    PUBLIC
-        AI_SDK_HAS_OPENAI=1
-    PRIVATE
-        ${HTTPLIB_DEFINITIONS}
-)
-
-# Link dependencies for Anthropic component
-target_link_libraries(ai-sdk-cpp-anthropic
-    PUBLIC
-        ai::core
-        nlohmann_json::nlohmann_json
-    PRIVATE
-        httplib::httplib
-        concurrentqueue
-)
-
-# Define component availability for Anthropic
-target_compile_definitions(ai-sdk-cpp-anthropic
-    PUBLIC
-        AI_SDK_HAS_ANTHROPIC=1
-    PRIVATE
-        ${HTTPLIB_DEFINITIONS}
-)
-
-# Main library links all components (interface)
+# Main library links all components
 target_link_libraries(ai-sdk-cpp
     INTERFACE
         ai::core
@@ -174,54 +149,44 @@ target_link_libraries(ai-sdk-cpp
         ai::anthropic
 )
 
-# Define all component availability for main library (interface)
+# Define all component availability for main library
 target_compile_definitions(ai-sdk-cpp
     INTERFACE
         AI_SDK_HAS_OPENAI=1
         AI_SDK_HAS_ANTHROPIC=1
 )
 
-# Define httplib configuration for core (where HTTP is used)
-target_compile_definitions(ai-sdk-cpp-core
-    PRIVATE
-        ${HTTPLIB_DEFINITIONS}
-)
+# List of all concrete component targets
+set(COMPONENT_TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic)
 
-# Compiler-specific options for concrete components
-target_compile_features(ai-sdk-cpp-core PRIVATE cxx_std_20)
-target_compile_features(ai-sdk-cpp-openai PRIVATE cxx_std_20)
-target_compile_features(ai-sdk-cpp-anthropic PRIVATE cxx_std_20)
-
-# Set appropriate compile options for concrete components (not interface library)
-foreach(target ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic)
-    if(MSVC)
-        target_compile_options(${target} PRIVATE /W4)
-        # Add Windows-specific definitions for better compatibility
-        target_compile_definitions(${target} PRIVATE 
-            WIN32_LEAN_AND_MEAN 
-            NOMINMAX
-            _WIN32_WINNT=0x0601  # Windows 7+
-        )
-    else()
-        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
-        # Add Unix-specific compile options for better compatibility
-        if(APPLE)
-            target_compile_options(${target} PRIVATE -stdlib=libc++)
-        endif()
+# Common compile options
+if(MSVC)
+    set(COMMON_WARNINGS /W4)
+    set(COMMON_PLATFORM_DEFS WIN32_LEAN_AND_MEAN NOMINMAX _WIN32_WINNT=0x0601)
+    set(DEBUG_FLAGS)
+    set(RELEASE_FLAGS)
+else()
+    set(COMMON_WARNINGS -Wall -Wextra -Wpedantic)
+    set(DEBUG_FLAGS -g -O0)
+    set(RELEASE_FLAGS -O3)
+    if(APPLE)
+        list(APPEND COMMON_WARNINGS -stdlib=libc++)
     endif()
+endif()
+
+# Apply common options to all components
+foreach(target ${COMPONENT_TARGETS})
+    target_compile_options(${target} PRIVATE 
+        ${COMMON_WARNINGS}
+        $<$<CONFIG:Debug>:${DEBUG_FLAGS}>
+        $<$<CONFIG:Release>:${RELEASE_FLAGS}>
+    )
     
-    # Set build-specific options
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_definitions(${target} PRIVATE AI_SDK_DEBUG=1)
-        if(NOT MSVC)
-            target_compile_options(${target} PRIVATE -g -O0)
-        endif()
-    else()
-        target_compile_definitions(${target} PRIVATE AI_SDK_RELEASE=1)
-        if(NOT MSVC)
-            target_compile_options(${target} PRIVATE -O3 -DNDEBUG)
-        endif()
-    endif()
+    target_compile_definitions(${target} PRIVATE
+        $<$<CONFIG:Debug>:AI_SDK_DEBUG=1>
+        $<$<CONFIG:Release>:AI_SDK_RELEASE=1;NDEBUG>
+        $<$<BOOL:${MSVC}>:${COMMON_PLATFORM_DEFS}>
+    )
 endforeach()
 
 # Examples
@@ -231,15 +196,16 @@ endif()
 
 # Tests
 if(BUILD_TESTS)
-    include(cmake/dependencies/googletest.cmake)
+    enable_testing()
     add_subdirectory(tests)
 endif()
 
 # Installation rules
 include(GNUInstallDirs)
 
-# Install all library components
-install(TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic ai-sdk-cpp nlohmann_json
+# Install all targets (httplib is internal only, not installed)
+set(ALL_TARGETS ${COMPONENT_TARGETS} ai-sdk-cpp nlohmann_json)
+install(TARGETS ${ALL_TARGETS}
     EXPORT ai-sdk-cpp-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
