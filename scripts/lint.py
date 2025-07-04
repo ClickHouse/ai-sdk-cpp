@@ -76,7 +76,7 @@ def find_cpp_files() -> List[Path]:
     """Find all C++ source files in the project."""
     project_dir = Path(__file__).parent.parent
     extensions = {".cc", ".cpp", ".cxx"}
-    exclude_dirs = {"build", "vcpkg_installed", ".cache", ".git"}
+    exclude_dirs = {"build", "vcpkg_installed", ".cache", ".git", "third_party"}
     
     files = []
     for ext in extensions:
