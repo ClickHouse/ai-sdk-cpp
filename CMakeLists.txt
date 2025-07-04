@@ -20,8 +20,10 @@ option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 # Include CPM package manager
 include(cmake/CPM.cmake)
 
-# Include all dependencies
-include(cmake/dependencies/nlohmann_json.cmake)
+# Add third party directory with submodules
+add_subdirectory(third_party)
+
+# Include remaining CPM dependencies
 include(cmake/dependencies/openssl.cmake)
 include(cmake/dependencies/httplib.cmake)  # This will include zlib and brotli
 include(cmake/dependencies/concurrentqueue.cmake)
@@ -238,7 +240,7 @@ endif()
 include(GNUInstallDirs)
 
 # Install all library components
-install(TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic ai-sdk-cpp
+install(TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic ai-sdk-cpp nlohmann_json
     EXPORT ai-sdk-cpp-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
