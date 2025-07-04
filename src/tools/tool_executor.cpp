@@ -69,14 +69,27 @@ std::vector<ToolResult> ToolExecutor::execute_tools(
     const std::vector<ToolCall>& tool_calls,
     const ToolSet& tools,
     const Messages& messages,
-    bool parallel) {
+    bool parallel,
+    const GenerateOptions* options) {
   std::vector<ToolResult> results;
   results.reserve(tool_calls.size());
 
   if (!parallel) {
     // Execute sequentially
     for (const auto& tool_call : tool_calls) {
-      results.push_back(execute_tool(tool_call, tools, messages));
+      // Call the on_tool_call_start callback if provided
+      if (options && options->on_tool_call_start.has_value()) {
+        options->on_tool_call_start.value()(tool_call);
+      }
+
+      auto result = execute_tool(tool_call, tools, messages);
+
+      // Call the on_tool_call_finish callback if provided
+      if (options && options->on_tool_call_finish.has_value()) {
+        options->on_tool_call_finish.value()(result);
+      }
+
+      results.push_back(result);
     }
   } else {
     // Execute in parallel using futures
@@ -97,6 +110,14 @@ std::vector<ToolResult> ToolExecutor::execute_tools(
   }
 
   return results;
+}
+
+std::vector<ToolResult> ToolExecutor::execute_tools_with_options(
+    const std::vector<ToolCall>& tool_calls,
+    const GenerateOptions& options,
+    bool parallel) {
+  return execute_tools(tool_calls, options.tools, options.messages, parallel,
+                       &options);
 }
 
 bool ToolExecutor::validate_tool_call(const ToolCall& tool_call,
