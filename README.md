@@ -264,6 +264,18 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - **C++ Standard**: C++20 or higher
 - **CMake**: 3.16 or higher
 
+## Dependencies and Modifications
+
+### nlohmann/json (Patched)
+
+This project uses a patched version of nlohmann/json to remove the dependency on `localeconv()`, which is not thread-safe. The patch ensures:
+
+- **Thread Safety**: Eliminates calls to the non-thread-safe `localeconv()` function, allowing downstream users to safely use the library in multi-threaded environments without worrying about locale-related race conditions
+- **Consistent Behavior**: Always uses '.' as the decimal point separator regardless of system locale
+- **Simplified Integration**: Downstream users don't need to implement locale synchronization or worry about thread safety issues
+
+This modification improves both safety and portability of the JSON library in concurrent applications.
+
 ## Acknowledgments
 
 Inspired by the excellent [Vercel AI SDK](https://github.com/vercel/ai) for TypeScript/JavaScript developers.
