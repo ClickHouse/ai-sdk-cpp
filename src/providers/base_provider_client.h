@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ai/retry/retry_policy.h"
 #include "ai/types/client.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"

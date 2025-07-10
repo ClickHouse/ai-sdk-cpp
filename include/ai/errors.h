@@ -5,6 +5,14 @@
 
 namespace ai {
 
+/// Check if an HTTP status code indicates a retryable error
+inline bool is_status_code_retryable(int status_code) {
+  return status_code == 408 ||  // Request Timeout
+         status_code == 409 ||  // Conflict
+         status_code == 429 ||  // Too Many Requests
+         status_code >= 500;    // Server errors (5xx)
+}
+
 /// Base class for all AI SDK errors
 class AIError : public std::runtime_error {
  public:
@@ -23,6 +31,11 @@ class APIError : public AIError {
         status_code_(status_code) {}
 
   int status_code() const { return status_code_; }
+
+  /// Check if the error is retryable based on status code
+  bool is_retryable() const {
+    return ai::is_status_code_retryable(status_code_);
+  }
 };
 
 /// Error related to authentication/authorization

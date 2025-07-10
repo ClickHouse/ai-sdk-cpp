@@ -87,6 +87,7 @@ struct GenerateResult {
   /// Error handling
   std::optional<std::string> error;
   std::vector<std::string> warnings;
+  std::optional<bool> is_retryable;
 
   /// Provider-specific metadata
   std::optional<std::string> provider_metadata;

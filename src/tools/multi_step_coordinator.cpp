@@ -122,7 +122,8 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
   }
 
   // Log if we hit the max steps limit
-  if (final_result.steps.size() == initial_options.max_steps &&
+  if (final_result.steps.size() ==
+          static_cast<size_t>(initial_options.max_steps) &&
       final_result.finish_reason != kFinishReasonStop) {
     ai::logger::log_debug("Reached max steps limit ({}) without completion",
                           initial_options.max_steps);

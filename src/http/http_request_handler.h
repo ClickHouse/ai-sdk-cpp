@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ai/retry/retry_policy.h"
 #include "ai/types/generate_options.h"
 
 #include <functional>
@@ -17,6 +18,9 @@ struct HttpConfig {
   int connection_timeout_sec = 30;
   int read_timeout_sec = 120;
   bool verify_ssl_cert = false;
+
+  // Retry configuration
+  retry::RetryConfig retry_config;
 };
 
 class HttpRequestHandler {
@@ -43,6 +47,12 @@ class HttpRequestHandler {
                               const std::string& body,
                               const std::string& content_type,
                               ResponseHandler handler);
+
+  // Execute a single HTTP request (used by retry logic)
+  GenerateResult execute_single_request(const std::string& path,
+                                        const httplib::Headers& headers,
+                                        const std::string& body,
+                                        const std::string& content_type);
 };
 
 }  // namespace http
