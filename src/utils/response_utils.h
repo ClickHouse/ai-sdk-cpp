@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ai/errors.h"
 #include "ai/logger.h"
 #include "ai/types/generate_options.h"
 
@@ -19,6 +20,9 @@ inline GenerateResult parse_standard_error_response(
   ai::logger::log_debug("Parsing error response - status: {}, body: {}",
                         status_code, body);
 
+  GenerateResult result;
+  result.is_retryable = ai::is_status_code_retryable(status_code);
+
   try {
     auto json = nlohmann::json::parse(body);
     if (json.contains("error")) {
@@ -32,7 +36,8 @@ inline GenerateResult parse_standard_error_response(
       ai::logger::log_error("{} API error parsed: {}", provider_name,
                             full_error);
 
-      return GenerateResult(full_error);
+      result.error = full_error;
+      return result;
     }
   } catch (...) {
     // If JSON parsing fails, return raw error
@@ -43,7 +48,8 @@ inline GenerateResult parse_standard_error_response(
       "HTTP " + std::to_string(status_code) + " error: " + body;
   ai::logger::log_error("{} API raw error: {}", provider_name, raw_error);
 
-  return GenerateResult(raw_error);
+  result.error = raw_error;
+  return result;
 }
 
 }  // namespace utils

@@ -1,6 +1,8 @@
 #include "http_request_handler.h"
 
 #include "ai/logger.h"
+#include "ai/retry/retry_policy.h"
+#include "utils/response_utils.h"
 
 namespace ai {
 namespace http {
@@ -40,11 +42,43 @@ GenerateResult HttpRequestHandler::post(const std::string& path,
                                         const httplib::Headers& headers,
                                         const std::string& body,
                                         const std::string& content_type) {
+  // Create a retry policy with the configured settings
+  retry::RetryPolicy retry_policy(config_.retry_config);
+
+  // Define the function to execute with retry
+  auto execute_request = [this, &path, &headers, &body,
+                          &content_type]() -> GenerateResult {
+    return execute_single_request(path, headers, body, content_type);
+  };
+
+  // Define the function to check if a result is retryable
+  std::function<bool(const GenerateResult&)> is_retryable =
+      [](const GenerateResult& result) -> bool {
+    return result.is_retryable.value_or(false);
+  };
+
+  try {
+    return retry_policy.execute_with_retry(execute_request, is_retryable);
+  } catch (const retry::RetryError& e) {
+    ai::logger::log_error("Request failed after retries: {}", e.what());
+    GenerateResult error_result(e.what());
+    error_result.is_retryable = false;  // Already retried
+    return error_result;
+  }
+}
+
+GenerateResult HttpRequestHandler::execute_single_request(
+    const std::string& path,
+    const httplib::Headers& headers,
+    const std::string& body,
+    const std::string& content_type) {
   auto handler = [](const httplib::Result& res,
                     const std::string& protocol) -> GenerateResult {
     if (!res) {
       ai::logger::log_error("{} request failed - no response", protocol);
-      return GenerateResult("Network error: Failed to connect to API");
+      GenerateResult result("Network error: Failed to connect to API");
+      result.is_retryable = true;  // Network errors are retryable
+      return result;
     }
 
     ai::logger::log_debug("Got response: status={}, body_size={}", res->status,
@@ -62,6 +96,7 @@ GenerateResult HttpRequestHandler::post(const std::string& path,
     error_result.error = res->body;
     error_result.finish_reason = kFinishReasonError;
     error_result.provider_metadata = std::to_string(res->status);
+    error_result.is_retryable = is_status_code_retryable(res->status);
     return error_result;
   };
 

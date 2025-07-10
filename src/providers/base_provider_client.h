@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ai/retry/retry_policy.h"
 #include "ai/types/client.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
@@ -21,6 +22,9 @@ struct ProviderConfig {
   std::string auth_header_name;    // e.g., "Authorization" or "x-api-key"
   std::string auth_header_prefix;  // e.g., "Bearer " or ""
   httplib::Headers extra_headers;  // Additional headers like anthropic-version
+
+  // Optional retry configuration
+  std::optional<retry::RetryConfig> retry_config;
 };
 
 // Interface for provider-specific request building

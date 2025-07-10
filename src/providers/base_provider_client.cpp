@@ -15,6 +15,12 @@ BaseProviderClient::BaseProviderClient(
       response_parser_(std::move(response_parser)) {
   // Initialize HTTP handler with parsed config
   auto http_config = http::HttpRequestHandler::parse_base_url(config.base_url);
+
+  // Apply custom retry config if provided
+  if (config.retry_config.has_value()) {
+    http_config.retry_config = config.retry_config.value();
+  }
+
   http_handler_ = std::make_unique<http::HttpRequestHandler>(http_config);
 
   ai::logger::log_debug(
