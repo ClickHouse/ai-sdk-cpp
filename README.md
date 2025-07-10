@@ -226,6 +226,40 @@ int main() {
 }
 ```
 
+#### Custom Retry Configuration
+
+Configure retry behavior for handling transient failures:
+
+```cpp
+#include <ai/openai.h>
+#include <ai/retry/retry_policy.h>
+
+int main() {
+    // Configure custom retry behavior
+    ai::retry::RetryConfig retry_config;
+    retry_config.max_retries = 5;        // More retries for unreliable networks
+    retry_config.initial_delay = std::chrono::milliseconds(1000);
+    retry_config.backoff_factor = 1.5;   // Gentler backoff
+    
+    // Create client with custom retry configuration
+    auto client = ai::openai::create_client(
+        "your-api-key",
+        "https://api.openai.com",
+        retry_config
+    );
+    
+    // The client will automatically retry on transient failures:
+    // - Network errors
+    // - HTTP 408, 409, 429 (rate limits), and 5xx errors
+    auto result = client.generate_text({
+        .model = ai::openai::models::kGpt4o,
+        .prompt = "Hello, world!"
+    });
+    
+    return 0;
+}
+```
+
 ## Features
 
 ### Currently Supported
@@ -239,6 +273,7 @@ int main() {
 
 - ✅ **Tool Calling**: Function calling and tool integration with multi-step support
 - ✅ **Async Tools**: Asynchronous tool execution with parallel processing
+- ✅ **Configurable Retries**: Customizable retry behavior with exponential backoff
 
 ### Coming Soon
 
@@ -254,6 +289,7 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - [Streaming Chat](examples/streaming_chat.cpp)
 - [Multi-provider Comparison](examples/multi_provider.cpp)
 - [Error Handling](examples/error_handling.cpp)
+- [Retry Configuration](examples/retry_config_example.cpp)
 - [Basic Tool Calling](examples/tool_calling_basic.cpp)
 - [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
 - [Async Tool Execution](examples/tool_calling_async.cpp)

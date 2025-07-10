@@ -27,6 +27,24 @@ OpenAIClient::OpenAIClient(const std::string& api_key,
                         base_url);
 }
 
+OpenAIClient::OpenAIClient(const std::string& api_key,
+                           const std::string& base_url,
+                           const retry::RetryConfig& retry_config)
+    : BaseProviderClient(
+          providers::ProviderConfig{.api_key = api_key,
+                                    .base_url = base_url,
+                                    .endpoint_path = "/v1/chat/completions",
+                                    .auth_header_name = "Authorization",
+                                    .auth_header_prefix = "Bearer ",
+                                    .extra_headers = {},
+                                    .retry_config = retry_config},
+          std::make_unique<OpenAIRequestBuilder>(),
+          std::make_unique<OpenAIResponseParser>()) {
+  ai::logger::log_debug(
+      "OpenAI client initialized with base_url: {} and custom retry config",
+      base_url);
+}
+
 StreamResult OpenAIClient::stream_text(const StreamOptions& options) {
   ai::logger::log_debug(
       "Starting text streaming - model: {}, prompt length: {}", options.model,

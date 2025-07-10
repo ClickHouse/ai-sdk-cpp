@@ -5,6 +5,7 @@
     "OpenAI component not available. Link with ai::openai or ai::sdk to use OpenAI functionality."
 #endif
 
+#include "retry/retry_policy.h"
 #include "types/client.h"
 
 #include <string>
@@ -36,6 +37,15 @@ Client create_client(const std::string& api_key);
 /// @param base_url Custom base URL (for OpenAI-compatible APIs)
 /// @return Configured OpenAI client
 Client create_client(const std::string& api_key, const std::string& base_url);
+
+/// Create an OpenAI client with custom configuration and retry settings
+/// @param api_key OpenAI API key
+/// @param base_url Custom base URL (for OpenAI-compatible APIs)
+/// @param retry_config Custom retry configuration
+/// @return Configured OpenAI client
+Client create_client(const std::string& api_key,
+                     const std::string& base_url,
+                     const retry::RetryConfig& retry_config);
 
 }  // namespace openai
 }  // namespace ai

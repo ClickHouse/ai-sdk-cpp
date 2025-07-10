@@ -27,5 +27,12 @@ Client create_client(const std::string& api_key, const std::string& base_url) {
   return Client(std::make_unique<OpenAIClient>(api_key, base_url));
 }
 
+Client create_client(const std::string& api_key,
+                     const std::string& base_url,
+                     const retry::RetryConfig& retry_config) {
+  return Client(
+      std::make_unique<OpenAIClient>(api_key, base_url, retry_config));
+}
+
 }  // namespace openai
 }  // namespace ai

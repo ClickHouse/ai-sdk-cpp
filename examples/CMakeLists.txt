@@ -34,6 +34,9 @@ add_ai_example(multi_provider multi_provider.cpp)
 # Error handling demonstration
 add_ai_example(error_handling error_handling.cpp)
 
+# Retry configuration example
+add_ai_example(retry_config_example retry_config_example.cpp)
+
 # Simple test examples
 add_ai_example(test_openai test_openai.cpp)
 add_ai_example(test_anthropic test_anthropic.cpp)
