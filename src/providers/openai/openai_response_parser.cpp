@@ -16,7 +16,12 @@ GenerateResult OpenAIResponseParser::parse_success_response(
   result.id = response.value("id", "");
   result.model = response.value("model", "");
   result.created = response.value("created", 0);
-  result.system_fingerprint = response.value("system_fingerprint", "");
+
+  // Handle system_fingerprint which can be null or string
+  if (auto it = response.find("system_fingerprint");
+      it != response.end() && !it->is_null()) {
+    result.system_fingerprint = it->get<std::string>();
+  }
 
   ai::logger::log_debug("Response ID: {}, Model: {}",
                         result.id.value_or("none"),
