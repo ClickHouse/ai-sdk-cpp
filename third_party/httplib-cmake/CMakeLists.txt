@@ -9,9 +9,9 @@ add_library(httplib::httplib ALIAS httplib)
 set(HTTPLIB_BUILD_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 file(MAKE_DIRECTORY ${HTTPLIB_BUILD_INCLUDE_DIR})
 
-# Copy httplib.h to the build include directory
+# Copy httplib.h to the build include directory from header-only directory
 configure_file(
-    ${AI_SDK_THIRD_PARTY_DIR}/httplib/httplib.h
+    ${AI_SDK_THIRD_PARTY_DIR}/httplib-header-only/httplib.h
     ${HTTPLIB_BUILD_INCLUDE_DIR}/httplib.h
     COPYONLY
 )
