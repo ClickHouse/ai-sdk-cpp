@@ -18,21 +18,25 @@ HttpConfig HttpRequestHandler::parse_base_url(const std::string& base_url) {
   HttpConfig config;
   std::string url = base_url;
 
-  // Extract protocol and host
+  // Extract protocol
   if (url.starts_with("https://")) {
-    config.host = url.substr(8);
+    url = url.substr(8);
     config.use_ssl = true;
   } else if (url.starts_with("http://")) {
-    config.host = url.substr(7);
+    url = url.substr(7);
     config.use_ssl = false;
   } else {
-    config.host = url;
     config.use_ssl = true;
   }
 
-  // Remove trailing slash and path if any
-  if (auto pos = config.host.find('/'); pos != std::string::npos) {
-    config.host = config.host.substr(0, pos);
+  // Extract host and path
+  auto pos = url.find('/');
+  config.host = (pos != std::string::npos) ? url.substr(0, pos) : url;
+  config.base_path = (pos != std::string::npos) ? url.substr(pos) : "";
+
+  // Remove trailing slash from base_path if present
+  if (!config.base_path.empty() && config.base_path.back() == '/') {
+    config.base_path.pop_back();
   }
 
   return config;
@@ -109,9 +113,13 @@ GenerateResult HttpRequestHandler::make_request(const std::string& path,
                                                 const std::string& content_type,
                                                 ResponseHandler handler) {
   try {
-    ai::logger::log_debug(
-        "Making {} request to {}:{}{}", config_.use_ssl ? "HTTPS" : "HTTP",
-        config_.host, path, " with body size: " + std::to_string(body.size()));
+    // Combine base_path with the endpoint path
+    std::string full_path = config_.base_path + path;
+
+    ai::logger::log_debug("Making {} request to {}:{}{}",
+                          config_.use_ssl ? "HTTPS" : "HTTP", config_.host,
+                          full_path,
+                          " with body size: " + std::to_string(body.size()));
 
     if (config_.use_ssl) {
       httplib::SSLClient cli(config_.host);
@@ -119,14 +127,14 @@ GenerateResult HttpRequestHandler::make_request(const std::string& path,
       cli.set_read_timeout(config_.read_timeout_sec, 0);
       cli.enable_server_certificate_verification(config_.verify_ssl_cert);
 
-      auto res = cli.Post(path, headers, body, content_type);
+      auto res = cli.Post(full_path, headers, body, content_type);
       return handler(res, "HTTPS");
     } else {
       httplib::Client cli(config_.host);
       cli.set_connection_timeout(config_.connection_timeout_sec, 0);
       cli.set_read_timeout(config_.read_timeout_sec, 0);
 
-      auto res = cli.Post(path, headers, body, content_type);
+      auto res = cli.Post(full_path, headers, body, content_type);
       return handler(res, "HTTP");
     }
   } catch (const std::exception& e) {

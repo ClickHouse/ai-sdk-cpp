@@ -1,6 +1,7 @@
 #include "openai_stream.h"
 
 #include "ai/logger.h"
+#include "http/http_request_handler.h"
 
 #include <chrono>
 #include <mutex>
@@ -10,8 +11,6 @@ constexpr auto kEventTimeout = static_cast<std::chrono::seconds>(30);
 constexpr auto kSleepInterval = std::chrono::milliseconds(1);
 constexpr auto kConnectionTimeout = 30;  // seconds
 constexpr auto kReadTimeout = 300;       // 5 minutes for long generations
-const std::string kOpenAIHost = "api.openai.com";
-const std::string kChatCompletionsPath = "/v1/chat/completions";
 }  // namespace
 
 namespace ai {
@@ -93,14 +92,29 @@ void OpenAIStreamImpl::stop_stream() {
   }
 }
 
-void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
+void OpenAIStreamImpl::run_stream(const std::string& url,
                                   const httplib::Headers& headers,
                                   const nlohmann::json& request_body) {
-  ai::logger::log_debug("Stream thread started - connecting to {}",
-                        kOpenAIHost);
+  // Extract host and path from URL
+  std::string_view url_view(url);
+
+  // Skip protocol
+  if (auto pos = url_view.find("://"); pos != std::string_view::npos) {
+    url_view.remove_prefix(pos + 3);
+  }
+
+  // Split host and path
+  auto slash_pos = url_view.find('/');
+  std::string host(url_view.substr(0, slash_pos));
+  std::string path = (slash_pos != std::string_view::npos)
+                         ? std::string(url_view.substr(slash_pos))
+                         : "/v1/chat/completions";
+
+  ai::logger::log_debug(
+      "Stream thread started - connecting to {} with path: {}", host, path);
 
   try {
-    httplib::SSLClient client(kOpenAIHost);
+    httplib::SSLClient client(host);
     client.enable_server_certificate_verification(true);
     client.set_connection_timeout(kConnectionTimeout);
     client.set_read_timeout(kReadTimeout);
@@ -114,14 +128,14 @@ void OpenAIStreamImpl::run_stream(const std::string& /*url*/,
     // Create request
     httplib::Request req;
     req.method = "POST";
-    req.path = kChatCompletionsPath;
+    req.path = path;
     req.headers = headers;
     req.body = request_body.dump();
     req.set_header("Content-Type", "application/json");
 
     ai::logger::log_debug(
-        "Stream request prepared - path: {}, body size: {} bytes",
-        kChatCompletionsPath, req.body.length());
+        "Stream request prepared - path: {}, body size: {} bytes", path,
+        req.body.length());
 
     // Set content receiver for streaming response
     req.content_receiver = [this, &accumulated_data](
