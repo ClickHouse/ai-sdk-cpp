@@ -260,6 +260,52 @@ int main() {
 }
 ```
 
+#### Using OpenAI-Compatible APIs (OpenRouter, etc.)
+
+The OpenAI client can be used with any OpenAI-compatible API by specifying a custom base URL. This allows you to use alternative providers like OpenRouter, which offers access to multiple models through a unified API.
+
+```cpp
+#include <ai/openai.h>
+#include <ai/generate.h>
+#include <iostream>
+#include <cstdlib>
+
+int main() {
+    // Get API key from environment variable
+    const char* api_key = std::getenv("OPENROUTER_API_KEY");
+    if (!api_key) {
+        std::cerr << "Please set OPENROUTER_API_KEY environment variable\n";
+        return 1;
+    }
+    
+    // Create client with OpenRouter's base URL
+    auto client = ai::openai::create_client(
+        api_key,
+        "https://openrouter.ai/api"  // OpenRouter's OpenAI-compatible endpoint
+    );
+    
+    // Use any model available on OpenRouter
+    auto result = client.generate_text({
+        .model = "anthropic/claude-3.5-sonnet",  // or "meta-llama/llama-3.1-8b-instruct", etc.
+        .system = "You are a helpful assistant.",
+        .prompt = "What are the benefits of using OpenRouter?"
+    });
+    
+    if (result) {
+        std::cout << result->text << std::endl;
+    }
+    
+    return 0;
+}
+```
+
+This approach works with any OpenAI-compatible API provider. Simply provide:
+1. Your provider's API key
+2. The provider's base URL endpoint
+3. Model names as specified by your provider
+
+See the [OpenRouter example](examples/openrouter_example.cpp) for a complete demonstration.
+
 ## Features
 
 ### Currently Supported
@@ -293,6 +339,7 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - [Basic Tool Calling](examples/tool_calling_basic.cpp)
 - [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
 - [Async Tool Execution](examples/tool_calling_async.cpp)
+- [OpenRouter Integration](examples/openrouter_example.cpp) - Using OpenAI-compatible APIs
 
 
 ## Requirements

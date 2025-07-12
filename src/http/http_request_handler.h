@@ -14,6 +14,8 @@ namespace http {
 
 struct HttpConfig {
   std::string host;
+  std::string base_path;  // Base path from URL (e.g., "/api" from
+                          // "https://openrouter.ai/api")
   bool use_ssl = true;
   int connection_timeout_sec = 30;
   int read_timeout_sec = 120;
