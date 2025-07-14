@@ -72,5 +72,9 @@ std::string AnthropicClient::config_info() const {
   return "Anthropic API (base_url: " + config_.base_url + ")";
 }
 
+std::string AnthropicClient::default_model() const {
+  return models::kDefaultModel;
+}
+
 }  // namespace anthropic
 }  // namespace ai

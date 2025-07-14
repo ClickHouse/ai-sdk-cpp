@@ -89,5 +89,9 @@ std::string OpenAIClient::config_info() const {
   return "OpenAI API (base_url: " + config_.base_url + ")";
 }
 
+std::string OpenAIClient::default_model() const {
+  return models::kDefaultModel;
+}
+
 }  // namespace openai
 }  // namespace ai

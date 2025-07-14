@@ -16,7 +16,7 @@ int main() {
     // Test simple generation
     std::cout << "Testing Anthropic text generation...\n\n";
 
-    ai::GenerateOptions options(ai::anthropic::models::kClaude35Haiku,
+    ai::GenerateOptions options(ai::anthropic::models::kClaudeHaiku35,
                                 "You are a helpful assistant.",
                                 "Why is the sky blue? Give a short answer.");
 
@@ -35,7 +35,7 @@ int main() {
     std::cout << "\nTesting streaming...\n";
 
     ai::GenerateOptions stream_opts(
-        ai::anthropic::models::kClaude35Haiku,
+        ai::anthropic::models::kClaudeHaiku35,
         "Count from 1 to 5 slowly and with each number say 'tick'");
     ai::StreamOptions stream_options(stream_opts);
 

@@ -439,5 +439,60 @@ TEST_F(EnvironmentConfigTest, DefaultClientCreation) {
   }
 }
 
+TEST_F(OpenAIIntegrationTest, DefaultModelGeneration) {
+  if (!use_real_api_) {
+    GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
+  }
+
+  // Test generate_text using default_model()
+  GenerateOptions options(client_->default_model(), "Count to 3");
+  options.max_tokens = 50;
+
+  auto result = client_->generate_text(options);
+
+  TestAssertions::assertSuccess(result);
+  EXPECT_FALSE(result.text.empty());
+
+  // Verify we're using the expected default model
+  EXPECT_EQ(client_->default_model(), ai::openai::models::kDefaultModel);
+  if (result.model.has_value()) {
+    EXPECT_TRUE(result.model.value().find(client_->default_model()) !=
+                std::string::npos);
+  }
+}
+
+TEST_F(OpenAIIntegrationTest, DefaultModelStreaming) {
+  if (!use_real_api_) {
+    GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
+  }
+
+  // Test stream_text using default_model()
+  GenerateOptions gen_options(client_->default_model(), "Count from 1 to 3");
+  gen_options.max_tokens = 50;
+  StreamOptions options(gen_options);
+
+  auto stream = client_->stream_text(options);
+
+  bool received_text = false;
+  bool stream_finished = false;
+  std::string accumulated_text;
+
+  for (const auto& event : stream) {
+    if (event.is_text_delta()) {
+      received_text = true;
+      accumulated_text += event.text_delta;
+    } else if (event.is_finish()) {
+      stream_finished = true;
+      break;
+    } else if (event.is_error()) {
+      FAIL() << "Streaming error: " << event.error.value_or("unknown");
+    }
+  }
+
+  EXPECT_TRUE(received_text) << "Should have received text deltas";
+  EXPECT_TRUE(stream_finished) << "Stream should have finished";
+  EXPECT_FALSE(accumulated_text.empty()) << "Should have accumulated some text";
+}
+
 }  // namespace test
 }  // namespace ai

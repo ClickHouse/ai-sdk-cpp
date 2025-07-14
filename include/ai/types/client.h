@@ -67,6 +67,13 @@ class Client {
     return "No configuration";
   }
 
+  virtual std::string default_model() const {
+    if (pimpl_) {
+      return pimpl_->default_model();
+    }
+    return "";
+  }
+
  private:
   std::unique_ptr<Client> pimpl_;
 };

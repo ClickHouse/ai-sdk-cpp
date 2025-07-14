@@ -7,6 +7,7 @@
 
 #include "types/client.h"
 
+#include <optional>
 #include <string>
 
 namespace ai {
@@ -14,11 +15,19 @@ namespace anthropic {
 
 namespace models {
 /// Common Anthropic model identifiers
-constexpr const char* kClaude35Sonnet = "claude-3-5-sonnet-20241022";
-constexpr const char* kClaude35Haiku = "claude-3-5-haiku-20241022";
-constexpr const char* kClaude3Opus = "claude-3-opus-20240229";
-constexpr const char* kClaude3Sonnet = "claude-3-sonnet-20240229";
-constexpr const char* kClaude3Haiku = "claude-3-haiku-20240307";
+constexpr const char* kClaudeOpus4 =
+    "claude-opus-4-0";  // claude-opus-4-20250514
+constexpr const char* kClaudeSonnet4 =
+    "claude-sonnet-4-0";  // claude-sonnet-4-20250514
+constexpr const char* kClaudeSonnet37 =
+    "claude-3-7-sonnet-latest";  // claude-3-7-sonnet-20250219
+constexpr const char* kClaudeSonnet35 =
+    "claude-3-5-sonnet-latest";  // claude-3-5-sonnet-20241022
+constexpr const char* kClaudeHaiku35 =
+    "claude-3-5-haiku-latest";  // claude-3-5-haiku-20241022
+
+/// Default model used when none is specified
+constexpr const char* kDefaultModel = kClaudeSonnet35;
 }  // namespace models
 
 /// Create an Anthropic client with default configuration
@@ -36,6 +45,13 @@ Client create_client(const std::string& api_key);
 /// @param base_url Custom base URL (for Anthropic-compatible APIs)
 /// @return Configured Anthropic client
 Client create_client(const std::string& api_key, const std::string& base_url);
+
+/// Try to create an Anthropic client using environment variables
+/// Reads API key from ANTHROPIC_API_KEY environment variable
+/// @return Optional client - has value if environment variable is set, empty
+/// otherwise
+/// @note This is useful for chaining creation attempts with other providers
+std::optional<Client> try_create_client();
 
 }  // namespace anthropic
 }  // namespace ai

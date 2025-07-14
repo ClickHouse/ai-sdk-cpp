@@ -4,23 +4,26 @@
 
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 namespace ai {
 namespace openai {
+
+namespace {
+constexpr const char* kDefaultBaseUrl = "https://api.openai.com";
+}  // namespace
 
 Client create_client() {
   const char* api_key = std::getenv("OPENAI_API_KEY");
   if (!api_key) {
     throw std::runtime_error("OPENAI_API_KEY environment variable not set");
   }
-  return Client(
-      std::make_unique<OpenAIClient>(api_key, "https://api.openai.com"));
+  return Client(std::make_unique<OpenAIClient>(api_key, kDefaultBaseUrl));
 }
 
 Client create_client(const std::string& api_key) {
-  return Client(
-      std::make_unique<OpenAIClient>(api_key, "https://api.openai.com"));
+  return Client(std::make_unique<OpenAIClient>(api_key, kDefaultBaseUrl));
 }
 
 Client create_client(const std::string& api_key, const std::string& base_url) {
@@ -32,6 +35,14 @@ Client create_client(const std::string& api_key,
                      const retry::RetryConfig& retry_config) {
   return Client(
       std::make_unique<OpenAIClient>(api_key, base_url, retry_config));
+}
+
+std::optional<Client> try_create_client() {
+  const char* api_key = std::getenv("OPENAI_API_KEY");
+  if (!api_key) {
+    return std::nullopt;
+  }
+  return Client(std::make_unique<OpenAIClient>(api_key, kDefaultBaseUrl));
 }
 
 }  // namespace openai

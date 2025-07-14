@@ -52,8 +52,8 @@ int main() {
     auto anthropic_client = ai::anthropic::create_client();
     std::cout << "✓ Anthropic client created successfully\n";
     std::cout << "✓ Available models: "
-              << ai::anthropic::models::kClaude35Sonnet << ", "
-              << ai::anthropic::models::kClaude35Haiku << "\n";
+              << ai::anthropic::models::kClaudeSonnet35 << ", "
+              << ai::anthropic::models::kClaudeHaiku35 << "\n";
   } catch (const std::exception& e) {
     std::cout << "✗ Anthropic client failed: " << e.what() << "\n";
   }
