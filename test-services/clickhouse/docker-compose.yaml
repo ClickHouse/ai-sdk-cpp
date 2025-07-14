@@ -1,0 +1,13 @@
+services:
+  ai-sdk-cpp-clickhouse-server:
+    image: clickhouse/clickhouse-server
+    container_name: ai-sdk-cpp-clickhouse-server
+    ports:
+      - "18123:8123"
+      - "19000:9000"
+    environment:
+      CLICKHOUSE_PASSWORD: changeme
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144

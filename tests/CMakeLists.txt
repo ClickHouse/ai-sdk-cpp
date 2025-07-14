@@ -11,6 +11,7 @@ add_executable(ai_tests
     integration/openai_integration_test.cpp
     integration/anthropic_integration_test.cpp
     integration/tool_calling_integration_test.cpp
+    integration/clickhouse_integration_test.cpp
     
     # Utility classes
     utils/mock_openai_client.cpp
@@ -27,6 +28,7 @@ target_link_libraries(ai_tests
         GTest::gtest
         GTest::gtest_main
         GTest::gmock
+        ClickHouse::Client  # ClickHouse C++ client for integration tests
 )
 
 # Include directories for tests
