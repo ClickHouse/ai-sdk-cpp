@@ -16,6 +16,17 @@ jobs:
       matrix:
         build_type: [debug, release]
 
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server
+        ports:
+          - 18123:8123
+          - 19000:9000
+        env:
+          CLICKHOUSE_PASSWORD: changeme
+        options: >-
+          --ulimit nofile=262144:262144
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
