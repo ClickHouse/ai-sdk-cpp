@@ -25,6 +25,7 @@ class OpenAIClient : public providers::BaseProviderClient {
   std::vector<std::string> supported_models() const override;
   bool supports_model(const std::string& model_name) const override;
   std::string config_info() const override;
+  std::string default_model() const override;
 
   // Member access for testing
   const std::string& get_api_key() const { return config_.api_key; }
