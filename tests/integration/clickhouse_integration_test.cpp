@@ -36,43 +36,40 @@ const std::string kClickhouseUser = "default";
 const std::string kClickhousePassword = "changeme";
 
 // System prompt for SQL generation
-const std::string kSystemPrompt = R"(You are a ClickHouse SQL code generator.
+const std::string kSystemPrompt = R"(You are a ClickHouse SQL code generator. Your ONLY job is to output SQL statements wrapped in <sql> tags.
 
-CRITICAL INSTRUCTION: When you have gathered the information you need from tools, your final message must contain ONLY the SQL statement. No explanations, no markdown, just the raw SQL.
+TOOLS AVAILABLE:
+- list_databases(): Lists all databases
+- list_tables_in_database(database): Lists tables in a specific database  
+- get_schema_for_table(database, table): Gets schema for existing tables only
 
-TOOLS:
-- list_databases(): Lists databases
-- list_tables_in_database(database): Lists tables in a database
-- get_schema_for_table(database, table): Gets table schema
+CRITICAL RULES:
+1. ALWAYS output SQL wrapped in <sql> tags, no matter what
+2. NEVER ask questions or request clarification
+3. NEVER explain your SQL or add any other text
+4. NEVER use markdown code blocks (```sql)
+5. For CREATE TABLE requests, ALWAYS generate a reasonable schema based on the table name
 
-ABSOLUTE RULES:
-1. Use tools first if you need schema information
-2. After using tools, output ONLY the SQL query
-3. NEVER include explanations, markdown blocks, or commentary in your final output
-4. Your final message = SQL statement only
+RESPONSE FORMAT - Must be EXACTLY:
+<sql>
+[SQL STATEMENT]
+</sql>
 
-WORKFLOW EXAMPLE:
-User: "insert 3 rows into users table in test_db"
-Step 1: Call get_schema_for_table("test_db", "users") 
-Step 2: Output: INSERT INTO test_db.users VALUES (1, 'Alice', 25), (2, 'Bob', 30), (3, 'Charlie', 35);
+TASK-SPECIFIC INSTRUCTIONS:
 
-CORRECT FINAL OUTPUTS:
-CREATE TABLE github_events (id UInt64, type String, actor_id UInt64, actor_login String, repo_id UInt64, repo_name String, created_at DateTime, payload String) ENGINE = MergeTree() ORDER BY (created_at, repo_id);
-INSERT INTO users VALUES (1, 'Alice', 25), (2, 'Bob', 30), (3, 'Charlie', 35);
-SELECT * FROM users;
+For "create a table named X for github events":
+- Generate CREATE TABLE with columns: id String, type String, actor_id UInt64, actor_login String, repo_id UInt64, repo_name String, created_at DateTime, payload String
+- Use MergeTree() engine with ORDER BY (created_at, repo_id)
 
-IMPORTANT: For CREATE TABLE statements, use String type for complex data instead of JSON type.
+For "insert 3 rows into users table":
+- If table exists, check schema with tools
+- Generate INSERT with columns: id, name, age
+- Use sample data like (1, 'Alice', 28), (2, 'Bob', 35), (3, 'Charlie', 42)
 
-INCORRECT OUTPUTS (NEVER DO THIS):
-"Here is the SQL: INSERT INTO..."
-"```sql\nSELECT * FROM users;\n```"
-"The query would be: SELECT..."
-Any text before or after the SQL
-```sql CREATE TABLE ... ```  (NO CODE BLOCKS!)
+For "show all users from X" or "find all Y from X":
+- Generate appropriate SELECT statement
 
-CRITICAL: Do NOT wrap SQL in markdown code blocks with ```sql or ```. Just output the raw SQL.
-
-Your final output must be executable SQL only.)";
+IMPORTANT: Even if you use tools and find the database/table doesn't exist, still generate the SQL as requested. The test will handle any errors.)";
 
 // Tool implementations
 class ClickHouseTools {
@@ -194,6 +191,8 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
   void SetUp() override {
     // Generate random suffix for table names to allow parallel test execution
     table_suffix_ = generateRandomSuffix();
+    // Use unique database name for each test to allow parallel execution
+    test_db_name_ = "test_db_" + generateRandomSuffix();
 
     // Initialize ClickHouse client
     clickhouse::ClientOptions options;
@@ -204,8 +203,8 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
 
     clickhouse_client_ = std::make_shared<clickhouse::Client>(options);
 
-    // Create test database
-    clickhouse_client_->Execute("CREATE DATABASE IF NOT EXISTS test_db");
+    // Create test database with unique name
+    clickhouse_client_->Execute("CREATE DATABASE IF NOT EXISTS " + test_db_name_);
 
     // Initialize tools
     tools_helper_ = std::make_unique<ClickHouseTools>(clickhouse_client_);
@@ -224,7 +223,7 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
         return;
       }
       client_ = std::make_shared<Client>(openai::create_client());
-      model_ = openai::models::kGpt4o;
+      model_ = openai::models::kO4Mini;
     } else if (provider_type_ == "anthropic") {
       const char* api_key = std::getenv("ANTHROPIC_API_KEY");
       if (!api_key) {
@@ -240,7 +239,7 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
   void TearDown() override {
     // Clean up test database
     if (clickhouse_client_) {
-      clickhouse_client_->Execute("DROP DATABASE IF EXISTS test_db");
+      clickhouse_client_->Execute("DROP DATABASE IF EXISTS " + test_db_name_);
     }
   }
 
@@ -249,13 +248,8 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
     options.system = kSystemPrompt;
     options.tools = tools_;
     options.max_tokens = 1000;
-    options.max_steps = 5;  // Allow multiple rounds of tool calls
-
-    // Log the prompt being sent
-    std::cout << "\n=== SQL Generation Request ===" << std::endl;
-    std::cout << "Prompt: " << prompt << std::endl;
-    std::cout << "Model: " << model_ << std::endl;
-    std::cout << "Provider: " << provider_type_ << std::endl;
+    options.max_steps = 5;
+    options.temperature = 1;
 
     auto result = client_->generate_text(options);
 
@@ -263,82 +257,45 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
       throw std::runtime_error("Failed to generate SQL: " +
                                result.error_message());
     }
-
-    std::cout << "\n=== SQL Generation Response ===" << std::endl;
-    std::cout << "Raw AI response: '" << result.text << "'" << std::endl;
-    std::cout << "Tool calls made: " << result.tool_calls.size() << std::endl;
-    std::cout << "Tool results: " << result.tool_results.size() << std::endl;
-    std::cout << "Steps taken: " << result.steps.size() << std::endl;
-
-    // For multi-step results, we want only the final step's text
+    
+    // Extract SQL from the final response text
+    std::string response_text = result.text;
     if (!result.steps.empty()) {
-      // Debug all steps
-      for (size_t i = 0; i < result.steps.size(); ++i) {
-        const auto& step = result.steps[i];
-        std::cout << "\n--- Step " << i + 1 << " ---" << std::endl;
-        std::cout << "Text: '" << step.text << "'" << std::endl;
-        std::cout << "Tool calls: " << step.tool_calls.size() << std::endl;
-        for (const auto& tool_call : step.tool_calls) {
-          std::cout << "  - Tool: " << tool_call.tool_name
-                    << " (id: " << tool_call.id << ")" << std::endl;
-          std::cout << "    Args: " << tool_call.arguments.dump() << std::endl;
-        }
-        std::cout << "Tool results: " << step.tool_results.size() << std::endl;
-        for (const auto& tool_result : step.tool_results) {
-          std::cout << "  - Result for " << tool_result.tool_name
-                    << " (id: " << tool_result.tool_call_id << ")" << std::endl;
-          if (tool_result.is_success()) {
-            std::cout << "    Success: " << tool_result.result.dump()
-                      << std::endl;
-          } else {
-            std::cout << "    Error: " << tool_result.error_message()
-                      << std::endl;
-          }
-        }
-        std::cout << "Finish reason: " << step.finish_reason << std::endl;
-      }
-
-      // Find the last step with non-empty text
+      // Get the last non-empty step's text
       for (auto it = result.steps.rbegin(); it != result.steps.rend(); ++it) {
         if (!it->text.empty()) {
-          std::cout << "\nReturning text from final step: '" << it->text << "'"
-                    << std::endl;
-          return it->text;
+          response_text = it->text;
+          break;
         }
       }
     }
-
-    return result.text;
+    
+    return extractSQL(response_text);
   }
 
-  // Utility to clean SQL from markdown blocks if present
-  std::string cleanSQL(const std::string& sql) {
-    std::string cleaned = sql;
-
-    // Remove leading/trailing whitespace
-    size_t start = cleaned.find_first_not_of(" \t\n\r");
-    size_t end = cleaned.find_last_not_of(" \t\n\r");
-    if (start != std::string::npos && end != std::string::npos) {
-      cleaned = cleaned.substr(start, end - start + 1);
+  // Extract SQL from <sql> tags
+  std::string extractSQL(const std::string& input) {
+    size_t start = input.find("<sql>");
+    if (start == std::string::npos) {
+      throw std::runtime_error("No <sql> tag found in response: " + input);
     }
-
-    // Check if wrapped in markdown code blocks
-    if (cleaned.substr(0, 6) == "```sql" || cleaned.substr(0, 3) == "```") {
-      size_t code_start = cleaned.find('\n');
-      size_t code_end = cleaned.rfind("```");
-      if (code_start != std::string::npos && code_end != std::string::npos &&
-          code_end > code_start) {
-        cleaned = cleaned.substr(code_start + 1, code_end - code_start - 1);
-        // Trim again
-        start = cleaned.find_first_not_of(" \t\n\r");
-        end = cleaned.find_last_not_of(" \t\n\r");
-        if (start != std::string::npos && end != std::string::npos) {
-          cleaned = cleaned.substr(start, end - start + 1);
-        }
-      }
+    start += 5; // Length of "<sql>"
+    
+    size_t end = input.find("</sql>", start);
+    if (end == std::string::npos) {
+      throw std::runtime_error("No closing </sql> tag found in response: " + input);
     }
-
-    return cleaned;
+    
+    std::string sql = input.substr(start, end - start);
+    
+    // Trim whitespace
+    size_t first = sql.find_first_not_of(" \t\n\r");
+    size_t last = sql.find_last_not_of(" \t\n\r");
+    if (first != std::string::npos && last != std::string::npos) {
+      sql = sql.substr(first, last - first + 1);
+    }
+    
+    return sql;
   }
 
   std::shared_ptr<clickhouse::Client> clickhouse_client_;
@@ -348,6 +305,7 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
   std::string model_;
   std::string provider_type_;
   std::string table_suffix_;
+  std::string test_db_name_;
   bool use_real_api_ = false;
 };
 
@@ -360,24 +318,21 @@ TEST_P(ClickHouseIntegrationTest, CreateTableForGithubEvents) {
   std::string table_name = "github_events_" + table_suffix_;
 
   // Clean up any existing table
-  clickhouse_client_->Execute("DROP TABLE IF EXISTS test_db." + table_name);
+  clickhouse_client_->Execute("DROP TABLE IF EXISTS " + test_db_name_ + "." + table_name);
   clickhouse_client_->Execute("DROP TABLE IF EXISTS default." + table_name);
 
   std::string sql =
       executeSQLGeneration("create a table named " + table_name +
-                           " for github events in test_db database");
-
-  // Clean SQL in case it's wrapped in markdown
-  sql = cleanSQL(sql);
+                           " for github events in " + test_db_name_ + " database");
 
   // Execute the generated SQL
-  ASSERT_NO_THROW(clickhouse_client_->Execute("USE test_db"));
+  ASSERT_NO_THROW(clickhouse_client_->Execute("USE " + test_db_name_));
   ASSERT_NO_THROW(clickhouse_client_->Execute(sql));
 
   // Verify table was created
   bool table_exists = false;
   clickhouse_client_->Select(
-      "EXISTS TABLE test_db." + table_name,
+      "EXISTS TABLE " + test_db_name_ + "." + table_name,
       [&table_exists](const clickhouse::Block& block) {
         if (block.GetRowCount() > 0) {
           table_exists = block[0]->As<clickhouse::ColumnUInt8>()->At(0);
@@ -394,7 +349,7 @@ TEST_P(ClickHouseIntegrationTest, InsertAndQueryData) {
   std::string table_name = "users_" + table_suffix_;
 
   // First create a users table
-  clickhouse_client_->Execute("USE test_db");
+  clickhouse_client_->Execute("USE " + test_db_name_);
   clickhouse_client_->Execute("DROP TABLE IF EXISTS " + table_name);
   clickhouse_client_->Execute(
       "CREATE TABLE " + table_name +
@@ -402,13 +357,12 @@ TEST_P(ClickHouseIntegrationTest, InsertAndQueryData) {
 
   // Generate INSERT SQL
   std::string insert_sql = executeSQLGeneration(
-      "insert 3 rows into " + table_name + " table in test_db");
-  std::cout << "Generated INSERT SQL: " << insert_sql << std::endl;
+      "insert 3 rows with random values into " + table_name + " table in " + test_db_name_);
   ASSERT_NO_THROW(clickhouse_client_->Execute(insert_sql));
 
   // Generate SELECT SQL
   std::string select_sql =
-      executeSQLGeneration("show all users from " + table_name + " in test_db");
+      executeSQLGeneration("show all users from " + table_name + " in " + test_db_name_);
 
   // Verify data was inserted
   size_t row_count = 0;
@@ -428,7 +382,7 @@ TEST_P(ClickHouseIntegrationTest, ExploreExistingSchema) {
   std::string products_table = "products_" + table_suffix_;
 
   // Create some test tables
-  clickhouse_client_->Execute("USE test_db");
+  clickhouse_client_->Execute("USE " + test_db_name_);
   clickhouse_client_->Execute("DROP TABLE IF EXISTS " + orders_table);
   clickhouse_client_->Execute("DROP TABLE IF EXISTS " + products_table);
   clickhouse_client_->Execute(
@@ -448,8 +402,7 @@ TEST_P(ClickHouseIntegrationTest, ExploreExistingSchema) {
   // Test schema exploration
   std::string sql = executeSQLGeneration(
       "find all orders with amount greater than 100 from " + orders_table +
-      " in test_db");
-  std::cout << "Generated SELECT SQL: " << sql << std::endl;
+      " in " + test_db_name_);
 
   // The generated SQL should reference the correct table and columns
   EXPECT_TRUE(sql.find(orders_table) != std::string::npos);
