@@ -1,11 +1,9 @@
 #include "../utils/test_fixtures.h"
 #include "ai/anthropic.h"
-#include "ai/logger.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 
 #include <future>
-#include <memory>
 #include <optional>
 
 #include <gmock/gmock.h>
@@ -109,10 +107,9 @@ TEST_F(AnthropicIntegrationTest, ConversationWithMessages) {
   }
 
   Messages conversation = {
-      Message(kMessageRoleUser, "Hello!"),
-      Message(kMessageRoleAssistant,
-              "Hello! I can help you with weather information."),
-      Message(kMessageRoleUser, "What's the weather like today?")};
+      Message::user("Hello!"),
+      Message::assistant("Hello! I can help you with weather information."),
+      Message::user("What's the weather like today?")};
 
   GenerateOptions options(ai::anthropic::models::kDefaultModel,
                           std::move(conversation));

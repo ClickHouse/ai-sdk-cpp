@@ -46,8 +46,7 @@ TEST_F(GenerateOptionsTest, ConstructorWithSystemPrompt) {
 }
 
 TEST_F(GenerateOptionsTest, ConstructorWithMessages) {
-  Messages messages = {Message(kMessageRoleUser, "Hello"),
-                       Message(kMessageRoleAssistant, "Hi there!")};
+  Messages messages = {Message::user("Hello"), Message::assistant("Hi there!")};
   GenerateOptions options("gpt-4o", std::move(messages));
 
   EXPECT_EQ(options.model, "gpt-4o");
@@ -70,7 +69,7 @@ TEST_F(GenerateOptionsTest, ValidationEmptyPromptAndMessages) {
 }
 
 TEST_F(GenerateOptionsTest, ValidationWithValidMessages) {
-  Messages messages = {Message(kMessageRoleUser, "Hello")};
+  Messages messages = {Message::user("Hello")};
   GenerateOptions options("gpt-4o", std::move(messages));
 
   EXPECT_TRUE(options.is_valid());
@@ -168,43 +167,42 @@ TEST_F(GenerateResultTest, MetadataFields) {
 TEST_F(GenerateResultTest, ResponseMessages) {
   GenerateResult result("Response", kFinishReasonStop, Usage{});
 
-  result.response_messages.push_back(
-      Message(kMessageRoleAssistant, "Response"));
+  result.response_messages.push_back(Message::assistant("Response"));
 
   EXPECT_EQ(result.response_messages.size(), 1);
   EXPECT_EQ(result.response_messages[0].role, kMessageRoleAssistant);
-  EXPECT_EQ(result.response_messages[0].content, "Response");
+  EXPECT_EQ(result.response_messages[0].get_text(), "Response");
 }
 
 // Message Tests
 class MessageTest : public AITestFixture {};
 
 TEST_F(MessageTest, Constructor) {
-  Message msg(kMessageRoleUser, "Hello, world!");
+  Message msg = Message::user("Hello, world!");
 
   EXPECT_EQ(msg.role, kMessageRoleUser);
-  EXPECT_EQ(msg.content, "Hello, world!");
+  EXPECT_EQ(msg.get_text(), "Hello, world!");
 }
 
 TEST_F(MessageTest, SystemMessage) {
-  Message msg(kMessageRoleSystem, "You are a helpful assistant.");
+  Message msg = Message::system("You are a helpful assistant.");
 
   EXPECT_EQ(msg.role, kMessageRoleSystem);
-  EXPECT_EQ(msg.content, "You are a helpful assistant.");
+  EXPECT_EQ(msg.get_text(), "You are a helpful assistant.");
 }
 
 TEST_F(MessageTest, AssistantMessage) {
-  Message msg(kMessageRoleAssistant, "How can I help you?");
+  Message msg = Message::assistant("How can I help you?");
 
   EXPECT_EQ(msg.role, kMessageRoleAssistant);
-  EXPECT_EQ(msg.content, "How can I help you?");
+  EXPECT_EQ(msg.get_text(), "How can I help you?");
 }
 
 TEST_F(MessageTest, EmptyContent) {
-  Message msg(kMessageRoleUser, "");
+  Message msg = Message::user("");
 
   EXPECT_EQ(msg.role, kMessageRoleUser);
-  EXPECT_TRUE(msg.content.empty());
+  EXPECT_TRUE(msg.get_text().empty());
 }
 
 // Usage Tests
@@ -382,20 +380,20 @@ TEST_F(TypeIntegrationTest, MessageConversationFlow) {
   Messages conversation;
 
   // Start conversation
-  conversation.emplace_back(kMessageRoleSystem, "You are helpful");
-  conversation.emplace_back(kMessageRoleUser, "Hello");
+  conversation.push_back(Message::system("You are helpful"));
+  conversation.push_back(Message::user("Hello"));
 
   EXPECT_EQ(conversation.size(), 2);
 
   // Add assistant response
-  conversation.emplace_back(kMessageRoleAssistant, "Hi there!");
+  conversation.push_back(Message::assistant("Hi there!"));
 
   // Continue conversation
-  conversation.emplace_back(kMessageRoleUser, "How are you?");
+  conversation.push_back(Message::user("How are you?"));
 
   EXPECT_EQ(conversation.size(), 4);
   EXPECT_EQ(conversation.back().role, kMessageRoleUser);
-  EXPECT_EQ(conversation.back().content, "How are you?");
+  EXPECT_EQ(conversation.back().get_text(), "How are you?");
 }
 
 }  // namespace test

@@ -84,15 +84,15 @@ Messages OpenAITestFixture::createSampleConversation() {
 }
 
 Message OpenAITestFixture::createUserMessage(const std::string& content) {
-  return Message(kMessageRoleUser, content);
+  return Message::user(content);
 }
 
 Message OpenAITestFixture::createAssistantMessage(const std::string& content) {
-  return Message(kMessageRoleAssistant, content);
+  return Message::assistant(content);
 }
 
 Message OpenAITestFixture::createSystemMessage(const std::string& content) {
-  return Message(kMessageRoleSystem, content);
+  return Message::system(content);
 }
 
 // AnthropicTestFixture implementation
@@ -152,17 +152,17 @@ Messages AnthropicTestFixture::createSampleAnthropicConversation() {
 
 Message AnthropicTestFixture::createAnthropicUserMessage(
     const std::string& content) {
-  return Message(kMessageRoleUser, content);
+  return Message::user(content);
 }
 
 Message AnthropicTestFixture::createAnthropicAssistantMessage(
     const std::string& content) {
-  return Message(kMessageRoleAssistant, content);
+  return Message::assistant(content);
 }
 
 Message AnthropicTestFixture::createAnthropicSystemMessage(
     const std::string& content) {
-  return Message(kMessageRoleSystem, content);
+  return Message::system(content);
 }
 
 // TestDataGenerator implementation
@@ -176,7 +176,7 @@ std::vector<GenerateOptions> TestDataGenerator::generateOptionsVariations() {
   variations.emplace_back("gpt-4o", "You are helpful", "User question");
 
   // With messages
-  Messages msgs = {Message(kMessageRoleUser, "Hello")};
+  Messages msgs = {Message::user("Hello")};
   variations.emplace_back("gpt-4o", std::move(msgs));
 
   // With all parameters

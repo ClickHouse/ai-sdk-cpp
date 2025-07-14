@@ -1,3 +1,5 @@
+#include <map>
+
 #include <ai/logger.h>
 #include <ai/tools.h>
 #include <ai/types/enums.h>
@@ -7,7 +9,8 @@ namespace ai {
 
 GenerateResult MultiStepCoordinator::execute_multi_step(
     const GenerateOptions& initial_options,
-    std::function<GenerateResult(const GenerateOptions&)> generate_func) {
+    const std::function<GenerateResult(const GenerateOptions&)>&
+        generate_func) {
   if (initial_options.max_steps <= 1) {
     // Single step - just execute normally
     return generate_func(initial_options);
@@ -143,25 +146,41 @@ GenerateOptions MultiStepCoordinator::create_next_step_options(
 
   // If we started with a simple prompt, convert to messages
   if (!base_options.prompt.empty() && next_messages.empty()) {
-    if (!base_options.system.empty()) {
-      next_messages.push_back(Message::system(base_options.system));
-    }
     next_messages.push_back(Message::user(base_options.prompt));
   }
 
   // Add assistant's response with tool calls
   if (previous_result.has_tool_calls()) {
-    // Create assistant message with tool calls (this would need proper
-    // formatting) For now, we'll add the text response
-    if (!previous_result.text.empty()) {
-      next_messages.push_back(Message::assistant(previous_result.text));
+    // Convert ToolCall to ToolCallContent
+    std::vector<ToolCallContentPart> tool_call_contents;
+    tool_call_contents.reserve(previous_result.tool_calls.size());
+    for (const auto& tc : previous_result.tool_calls) {
+      tool_call_contents.emplace_back(tc.id, tc.tool_name, tc.arguments);
     }
+
+    // Create assistant message with tool calls
+    next_messages.push_back(Message::assistant_with_tools(previous_result.text,
+                                                          tool_call_contents));
 
     // Add tool results as messages
     Messages tool_messages =
         tool_results_to_messages(previous_result.tool_calls, tool_results);
     next_messages.insert(next_messages.end(), tool_messages.begin(),
                          tool_messages.end());
+
+    // For OpenAI, add an explicit instruction after tool results
+    // This helps ensure it follows the system prompt instructions
+    // Check if this is an OpenAI model based on the model name
+    bool is_openai = base_options.model.find("gpt") != std::string::npos ||
+                     base_options.model.find("o1") != std::string::npos;
+
+    if (is_openai) {
+      ai::logger::log_debug(
+          "Adding explicit instruction for OpenAI model after tool use");
+      next_messages.push_back(Message::user(
+          "Based on the information from the tools, provide ONLY the SQL "
+          "query. No explanations, no markdown, just the raw SQL statement."));
+    }
   }
 
   next_options.messages = next_messages;
@@ -181,28 +200,26 @@ Messages MultiStepCoordinator::tool_results_to_messages(
     results_by_id[result.tool_call_id] = result;
   }
 
-  // Add messages for each tool call and result
+  // Convert tool results to ToolResultContent
+  std::vector<ToolResultContentPart> tool_result_contents;
   for (const auto& tool_call : tool_calls) {
     auto result_it = results_by_id.find(tool_call.id);
     if (result_it != results_by_id.end()) {
       const ToolResult& result = result_it->second;
 
-      // Create a message with the tool result
-      // In a real implementation, this would use proper tool message formatting
-      std::string content;
       if (result.is_success()) {
-        content = "Tool '" + tool_call.tool_name +
-                  "' returned: " + result.result.dump();
+        tool_result_contents.emplace_back(tool_call.id, result.result, false);
       } else {
-        content = "Tool '" + tool_call.tool_name +
-                  "' failed: " + result.error_message();
+        // For errors, create a simple error object
+        JsonValue error_json = {{"error", result.error_message()}};
+        tool_result_contents.emplace_back(tool_call.id, error_json, true);
       }
-
-      // For now, we'll use user messages to represent tool results
-      // In a complete implementation, this would be a proper "tool" role
-      // message
-      messages.push_back(Message::user(content));
     }
+  }
+
+  // Create a single user message with all tool results
+  if (!tool_result_contents.empty()) {
+    messages.push_back(Message::tool_results(tool_result_contents));
   }
 
   return messages;

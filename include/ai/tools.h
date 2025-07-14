@@ -80,7 +80,8 @@ class MultiStepCoordinator {
   /// @return Final generation result with all steps
   static GenerateResult execute_multi_step(
       const GenerateOptions& initial_options,
-      std::function<GenerateResult(const GenerateOptions&)> generate_func);
+      const std::function<GenerateResult(const GenerateOptions&)>&
+          generate_func);
 
  private:
   /// Create the next generation options based on previous step

@@ -15,9 +15,62 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   if (!options.messages.empty()) {
     // Use provided messages
     for (const auto& msg : options.messages) {
-      request["messages"].push_back(
-          {{"role", utils::message_role_to_string(msg.role)},
-           {"content", msg.content}});
+      nlohmann::json message;
+
+      // Handle different content types
+      if (msg.has_tool_results()) {
+        // OpenAI expects each tool result as a separate message with role
+        // "tool"
+        for (const auto& result : msg.get_tool_results()) {
+          nlohmann::json tool_message;
+          tool_message["role"] = "tool";
+          tool_message["tool_call_id"] = result.tool_call_id;
+
+          if (!result.is_error) {
+            tool_message["content"] = result.result.dump();
+          } else {
+            tool_message["content"] = "Error: " + result.result.dump();
+          }
+
+          request["messages"].push_back(tool_message);
+        }
+        continue;  // Skip adding the main message
+      }
+
+      // Handle messages with text and/or tool calls
+      message["role"] = utils::message_role_to_string(msg.role);
+
+      // Get text content (accumulate all text parts)
+      std::string text_content = msg.get_text();
+
+      // Get tool calls
+      auto tool_calls = msg.get_tool_calls();
+
+      // Set content - OpenAI expects both text and tool calls in the same
+      // message
+      if (!text_content.empty()) {
+        message["content"] = text_content;
+      }
+
+      if (!tool_calls.empty()) {
+        nlohmann::json tool_calls_array = nlohmann::json::array();
+        for (const auto& tool_call : tool_calls) {
+          tool_calls_array.push_back(
+              {{"id", tool_call.id},
+               {"type", "function"},
+               {"function",
+                {{"name", tool_call.tool_name},
+                 {"arguments", tool_call.arguments.dump()}}}});
+        }
+        message["tool_calls"] = tool_calls_array;
+      }
+
+      // Skip empty messages
+      if (text_content.empty() && tool_calls.empty()) {
+        continue;
+      }
+
+      request["messages"].push_back(message);
     }
   } else {
     // Build from system + prompt

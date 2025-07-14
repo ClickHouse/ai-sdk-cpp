@@ -92,8 +92,7 @@ GenerateResult OpenAIResponseParser::parse_success_response(
 
       // Add assistant response to messages
       if (!result.text.empty()) {
-        result.response_messages.push_back(
-            {kMessageRoleAssistant, result.text});
+        result.response_messages.push_back(Message::assistant(result.text));
       }
     }
 
