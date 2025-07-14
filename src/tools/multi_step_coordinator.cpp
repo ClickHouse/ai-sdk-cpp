@@ -163,6 +163,10 @@ GenerateOptions MultiStepCoordinator::create_next_step_options(
 
   // If we started with a simple prompt, convert to messages
   if (!base_options.prompt.empty() && next_messages.empty()) {
+    if (!base_options.system.empty()) {
+      next_messages.push_back(Message::user(base_options.system));
+    }
+
     next_messages.push_back(Message::user(base_options.prompt));
   }
 

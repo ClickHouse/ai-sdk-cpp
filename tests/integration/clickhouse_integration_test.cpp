@@ -225,7 +225,7 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
         return;
       }
       client_ = std::make_shared<Client>(openai::create_client());
-      model_ = openai::models::kO4Mini;
+      model_ = openai::models::kGpt4o;
     } else if (provider_type_ == "anthropic") {
       const char* api_key = std::getenv("ANTHROPIC_API_KEY");
       if (!api_key) {
