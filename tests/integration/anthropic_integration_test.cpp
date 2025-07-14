@@ -46,7 +46,7 @@ TEST_F(AnthropicIntegrationTest, BasicTextGeneration) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kDefaultModel,
                           "Hello, how are you?");
   auto result = client_->generate_text(options);
 
@@ -65,7 +65,7 @@ TEST_F(AnthropicIntegrationTest, TextGenerationWithSystemPrompt) {
   }
 
   GenerateOptions options(
-      ai::anthropic::models::kClaude35Sonnet,
+      ai::anthropic::models::kDefaultModel,
       "You are a helpful assistant that responds in French.",
       "Hello, how are you?");
 
@@ -87,7 +87,7 @@ TEST_F(AnthropicIntegrationTest, TextGenerationWithParameters) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kDefaultModel,
                           "Write a very short story about a cat.");
   options.max_tokens = 50;
   options.temperature = 0.7;
@@ -114,7 +114,7 @@ TEST_F(AnthropicIntegrationTest, ConversationWithMessages) {
               "Hello! I can help you with weather information."),
       Message(kMessageRoleUser, "What's the weather like today?")};
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kDefaultModel,
                           std::move(conversation));
   options.system = "You are a helpful weather assistant.";
   auto result = client_->generate_text(options);
@@ -137,8 +137,8 @@ TEST_F(AnthropicIntegrationTest, DifferentModelSupport) {
   }
 
   std::vector<std::string> models_to_test = {
-      ai::anthropic::models::kClaude35Sonnet,
-      ai::anthropic::models::kClaude3Haiku};
+      ai::anthropic::models::kDefaultModel,
+      ai::anthropic::models::kClaudeHaiku35};
 
   for (const auto& model : models_to_test) {
     if (!client_->supports_model(model)) {
@@ -164,8 +164,7 @@ TEST_F(AnthropicIntegrationTest, InvalidApiKey) {
   // Test with invalid API key
   auto invalid_client = ai::anthropic::create_client("sk-ant-invalid123");
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
-                          "Test prompt");
+  GenerateOptions options(ai::anthropic::models::kDefaultModel, "Test prompt");
   auto result = invalid_client.generate_text(options);
 
   TestAssertions::assertError(result);
@@ -199,8 +198,7 @@ TEST_F(AnthropicIntegrationTest, RateLimitHandling) {
 
   // Note: This test may not trigger rate limiting in normal usage
   // It's here to document the expected behavior when rate limits are hit
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
-                          "Test prompt");
+  GenerateOptions options(ai::anthropic::models::kDefaultModel, "Test prompt");
   auto result = client_->generate_text(options);
 
   // If we hit rate limits, the error should be handled gracefully
@@ -221,7 +219,7 @@ TEST_F(AnthropicIntegrationTest, BasicStreaming) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions gen_options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions gen_options(ai::anthropic::models::kDefaultModel,
                               "Count from 1 to 3");
   StreamOptions options(gen_options);
   auto stream = client_->stream_text(options);
@@ -260,7 +258,7 @@ TEST_F(AnthropicIntegrationTest, ConcurrentRequests) {
 
   for (int i = 0; i < num_requests; ++i) {
     futures.push_back(std::async(std::launch::async, [this, i]() {
-      GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+      GenerateOptions options(ai::anthropic::models::kDefaultModel,
                               "Say hello " + std::to_string(i));
       return client_->generate_text(options);
     }));
@@ -283,7 +281,7 @@ TEST_F(AnthropicIntegrationTest, LargePromptHandling) {
   auto large_prompt =
       TestDataGenerator::createLargePrompt(2000);  // ~2KB prompt
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet, large_prompt);
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet35, large_prompt);
   auto result = client_->generate_text(options);
 
   TestAssertions::assertSuccess(result);
@@ -304,7 +302,7 @@ TEST_F(AnthropicIntegrationTest, CustomBaseUrl) {
   auto custom_client =
       ai::anthropic::create_client(api_key, "https://api.anthropic.com");
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet35,
                           "Test custom base URL");
   auto result = custom_client.generate_text(options);
 
@@ -318,7 +316,7 @@ TEST_F(AnthropicIntegrationTest, EmptyPrompt) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet, "");
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet35, "");
 
   // Empty prompt should be caught by validation
   EXPECT_FALSE(options.is_valid());
@@ -333,7 +331,7 @@ TEST_F(AnthropicIntegrationTest, VeryLongResponse) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet35,
                           "Write a detailed explanation of quantum physics");
   options.max_tokens = 500;  // Reasonable limit for testing
 
@@ -354,7 +352,7 @@ TEST_F(AnthropicIntegrationTest, NetworkTimeout) {
 
   // Note: This test documents timeout behavior but cannot reliably trigger it
   // with the real API under normal conditions
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet35,
                           "Simple test");
   auto result = client_->generate_text(options);
 
@@ -380,7 +378,7 @@ TEST_F(AnthropicIntegrationTest, NetworkFailure) {
   auto failing_client = ai::anthropic::create_client(
       api_key, "http://localhost:59999");  // Very unlikely port to be in use
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet35,
                           "Test network failure");
   auto result = failing_client.generate_text(options);
 
@@ -436,8 +434,8 @@ TEST_F(AnthropicEnvironmentConfigTest, DefaultClientCreation) {
 
     // Test that supported models include expected ones
     auto models = client.supported_models();
-    EXPECT_TRUE(client.supports_model(ai::anthropic::models::kClaude35Sonnet));
-    EXPECT_TRUE(client.supports_model(ai::anthropic::models::kClaude3Haiku));
+    EXPECT_TRUE(client.supports_model(ai::anthropic::models::kClaudeSonnet35));
+    EXPECT_TRUE(client.supports_model(ai::anthropic::models::kClaudeHaiku35));
   } else {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
@@ -449,7 +447,7 @@ TEST_F(AnthropicIntegrationTest, MaxTokensRequired) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaude35Sonnet,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet35,
                           "Tell me about artificial intelligence");
   // Anthropic requires max_tokens to be set
   options.max_tokens = 100;
@@ -468,7 +466,7 @@ TEST_F(AnthropicIntegrationTest, SystemMessageHandling) {
 
   // Anthropic has specific handling for system messages
   GenerateOptions options(
-      ai::anthropic::models::kClaude35Sonnet,
+      ai::anthropic::models::kClaudeSonnet35,
       "You are Claude, an AI assistant created by Anthropic.",
       "What is your name?");
   options.max_tokens = 50;
@@ -478,6 +476,66 @@ TEST_F(AnthropicIntegrationTest, SystemMessageHandling) {
   TestAssertions::assertSuccess(result);
   EXPECT_FALSE(result.text.empty());
   EXPECT_THAT(result.text, testing::HasSubstr("Claude"));
+}
+
+TEST_F(AnthropicIntegrationTest, DefaultModelGeneration) {
+  if (!use_real_api_) {
+    GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
+  }
+
+  // Test generate_text using default_model()
+  GenerateOptions options(client_->default_model(), "Count to 3");
+  options.max_tokens = 50;
+
+  auto result = client_->generate_text(options);
+
+  TestAssertions::assertSuccess(result);
+  EXPECT_FALSE(result.text.empty());
+
+  // Verify we're using the expected default model
+  EXPECT_EQ(client_->default_model(), ai::anthropic::models::kDefaultModel);
+  if (result.model.has_value()) {
+    // Anthropic returns the full model version (e.g.,
+    // "claude-3-5-sonnet-20241022") while kDefaultModel is
+    // "claude-3-5-sonnet-latest"
+    EXPECT_TRUE(result.model.value().find("claude-3-5-sonnet") !=
+                std::string::npos)
+        << "Expected model to contain 'claude-3-5-sonnet', but got: "
+        << result.model.value();
+  }
+}
+
+TEST_F(AnthropicIntegrationTest, DefaultModelStreaming) {
+  if (!use_real_api_) {
+    GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
+  }
+
+  // Test stream_text using default_model()
+  GenerateOptions gen_options(client_->default_model(), "Count from 1 to 3");
+  gen_options.max_tokens = 50;
+  StreamOptions options(gen_options);
+
+  auto stream = client_->stream_text(options);
+
+  bool received_text = false;
+  bool stream_finished = false;
+  std::string accumulated_text;
+
+  for (const auto& event : stream) {
+    if (event.is_text_delta()) {
+      received_text = true;
+      accumulated_text += event.text_delta;
+    } else if (event.is_finish()) {
+      stream_finished = true;
+      break;
+    } else if (event.is_error()) {
+      FAIL() << "Streaming error: " << event.error.value_or("unknown");
+    }
+  }
+
+  EXPECT_TRUE(received_text) << "Should have received text deltas";
+  EXPECT_TRUE(stream_finished) << "Stream should have finished";
+  EXPECT_FALSE(accumulated_text.empty()) << "Should have accumulated some text";
 }
 
 }  // namespace test

@@ -145,7 +145,7 @@ class ToolCallingIntegrationTest
       if (api_key) {
         use_real_api_ = true;
         client_ = ai::anthropic::create_client(api_key);
-        model_ = ai::anthropic::models::kClaude35Sonnet;
+        model_ = ai::anthropic::models::kClaudeSonnet35;
       } else {
         use_real_api_ = false;
       }
@@ -671,7 +671,7 @@ class AnthropicSpecificToolTest : public ::testing::Test {
     if (api_key) {
       use_real_api_ = true;
       client_ = ai::anthropic::create_client(api_key);
-      model_ = ai::anthropic::models::kClaude35Sonnet;
+      model_ = ai::anthropic::models::kClaudeSonnet35;
     } else {
       use_real_api_ = false;
     }

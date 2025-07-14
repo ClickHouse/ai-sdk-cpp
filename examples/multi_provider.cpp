@@ -94,9 +94,9 @@ int main() {
 
   // Test Anthropic models
   results1.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaude35Sonnet, simple_question));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet35, simple_question));
   results1.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaude35Haiku, simple_question));
+      "Anthropic", ai::anthropic::models::kClaudeHaiku35, simple_question));
 
   for (const auto& result : results1) {
     print_result(result);
@@ -118,7 +118,7 @@ int main() {
   results2.push_back(
       test_provider("OpenAI", ai::openai::models::kGpt4o, creative_prompt));
   results2.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaude35Sonnet, creative_prompt));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet35, creative_prompt));
 
   for (const auto& result : results2) {
     print_result(result);
@@ -137,7 +137,7 @@ int main() {
   results3.push_back(
       test_provider("OpenAI", ai::openai::models::kGpt4o, technical_prompt));
   results3.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaude35Sonnet, technical_prompt));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet35, technical_prompt));
 
   for (const auto& result : results3) {
     print_result(result);
