@@ -36,7 +36,8 @@ const std::string kClickhouseUser = "default";
 const std::string kClickhousePassword = "changeme";
 
 // System prompt for SQL generation
-const std::string kSystemPrompt = R"(You are a ClickHouse SQL code generator. Your ONLY job is to output SQL statements wrapped in <sql> tags.
+const std::string kSystemPrompt =
+    R"(You are a ClickHouse SQL code generator. Your ONLY job is to output SQL statements wrapped in <sql> tags.
 
 TOOLS AVAILABLE:
 - list_databases(): Lists all databases
@@ -204,7 +205,8 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
     clickhouse_client_ = std::make_shared<clickhouse::Client>(options);
 
     // Create test database with unique name
-    clickhouse_client_->Execute("CREATE DATABASE IF NOT EXISTS " + test_db_name_);
+    clickhouse_client_->Execute("CREATE DATABASE IF NOT EXISTS " +
+                                test_db_name_);
 
     // Initialize tools
     tools_helper_ = std::make_unique<ClickHouseTools>(clickhouse_client_);
@@ -257,7 +259,7 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
       throw std::runtime_error("Failed to generate SQL: " +
                                result.error_message());
     }
-    
+
     // Extract SQL from the final response text
     std::string response_text = result.text;
     if (!result.steps.empty()) {
@@ -269,7 +271,7 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
         }
       }
     }
-    
+
     return extractSQL(response_text);
   }
 
@@ -279,22 +281,23 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
     if (start == std::string::npos) {
       throw std::runtime_error("No <sql> tag found in response: " + input);
     }
-    start += 5; // Length of "<sql>"
-    
+    start += 5;  // Length of "<sql>"
+
     size_t end = input.find("</sql>", start);
     if (end == std::string::npos) {
-      throw std::runtime_error("No closing </sql> tag found in response: " + input);
+      throw std::runtime_error("No closing </sql> tag found in response: " +
+                               input);
     }
-    
+
     std::string sql = input.substr(start, end - start);
-    
+
     // Trim whitespace
     size_t first = sql.find_first_not_of(" \t\n\r");
     size_t last = sql.find_last_not_of(" \t\n\r");
     if (first != std::string::npos && last != std::string::npos) {
       sql = sql.substr(first, last - first + 1);
     }
-    
+
     return sql;
   }
 
@@ -318,12 +321,13 @@ TEST_P(ClickHouseIntegrationTest, CreateTableForGithubEvents) {
   std::string table_name = "github_events_" + table_suffix_;
 
   // Clean up any existing table
-  clickhouse_client_->Execute("DROP TABLE IF EXISTS " + test_db_name_ + "." + table_name);
+  clickhouse_client_->Execute("DROP TABLE IF EXISTS " + test_db_name_ + "." +
+                              table_name);
   clickhouse_client_->Execute("DROP TABLE IF EXISTS default." + table_name);
 
-  std::string sql =
-      executeSQLGeneration("create a table named " + table_name +
-                           " for github events in " + test_db_name_ + " database");
+  std::string sql = executeSQLGeneration("create a table named " + table_name +
+                                         " for github events in " +
+                                         test_db_name_ + " database");
 
   // Execute the generated SQL
   ASSERT_NO_THROW(clickhouse_client_->Execute("USE " + test_db_name_));
@@ -356,13 +360,14 @@ TEST_P(ClickHouseIntegrationTest, InsertAndQueryData) {
       " (id UInt64, name String, age UInt8) ENGINE = MergeTree() ORDER BY id");
 
   // Generate INSERT SQL
-  std::string insert_sql = executeSQLGeneration(
-      "insert 3 rows with random values into " + table_name + " table in " + test_db_name_);
+  std::string insert_sql =
+      executeSQLGeneration("insert 3 rows with random values into " +
+                           table_name + " table in " + test_db_name_);
   ASSERT_NO_THROW(clickhouse_client_->Execute(insert_sql));
 
   // Generate SELECT SQL
-  std::string select_sql =
-      executeSQLGeneration("show all users from " + table_name + " in " + test_db_name_);
+  std::string select_sql = executeSQLGeneration(
+      "show all users from " + table_name + " in " + test_db_name_);
 
   // Verify data was inserted
   size_t row_count = 0;

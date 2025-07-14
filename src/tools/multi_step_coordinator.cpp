@@ -22,17 +22,20 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
   for (int step = 0; step < initial_options.max_steps; ++step) {
     ai::logger::log_debug("Executing step {} of {}", step + 1,
                           initial_options.max_steps);
-    ai::logger::log_debug("Current messages count: {}", 
+    ai::logger::log_debug("Current messages count: {}",
                           current_options.messages.size());
-    ai::logger::log_debug("System prompt: {}", 
-                          current_options.system.empty() ? "empty" : current_options.system.substr(0, 100) + "...");
+    ai::logger::log_debug("System prompt: {}",
+                          current_options.system.empty()
+                              ? "empty"
+                              : current_options.system.substr(0, 100) + "...");
 
     // Execute the current step
     GenerateResult step_result = generate_func(current_options);
-    
-    ai::logger::log_debug("Step {} result - text: '{}', tool_calls: {}, finish_reason: {}",
-                          step + 1, step_result.text, step_result.tool_calls.size(), 
-                          static_cast<int>(step_result.finish_reason));
+
+    ai::logger::log_debug(
+        "Step {} result - text: '{}', tool_calls: {}, finish_reason: {}",
+        step + 1, step_result.text, step_result.tool_calls.size(),
+        static_cast<int>(step_result.finish_reason));
 
     // Check for errors
     if (!step_result.is_success()) {
@@ -124,7 +127,7 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
       }
 
       // Create next step options with tool results (including errors)
-      ai::logger::log_debug("Creating next step options with {} tool results", 
+      ai::logger::log_debug("Creating next step options with {} tool results",
                             tool_results.size());
       current_options =
           create_next_step_options(initial_options, step_result, tool_results);
@@ -149,9 +152,10 @@ GenerateOptions MultiStepCoordinator::create_next_step_options(
     const GenerateOptions& base_options,
     const GenerateResult& previous_result,
     const std::vector<ToolResult>& tool_results) {
-  ai::logger::log_debug("create_next_step_options: base messages count={}, tool_results count={}",
-                        base_options.messages.size(), tool_results.size());
-  
+  ai::logger::log_debug(
+      "create_next_step_options: base messages count={}, tool_results count={}",
+      base_options.messages.size(), tool_results.size());
+
   GenerateOptions next_options = base_options;
 
   // Build the messages for the next step
@@ -178,16 +182,18 @@ GenerateOptions MultiStepCoordinator::create_next_step_options(
     // Add tool results as messages
     Messages tool_messages =
         tool_results_to_messages(previous_result.tool_calls, tool_results);
-    ai::logger::log_debug("Adding {} tool result messages", tool_messages.size());
+    ai::logger::log_debug("Adding {} tool result messages",
+                          tool_messages.size());
     next_messages.insert(next_messages.end(), tool_messages.begin(),
                          tool_messages.end());
   }
 
   next_options.messages = next_messages;
   next_options.prompt = "";  // Clear prompt since we're using messages
-  
-  ai::logger::log_debug("Final next_options: messages count={}, system prompt length={}",
-                        next_options.messages.size(), next_options.system.length());
+
+  ai::logger::log_debug(
+      "Final next_options: messages count={}, system prompt length={}",
+      next_options.messages.size(), next_options.system.length());
 
   return next_options;
 }
