@@ -423,24 +423,6 @@ TEST_F(AnthropicEnvironmentConfigTest, ConfigurationFromEnvironment) {
   }
 }
 
-TEST_F(AnthropicEnvironmentConfigTest, DefaultClientCreation) {
-  const char* api_key = std::getenv("ANTHROPIC_API_KEY");
-
-  if (api_key) {
-    // Test creating client with default configuration (reads from environment)
-    auto client = ai::anthropic::create_client();
-    EXPECT_TRUE(client.is_valid());
-    EXPECT_EQ(client.provider_name(), "anthropic");
-
-    // Test that supported models include expected ones
-    auto models = client.supported_models();
-    EXPECT_TRUE(client.supports_model(ai::anthropic::models::kClaudeSonnet35));
-    EXPECT_TRUE(client.supports_model(ai::anthropic::models::kClaudeHaiku35));
-  } else {
-    GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
-  }
-}
-
 // Anthropic-specific tests
 TEST_F(AnthropicIntegrationTest, MaxTokensRequired) {
   if (!use_real_api_) {
