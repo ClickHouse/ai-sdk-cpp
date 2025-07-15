@@ -15,12 +15,14 @@
 
 namespace ai {
 
-// Forward declarations
-struct ToolCall;
-struct ToolExecutionContext;
-
-/// JSON value type for tool parameters and results
 using JsonValue = nlohmann::json;
+
+/// Context provided to tool execution functions
+struct ToolExecutionContext {
+  std::string tool_call_id;
+  Messages messages;
+  std::optional<std::function<void()>> abort_signal;
+};
 
 /// Tool execution function signature
 /// Parameters: (args, context) -> result
@@ -32,13 +34,6 @@ using ToolExecuteFunction =
 using AsyncToolExecuteFunction =
     std::function<std::future<JsonValue>(const JsonValue&,
                                          const ToolExecutionContext&)>;
-
-/// Context provided to tool execution functions
-struct ToolExecutionContext {
-  std::string tool_call_id;
-  Messages messages;
-  std::optional<std::function<void()>> abort_signal;
-};
 
 struct Tool {
   std::string description;

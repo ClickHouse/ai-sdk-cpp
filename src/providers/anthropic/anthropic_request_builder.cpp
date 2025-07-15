@@ -23,8 +23,62 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
     // Use provided messages
     for (const auto& msg : options.messages) {
       nlohmann::json message;
-      message["role"] = utils::message_role_to_string(msg.role);
-      message["content"] = msg.content;
+
+      // Handle different content types
+      if (msg.has_tool_results()) {
+        // Anthropic expects tool results as content arrays in user messages
+        message["role"] = "user";
+        message["content"] = nlohmann::json::array();
+
+        for (const auto& result : msg.get_tool_results()) {
+          nlohmann::json tool_result_content;
+          tool_result_content["type"] = "tool_result";
+          tool_result_content["tool_use_id"] = result.tool_call_id;
+
+          if (!result.is_error) {
+            tool_result_content["content"] = result.result.dump();
+          } else {
+            tool_result_content["content"] = result.result.dump();
+            tool_result_content["is_error"] = true;
+          }
+
+          message["content"].push_back(tool_result_content);
+        }
+      } else {
+        // Handle messages with text and/or tool calls
+        message["role"] = utils::message_role_to_string(msg.role);
+
+        // Get text content and tool calls
+        std::string text_content = msg.get_text();
+        auto tool_calls = msg.get_tool_calls();
+
+        // Anthropic expects content as array for mixed content or tool calls
+        if (!tool_calls.empty() ||
+            (msg.role == kMessageRoleAssistant && !text_content.empty())) {
+          message["content"] = nlohmann::json::array();
+
+          // Add text content if present
+          if (!text_content.empty()) {
+            message["content"].push_back(
+                {{"type", "text"}, {"text", text_content}});
+          }
+
+          // Add tool use content
+          for (const auto& tool_call : tool_calls) {
+            message["content"].push_back({{"type", "tool_use"},
+                                          {"id", tool_call.id},
+                                          {"name", tool_call.tool_name},
+                                          {"input", tool_call.arguments}});
+          }
+        } else if (!text_content.empty()) {
+          // Simple text message (non-assistant or assistant with text only)
+          message["content"] = text_content;
+        } else {
+          // Empty message, skip
+          continue;
+        }
+      }
+
       request["messages"].push_back(message);
     }
   } else {

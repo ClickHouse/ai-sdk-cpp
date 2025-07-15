@@ -1,11 +1,9 @@
 #include "../utils/test_fixtures.h"
-#include "ai/logger.h"
 #include "ai/openai.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 
 #include <future>
-#include <memory>
 #include <optional>
 
 #include <gmock/gmock.h>
@@ -109,11 +107,10 @@ TEST_F(OpenAIIntegrationTest, ConversationWithMessages) {
   }
 
   Messages conversation = {
-      Message(kMessageRoleSystem, "You are a helpful weather assistant."),
-      Message(kMessageRoleUser, "Hello!"),
-      Message(kMessageRoleAssistant,
-              "Hello! I can help you with weather information."),
-      Message(kMessageRoleUser, "What's the weather like today?")};
+      Message::system("You are a helpful weather assistant."),
+      Message::user("Hello!"),
+      Message::assistant("Hello! I can help you with weather information."),
+      Message::user("What's the weather like today?")};
 
   GenerateOptions options(ai::openai::models::kGpt4oMini,
                           std::move(conversation));

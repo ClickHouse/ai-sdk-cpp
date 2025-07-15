@@ -16,11 +16,34 @@ namespace openai {
 
 namespace models {
 /// Common OpenAI model identifiers
+
+// O-series reasoning models
+constexpr const char* kO1 = "o1";
+constexpr const char* kO1Mini = "o1-mini";
+constexpr const char* kO1Preview = "o1-preview";
+constexpr const char* kO3 = "o3";
+constexpr const char* kO3Mini = "o3-mini";
+constexpr const char* kO4Mini = "o4-mini";
+
+// GPT-4.1 series
+constexpr const char* kGpt41 = "gpt-4.1";
+constexpr const char* kGpt41Mini = "gpt-4.1-mini";
+constexpr const char* kGpt41Nano = "gpt-4.1-nano";
+
+// GPT-4o series
 constexpr const char* kGpt4o = "gpt-4o";
 constexpr const char* kGpt4oMini = "gpt-4o-mini";
+constexpr const char* kGpt4oAudioPreview = "gpt-4o-audio-preview";
+
+// GPT-4 series
 constexpr const char* kGpt4Turbo = "gpt-4-turbo";
-constexpr const char* kGpt35Turbo = "gpt-3.5-turbo";
 constexpr const char* kGpt4 = "gpt-4";
+
+// GPT-3.5 series
+constexpr const char* kGpt35Turbo = "gpt-3.5-turbo";
+
+// Special models
+constexpr const char* kChatGpt4oLatest = "chatgpt-4o-latest";
 
 /// Default model used when none is specified
 constexpr const char* kDefaultModel = kGpt4o;

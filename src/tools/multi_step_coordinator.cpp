@@ -1,3 +1,5 @@
+#include <map>
+
 #include <ai/logger.h>
 #include <ai/tools.h>
 #include <ai/types/enums.h>
@@ -7,7 +9,8 @@ namespace ai {
 
 GenerateResult MultiStepCoordinator::execute_multi_step(
     const GenerateOptions& initial_options,
-    std::function<GenerateResult(const GenerateOptions&)> generate_func) {
+    const std::function<GenerateResult(const GenerateOptions&)>&
+        generate_func) {
   if (initial_options.max_steps <= 1) {
     // Single step - just execute normally
     return generate_func(initial_options);
@@ -19,9 +22,20 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
   for (int step = 0; step < initial_options.max_steps; ++step) {
     ai::logger::log_debug("Executing step {} of {}", step + 1,
                           initial_options.max_steps);
+    ai::logger::log_debug("Current messages count: {}",
+                          current_options.messages.size());
+    ai::logger::log_debug("System prompt: {}",
+                          current_options.system.empty()
+                              ? "empty"
+                              : current_options.system.substr(0, 100) + "...");
 
     // Execute the current step
     GenerateResult step_result = generate_func(current_options);
+
+    ai::logger::log_debug(
+        "Step {} result - text: '{}', tool_calls: {}, finish_reason: {}",
+        step + 1, step_result.text, step_result.tool_calls.size(),
+        static_cast<int>(step_result.finish_reason));
 
     // Check for errors
     if (!step_result.is_success()) {
@@ -113,6 +127,8 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
       }
 
       // Create next step options with tool results (including errors)
+      ai::logger::log_debug("Creating next step options with {} tool results",
+                            tool_results.size());
       current_options =
           create_next_step_options(initial_options, step_result, tool_results);
     } else {
@@ -136,6 +152,10 @@ GenerateOptions MultiStepCoordinator::create_next_step_options(
     const GenerateOptions& base_options,
     const GenerateResult& previous_result,
     const std::vector<ToolResult>& tool_results) {
+  ai::logger::log_debug(
+      "create_next_step_options: base messages count={}, tool_results count={}",
+      base_options.messages.size(), tool_results.size());
+
   GenerateOptions next_options = base_options;
 
   // Build the messages for the next step
@@ -144,28 +164,40 @@ GenerateOptions MultiStepCoordinator::create_next_step_options(
   // If we started with a simple prompt, convert to messages
   if (!base_options.prompt.empty() && next_messages.empty()) {
     if (!base_options.system.empty()) {
-      next_messages.push_back(Message::system(base_options.system));
+      next_messages.push_back(Message::user(base_options.system));
     }
+
     next_messages.push_back(Message::user(base_options.prompt));
   }
 
   // Add assistant's response with tool calls
   if (previous_result.has_tool_calls()) {
-    // Create assistant message with tool calls (this would need proper
-    // formatting) For now, we'll add the text response
-    if (!previous_result.text.empty()) {
-      next_messages.push_back(Message::assistant(previous_result.text));
+    // Convert ToolCall to ToolCallContent
+    std::vector<ToolCallContentPart> tool_call_contents;
+    tool_call_contents.reserve(previous_result.tool_calls.size());
+    for (const auto& tc : previous_result.tool_calls) {
+      tool_call_contents.emplace_back(tc.id, tc.tool_name, tc.arguments);
     }
+
+    // Create assistant message with tool calls
+    next_messages.push_back(Message::assistant_with_tools(previous_result.text,
+                                                          tool_call_contents));
 
     // Add tool results as messages
     Messages tool_messages =
         tool_results_to_messages(previous_result.tool_calls, tool_results);
+    ai::logger::log_debug("Adding {} tool result messages",
+                          tool_messages.size());
     next_messages.insert(next_messages.end(), tool_messages.begin(),
                          tool_messages.end());
   }
 
   next_options.messages = next_messages;
   next_options.prompt = "";  // Clear prompt since we're using messages
+
+  ai::logger::log_debug(
+      "Final next_options: messages count={}, system prompt length={}",
+      next_options.messages.size(), next_options.system.length());
 
   return next_options;
 }
@@ -181,28 +213,26 @@ Messages MultiStepCoordinator::tool_results_to_messages(
     results_by_id[result.tool_call_id] = result;
   }
 
-  // Add messages for each tool call and result
+  // Convert tool results to ToolResultContent
+  std::vector<ToolResultContentPart> tool_result_contents;
   for (const auto& tool_call : tool_calls) {
     auto result_it = results_by_id.find(tool_call.id);
     if (result_it != results_by_id.end()) {
       const ToolResult& result = result_it->second;
 
-      // Create a message with the tool result
-      // In a real implementation, this would use proper tool message formatting
-      std::string content;
       if (result.is_success()) {
-        content = "Tool '" + tool_call.tool_name +
-                  "' returned: " + result.result.dump();
+        tool_result_contents.emplace_back(tool_call.id, result.result, false);
       } else {
-        content = "Tool '" + tool_call.tool_name +
-                  "' failed: " + result.error_message();
+        // For errors, create a simple error object
+        JsonValue error_json = {{"error", result.error_message()}};
+        tool_result_contents.emplace_back(tool_call.id, error_json, true);
       }
-
-      // For now, we'll use user messages to represent tool results
-      // In a complete implementation, this would be a proper "tool" role
-      // message
-      messages.push_back(Message::user(content));
     }
+  }
+
+  // Create a single user message with all tool results
+  if (!tool_result_contents.empty()) {
+    messages.push_back(Message::tool_results(tool_result_contents));
   }
 
   return messages;
