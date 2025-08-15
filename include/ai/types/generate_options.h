@@ -47,6 +47,15 @@ struct GenerateOptions {
         system(std::move(system_prompt)),
         prompt(std::move(user_prompt)) {}
 
+  GenerateOptions(std::string model_name,
+                  std::string system_prompt,
+                  std::string user_prompt,
+                  std::optional<nlohmann::json> response_format_)
+      : model(std::move(model_name)),
+        system(std::move(system_prompt)),
+        prompt(std::move(user_prompt)),
+        response_format(std::move(response_format_)) {}
+
   GenerateOptions(std::string model_name, Messages conversation)
       : model(std::move(model_name)), messages(std::move(conversation)) {}
 
