@@ -18,6 +18,7 @@ struct GenerateOptions {
   std::string system;
   std::string prompt;
   Messages messages;
+  std::optional<nlohmann::json> response_format {};
   std::optional<int> max_tokens;
   std::optional<double> temperature;
   std::optional<double> top_p;
