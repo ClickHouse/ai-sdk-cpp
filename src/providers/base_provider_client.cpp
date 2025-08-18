@@ -71,7 +71,7 @@ GenerateResult BaseProviderClient::generate_text_single_step(
       // Parse error response using provider-specific parser
       if (result.provider_metadata.has_value()) {
         int status_code = std::stoi(result.provider_metadata.value());
-        return response_parser_->parse_error_response(
+        return response_parser_->parse_error_completion_response(
             status_code, result.error.value_or(""));
       }
       return result;
@@ -94,7 +94,7 @@ GenerateResult BaseProviderClient::generate_text_single_step(
 
     // Parse using provider-specific parser
     auto parsed_result =
-        response_parser_->parse_success_response(json_response);
+        response_parser_->parse_success_completion_response(json_response);
 
     if (parsed_result.has_tool_calls()) {
       ai::logger::log_debug("Model made {} tool calls",
@@ -142,6 +142,13 @@ StreamResult BaseProviderClient::stream_text(const StreamOptions& options) {
   // For now, return an error
   ai::logger::log_error("Streaming not yet implemented in BaseProviderClient");
   return StreamResult();
+}
+
+EmbeddingResult BaseProviderClient::embedding(const EmbeddingOptions& options) {
+  // This needs to be implemented with provider-specific stream implementations
+  // For now, return an error
+  ai::logger::log_error("Embedding not yet implemented in BaseProviderClient");
+  return EmbeddingResult();
 }
 
 }  // namespace providers

@@ -32,6 +32,7 @@ class RequestBuilder {
  public:
   virtual ~RequestBuilder() = default;
   virtual nlohmann::json build_request_json(const GenerateOptions& options) = 0;
+  virtual nlohmann::json build_request_json(const EmbeddingOptions& options) = 0;
   virtual httplib::Headers build_headers(const ProviderConfig& config) = 0;
 };
 
@@ -39,9 +40,13 @@ class RequestBuilder {
 class ResponseParser {
  public:
   virtual ~ResponseParser() = default;
-  virtual GenerateResult parse_success_response(
+  virtual GenerateResult parse_success_completion_response(
       const nlohmann::json& response) = 0;
-  virtual GenerateResult parse_error_response(int status_code,
+  virtual GenerateResult parse_error_completion_response(int status_code,
+                                              const std::string& body) = 0;
+  virtual EmbeddingResult parse_success_embedding_response(
+    const nlohmann::json& response) = 0;
+  virtual EmbeddingResult parse_error_embedding_response(int status_code,
                                               const std::string& body) = 0;
 };
 
@@ -55,6 +60,7 @@ class BaseProviderClient : public Client {
   // Implements the common flow using the composed components
   GenerateResult generate_text(const GenerateOptions& options) override;
   StreamResult stream_text(const StreamOptions& options) override;
+  EmbeddingResult embedding(const EmbeddingOptions& options) override;
 
   bool is_valid() const override { return !config_.api_key.empty(); }
 

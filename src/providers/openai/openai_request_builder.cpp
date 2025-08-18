@@ -11,6 +11,8 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   nlohmann::json request{{"model", options.model},
                          {"messages", nlohmann::json::array()}};
 
+  if (options.response_format)
+    request["response_format"] = options.response_format.value();
   // Build messages array
   if (!options.messages.empty()) {
     // Use provided messages
@@ -159,6 +161,46 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
                             tools_array.size(),
                             options.tool_choice.to_string());
     }
+  }
+
+  return request;
+}
+
+nlohmann::json OpenAIRequestBuilder::build_request_json(
+    const EmbeddingOptions& options) {
+  nlohmann::json request{{"model", options.model},
+                         {"input", options.input}};
+
+  if (options.encoding_format) {
+    request["encoding_format"] = options.encoding_format.value();
+  }
+
+  if (options.dimensions && options.dimensions.value()) {
+    request["dimensions"] = options.dimensions.value();
+  }
+  // Add optional parameters
+  if (options.temperature) {
+    request["temperature"] = *options.temperature;
+  }
+
+  if (options.max_tokens) {
+    request["max_completion_tokens"] = *options.max_tokens;
+  }
+
+  if (options.top_p) {
+    request["top_p"] = *options.top_p;
+  }
+
+  if (options.frequency_penalty) {
+    request["frequency_penalty"] = *options.frequency_penalty;
+  }
+
+  if (options.presence_penalty) {
+    request["presence_penalty"] = *options.presence_penalty;
+  }
+
+  if (options.seed) {
+    request["seed"] = *options.seed;
   }
 
   return request;
