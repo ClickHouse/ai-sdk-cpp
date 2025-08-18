@@ -6,7 +6,7 @@
 namespace ai {
 namespace anthropic {
 
-GenerateResult AnthropicResponseParser::parse_success_response(
+GenerateResult AnthropicResponseParser::parse_success_completion_response(
     const nlohmann::json& response) {
   ai::logger::log_debug("Parsing Anthropic messages response");
 
@@ -86,11 +86,20 @@ GenerateResult AnthropicResponseParser::parse_success_response(
   return result;
 }
 
-GenerateResult AnthropicResponseParser::parse_error_response(
+GenerateResult AnthropicResponseParser::parse_error_completion_response(
     int status_code,
     const std::string& body) {
   return utils::parse_standard_error_response("Anthropic", status_code, body);
 }
+
+EmbeddingResult AnthropicResponseParser::parse_success_embedding_response(const nlohmann::json&) {
+  return {};
+}
+
+EmbeddingResult AnthropicResponseParser::parse_error_embedding_response(int, const std::string&) {
+  return {};
+}
+
 
 FinishReason AnthropicResponseParser::parse_stop_reason(
     const std::string& reason) {

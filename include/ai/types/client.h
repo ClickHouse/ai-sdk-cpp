@@ -3,6 +3,7 @@
 #include "generate_options.h"
 #include "stream_options.h"
 #include "stream_result.h"
+#include "embeddding_options.h"
 
 #include <memory>
 #include <string>
@@ -29,6 +30,12 @@ class Client {
     if (pimpl_)
       return pimpl_->generate_text(options);
     return GenerateResult("Client not initialized");
+  }
+
+  virtual EmbeddingResult embedding(const EmbeddingOptions& options) {
+    if (pimpl_)
+      return pimpl_->embedding(options);
+    return EmbeddingResult("Client not initialized");
   }
 
   virtual StreamResult stream_text(const StreamOptions& options) {
