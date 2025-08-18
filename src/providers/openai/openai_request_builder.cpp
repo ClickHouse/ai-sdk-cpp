@@ -11,6 +11,8 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   nlohmann::json request{{"model", options.model},
                          {"messages", nlohmann::json::array()}};
 
+  if (options.response_format)
+    request["response_format"] = options.response_format.value();
   // Build messages array
   if (!options.messages.empty()) {
     // Use provided messages
