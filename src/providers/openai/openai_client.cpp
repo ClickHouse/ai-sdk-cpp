@@ -106,7 +106,7 @@ EmbeddingResult OpenAIClient::embedding(const EmbeddingOptions& options) {
     }
 
     ai::logger::log_info(
-        "Text generation successful - model: {}, response_id: {}",
+        "Embedding successful - model: {}, response_id: {}",
         options.model, json_response.value("id", "unknown"));
 
     // Parse using provider-specific parser
@@ -115,7 +115,7 @@ EmbeddingResult OpenAIClient::embedding(const EmbeddingOptions& options) {
     return parsed_result;
 
   } catch (const std::exception& e) {
-    ai::logger::log_error("Exception during text generation: {}", e.what());
+    ai::logger::log_error("Exception during embedding: {}", e.what());
     return EmbeddingResult(std::string("Exception: ") + e.what());
   }
 }
