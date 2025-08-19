@@ -13,8 +13,6 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   request["max_tokens"] = options.max_tokens.value_or(4096);
   request["messages"] = nlohmann::json::array();
 
-  if (options.response_format)
-    request["response_format"] = options.response_format.value();
   // Handle system message
   if (!options.system.empty()) {
     request["system"] = options.system;

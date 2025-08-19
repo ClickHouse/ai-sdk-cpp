@@ -71,57 +71,7 @@ StreamResult OpenAIClient::stream_text(const StreamOptions& options) {
   // Return StreamResult with implementation
   return StreamResult(std::move(impl));
 }
-#if 0
-EmbeddingResult OpenAIClient::embeddings(const EmbeddingOptions& options) {
-   try {
-    // Build request JSON using the provider-specific builder
-    auto request_json = request_builder_->build_request_json(options);
-    std::string json_body = request_json.dump();
-    ai::logger::log_debug("Request JSON built: {}", json_body);
 
-    // Build headers
-    auto headers = request_builder_->build_headers(config_);
-
-    // Make the requests
-    auto result =
-        http_handler_->post(models::kEmbeddings, headers, json_body);
-
-    if (!result.is_success()) {
-      // Parse error response using provider-specific parser
-      if (result.provider_metadata.has_value()) {
-        int status_code = std::stoi(result.provider_metadata.value());
-        return response_parser_->parse_error_embedding_response(
-            status_code, result.error.value_or(""));
-      }
-      return EmbeddingResult(result.error);
-    }
-
-    // Parse the response JSON from result.text
-    nlohmann::json json_response;
-    try {
-      json_response = nlohmann::json::parse(result.text);
-    } catch (const nlohmann::json::exception& e) {
-      ai::logger::log_error("Failed to parse response JSON: {}", e.what());
-      ai::logger::log_debug("Raw response text: {}", result.text);
-      return EmbeddingResult("Failed to parse response: " +
-                            std::string(e.what()));
-    }
-
-    ai::logger::log_info(
-        "Text generation successful - model: {}, response_id: {}",
-        options.model, json_response.value("id", "unknown"));
-
-    // Parse using provider-specific parser
-    auto parsed_result =
-        response_parser_->parse_success_embedding_response(json_response);
-    return parsed_result;
-
-  } catch (const std::exception& e) {
-    ai::logger::log_error("Exception during text generation: {}", e.what());
-    return EmbeddingResult(std::string("Exception: ") + e.what());
-  }
-}
-#endif
 std::string OpenAIClient::provider_name() const {
   return "openai";
 }

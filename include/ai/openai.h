@@ -48,8 +48,6 @@ constexpr const char* kChatGpt4oLatest = "chatgpt-4o-latest";
 /// Default model used when none is specified
 constexpr const char* kDefaultModel = kGpt4o;
 
-constexpr const char* kCompletions = "/v1/chat/completions";
-constexpr const char* kEmbeddings = "/v1/embeddings";
 }  // namespace models
 
 /// Create an OpenAI client with default configuration

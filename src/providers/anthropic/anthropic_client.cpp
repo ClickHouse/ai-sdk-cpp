@@ -53,12 +53,6 @@ StreamResult AnthropicClient::stream_text(const StreamOptions& options) {
   // Return StreamResult with implementation
   return StreamResult(std::move(impl));
 }
-#if 0
-EmbeddingResult AnthropicClient::embeddings(const EmbeddingOptions& options) {
-  ai::logger::log_error("Embedding not yet implemented in AnthropicClient");
-  return EmbeddingResult();
-}
-#endif
 
 std::string AnthropicClient::provider_name() const {
   return "anthropic";
