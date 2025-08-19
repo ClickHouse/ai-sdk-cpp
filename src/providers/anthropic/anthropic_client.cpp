@@ -18,7 +18,8 @@ AnthropicClient::AnthropicClient(const std::string& api_key,
           providers::ProviderConfig{
               .api_key = api_key,
               .base_url = base_url,
-              .endpoint_path = "/v1/messages",
+              .completions_endpoint_path = "/v1/messages",
+              .embeddings_endpoint_path = "/v1/embeddings",
               .auth_header_name = "x-api-key",
               .auth_header_prefix = "",
               .extra_headers = {{"anthropic-version", "2023-06-01"}}},
@@ -44,19 +45,20 @@ StreamResult AnthropicClient::stream_text(const StreamOptions& options) {
 
   // Create stream implementation
   auto impl = std::make_unique<AnthropicStreamImpl>();
-  impl->start_stream(config_.base_url + config_.endpoint_path, headers,
-                     request_json);
+  impl->start_stream(config_.base_url + config_.completions_endpoint_path,
+                        headers, request_json);
 
   ai::logger::log_info("Text streaming started - model: {}", options.model);
 
   // Return StreamResult with implementation
   return StreamResult(std::move(impl));
 }
-
-EmbeddingResult AnthropicClient::embedding(const EmbeddingOptions& options) {
+#if 0
+EmbeddingResult AnthropicClient::embeddings(const EmbeddingOptions& options) {
   ai::logger::log_error("Embedding not yet implemented in AnthropicClient");
   return EmbeddingResult();
 }
+#endif
 
 std::string AnthropicClient::provider_name() const {
   return "anthropic";

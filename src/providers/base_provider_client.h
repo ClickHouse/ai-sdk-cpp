@@ -18,7 +18,8 @@ namespace providers {
 struct ProviderConfig {
   std::string api_key;
   std::string base_url;
-  std::string endpoint_path;  // e.g., "/v1/chat/completions" or "/v1/messages"
+  std::string completions_endpoint_path;  // e.g. "/v1/chat/completions"
+  std::string embeddings_endpoint_path;
   std::string auth_header_name;    // e.g., "Authorization" or "x-api-key"
   std::string auth_header_prefix;  // e.g., "Bearer " or ""
   httplib::Headers extra_headers;  // Additional headers like anthropic-version
@@ -60,7 +61,7 @@ class BaseProviderClient : public Client {
   // Implements the common flow using the composed components
   GenerateResult generate_text(const GenerateOptions& options) override;
   StreamResult stream_text(const StreamOptions& options) override;
-  EmbeddingResult embedding(const EmbeddingOptions& options) override;
+  EmbeddingResult embeddings(const EmbeddingOptions& options) override;
 
   bool is_valid() const override { return !config_.api_key.empty(); }
 

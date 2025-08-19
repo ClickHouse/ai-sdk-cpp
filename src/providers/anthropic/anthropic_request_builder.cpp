@@ -13,6 +13,8 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   request["max_tokens"] = options.max_tokens.value_or(4096);
   request["messages"] = nlohmann::json::array();
 
+  if (options.response_format)
+    request["response_format"] = options.response_format.value();
   // Handle system message
   if (!options.system.empty()) {
     request["system"] = options.system;
@@ -157,8 +159,10 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   return request;
 }
 
-nlohmann::json AnthropicRequestBuilder::build_request_json(const EmbeddingOptions&) {
-  return {};
+nlohmann::json AnthropicRequestBuilder::build_request_json(const EmbeddingOptions& options) {
+  nlohmann::json request{{"model", options.model},
+                          {"input", options.input}};
+  return request;
 }
 
 httplib::Headers AnthropicRequestBuilder::build_headers(

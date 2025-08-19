@@ -21,7 +21,7 @@ class OpenAIClient : public providers::BaseProviderClient {
 
   // Override only what's specific to OpenAI
   StreamResult stream_text(const StreamOptions& options) override;
-  EmbeddingResult embedding(const EmbeddingOptions& options) override;
+  //EmbeddingResult embeddings(const EmbeddingOptions& options) override;
   std::string provider_name() const override;
   std::vector<std::string> supported_models() const override;
   bool supports_model(const std::string& model_name) const override;

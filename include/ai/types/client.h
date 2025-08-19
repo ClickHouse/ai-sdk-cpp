@@ -32,9 +32,9 @@ class Client {
     return GenerateResult("Client not initialized");
   }
 
-  virtual EmbeddingResult embedding(const EmbeddingOptions& options) {
+  virtual EmbeddingResult embeddings(const EmbeddingOptions& options) {
     if (pimpl_)
-      return pimpl_->embedding(options);
+      return pimpl_->embeddings(options);
     return EmbeddingResult("Client not initialized");
   }
 

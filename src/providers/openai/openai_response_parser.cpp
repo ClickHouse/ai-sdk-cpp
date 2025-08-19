@@ -135,7 +135,7 @@ GenerateResult OpenAIResponseParser::parse_error_completion_response(
 }
 
 EmbeddingResult OpenAIResponseParser::parse_success_embedding_response(const nlohmann::json& response) {
-  ai::logger::log_debug("Parsing OpenAI embedding response");
+  ai::logger::log_debug("Parsing OpenAI embeddings response");
 
   EmbeddingResult result;
 
