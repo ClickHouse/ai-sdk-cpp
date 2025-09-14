@@ -167,8 +167,7 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
 httplib::Headers OpenAIRequestBuilder::build_headers(
     const providers::ProviderConfig& config) {
   httplib::Headers headers = {
-      {config.auth_header_name, config.auth_header_prefix + config.api_key},
-      {"Content-Type", "application/json"}};
+      {config.auth_header_name, config.auth_header_prefix + config.api_key}};
 
   // Add any extra headers
   for (const auto& [key, value] : config.extra_headers) {
