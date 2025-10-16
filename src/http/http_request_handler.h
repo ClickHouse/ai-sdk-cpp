@@ -19,7 +19,7 @@ struct HttpConfig {
   bool use_ssl = true;
   int connection_timeout_sec = 30;
   int read_timeout_sec = 120;
-  bool verify_ssl_cert = false;
+  bool verify_ssl_cert = true;
 
   // Retry configuration
   retry::RetryConfig retry_config;
