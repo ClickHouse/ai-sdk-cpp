@@ -17,7 +17,8 @@ OpenAIClient::OpenAIClient(const std::string& api_key,
     : BaseProviderClient(
           providers::ProviderConfig{.api_key = api_key,
                                     .base_url = base_url,
-                                    .endpoint_path = "/v1/chat/completions",
+                                    .completions_endpoint_path = "/v1/chat/completions",
+                                    .embeddings_endpoint_path = "/v1/embeddings",
                                     .auth_header_name = "Authorization",
                                     .auth_header_prefix = "Bearer ",
                                     .extra_headers = {}},
@@ -33,7 +34,8 @@ OpenAIClient::OpenAIClient(const std::string& api_key,
     : BaseProviderClient(
           providers::ProviderConfig{.api_key = api_key,
                                     .base_url = base_url,
-                                    .endpoint_path = "/v1/chat/completions",
+                                    .completions_endpoint_path = "/v1/chat/completions",
+                                    .embeddings_endpoint_path = "/v1/embeddings",
                                     .auth_header_name = "Authorization",
                                     .auth_header_prefix = "Bearer ",
                                     .extra_headers = {},
@@ -61,7 +63,7 @@ StreamResult OpenAIClient::stream_text(const StreamOptions& options) {
 
   // Create stream implementation
   auto impl = std::make_unique<OpenAIStreamImpl>();
-  impl->start_stream(config_.base_url + config_.endpoint_path, headers,
+  impl->start_stream(config_.base_url + config_.completions_endpoint_path, headers,
                      request_json);
 
   ai::logger::log_info("Text streaming started - model: {}", options.model);

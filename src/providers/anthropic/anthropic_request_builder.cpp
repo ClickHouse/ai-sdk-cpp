@@ -157,6 +157,12 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   return request;
 }
 
+nlohmann::json AnthropicRequestBuilder::build_request_json(const EmbeddingOptions& options) {
+  nlohmann::json request{{"model", options.model},
+                          {"input", options.input}};
+  return request;
+}
+
 httplib::Headers AnthropicRequestBuilder::build_headers(
     const providers::ProviderConfig& config) {
   httplib::Headers headers = {
