@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ai/types/embedding_options.h"
 #include "ai/types/generate_options.h"
 #include "providers/base_provider_client.h"
 
@@ -11,6 +12,7 @@ namespace openai {
 class OpenAIRequestBuilder : public providers::RequestBuilder {
  public:
   nlohmann::json build_request_json(const GenerateOptions& options) override;
+  nlohmann::json build_request_json(const EmbeddingOptions& options) override;
   httplib::Headers build_headers(
       const providers::ProviderConfig& config) override;
 };

@@ -6,14 +6,16 @@ add_executable(ai_tests
     unit/types_test.cpp
     unit/openai_stream_test.cpp
     unit/anthropic_stream_test.cpp
-    
+    unit/openai_embeddings_test.cpp
+
     # Integration tests
     integration/openai_integration_test.cpp
     integration/anthropic_integration_test.cpp
     integration/tool_calling_integration_test.cpp
     integration/clickhouse_integration_test.cpp
+    integration/openai_embeddings_integration_test.cpp
     integration/multi_step_duplicate_execution_test.cpp
-    
+
     # Utility classes
     utils/mock_openai_client.cpp
     utils/mock_anthropic_client.cpp
