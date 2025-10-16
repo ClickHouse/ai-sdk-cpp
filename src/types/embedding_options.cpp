@@ -1,7 +1,7 @@
-#include "ai/types/generate_options.h"
+#include "ai/types/embedding_options.h"
 
 namespace ai {
 
-// Implementation details for GenerateOptions if needed
+// Implementation details for EmbeddingOptions if needed
 
 }  // namespace ai

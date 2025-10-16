@@ -18,12 +18,9 @@ struct EmbeddingOptions {
   nlohmann::json input;
   std::optional<int> dimensions;
   std::optional<std::string> encoding_format;
-  std::optional<int> max_tokens;
-  std::optional<double> temperature;
-  std::optional<double> top_p;
-  std::optional<int> seed;
-  std::optional<double> frequency_penalty;
-  std::optional<double> presence_penalty;
+  std::optional<std::string> user;  // Optional user identifier for OpenAI
+
+  EmbeddingOptions() = default;
 
   EmbeddingOptions(std::string model_name, nlohmann::json input_)
       : model(std::move(model_name)),
@@ -31,23 +28,20 @@ struct EmbeddingOptions {
 
   EmbeddingOptions(std::string model_name, nlohmann::json input_, int dimensions_)
       : model(std::move(model_name)),
-      input(std::move(input_)),
-      dimensions(dimensions_) {}
+        input(std::move(input_)),
+        dimensions(dimensions_) {}
 
   EmbeddingOptions(std::string model_name, nlohmann::json input_, int dimensions_, std::string encoding_format_)
       : model(std::move(model_name)),
-      input(std::move(input_)),
-      dimensions(dimensions_),
-      encoding_format(std::move(encoding_format_)) {}
-
-  EmbeddingOptions() = default;
+        input(std::move(input_)),
+        dimensions(dimensions_),
+        encoding_format(std::move(encoding_format_)) {}
 
   bool is_valid() const {
-    return !model.empty() && !input.empty();
+    return !model.empty() && !input.is_null();
   }
 
-  bool has_input() const { return !input.empty(); }
-
+  bool has_input() const { return !input.is_null(); }
 };
 
 struct EmbeddingResult {

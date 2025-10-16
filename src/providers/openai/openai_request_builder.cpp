@@ -171,36 +171,21 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   nlohmann::json request{{"model", options.model},
                          {"input", options.input}};
 
+  // Set encoding format (default to float for compatibility)
   if (options.encoding_format) {
     request["encoding_format"] = options.encoding_format.value();
+  } else {
+    request["encoding_format"] = "float";
   }
 
-  if (options.dimensions && options.dimensions.value()) {
+  // Add dimensions if specified
+  if (options.dimensions && options.dimensions.value() > 0) {
     request["dimensions"] = options.dimensions.value();
   }
-  // Add optional parameters
-  if (options.temperature) {
-    request["temperature"] = *options.temperature;
-  }
 
-  if (options.max_tokens) {
-    request["max_completion_tokens"] = *options.max_tokens;
-  }
-
-  if (options.top_p) {
-    request["top_p"] = *options.top_p;
-  }
-
-  if (options.frequency_penalty) {
-    request["frequency_penalty"] = *options.frequency_penalty;
-  }
-
-  if (options.presence_penalty) {
-    request["presence_penalty"] = *options.presence_penalty;
-  }
-
-  if (options.seed) {
-    request["seed"] = *options.seed;
+  // Add user identifier if specified
+  if (options.user) {
+    request["user"] = options.user.value();
   }
 
   return request;
@@ -209,14 +194,14 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
 httplib::Headers OpenAIRequestBuilder::build_headers(
     const providers::ProviderConfig& config) {
   httplib::Headers headers = {
-      {config.auth_header_name, config.auth_header_prefix + config.api_key},
-      {"Content-Type", "application/json"}};
+      {config.auth_header_name, config.auth_header_prefix + config.api_key}};
 
   // Add any extra headers
   for (const auto& [key, value] : config.extra_headers) {
     headers.emplace(key, value);
   }
 
+  // Note: Content-Type is passed separately to httplib::Post() as content_type parameter
   return headers;
 }
 

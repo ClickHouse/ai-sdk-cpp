@@ -158,6 +158,8 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
 }
 
 nlohmann::json AnthropicRequestBuilder::build_request_json(const EmbeddingOptions& options) {
+  // Note: Anthropic does not currently offer embeddings API
+  // This is a placeholder for future compatibility or custom endpoints
   nlohmann::json request{{"model", options.model},
                           {"input", options.input}};
   return request;
@@ -166,14 +168,14 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(const EmbeddingOption
 httplib::Headers AnthropicRequestBuilder::build_headers(
     const providers::ProviderConfig& config) {
   httplib::Headers headers = {
-      {config.auth_header_name, config.auth_header_prefix + config.api_key},
-      {"Content-Type", "application/json"}};
+      {config.auth_header_name, config.auth_header_prefix + config.api_key}};
 
   // Add any extra headers
   for (const auto& [key, value] : config.extra_headers) {
     headers.emplace(key, value);
   }
 
+  // Note: Content-Type is passed separately to httplib::Post() as content_type parameter
   return headers;
 }
 
