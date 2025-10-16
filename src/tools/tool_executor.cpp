@@ -185,8 +185,9 @@ bool ToolExecutor::validate_json_schema(const JsonValue& data,
   std::string expected_type = schema["type"];
 
   if (expected_type == "object") {
-    if (!data.is_object())
+    if (!data.is_object()) {
       return false;
+    }
 
     // Check required properties
     if (schema.contains("required") && schema["required"].is_array()) {
@@ -270,9 +271,9 @@ std::string generate_tool_call_id() {
   for (int i = 0; i < 24; ++i) {
     int val = dis(gen);
     if (val < 10) {
-      id += char('0' + val);
+      id += static_cast<char>('0' + val);
     } else {
-      id += char('a' + val - 10);
+      id += static_cast<char>('a' + val - 10);
     }
   }
 

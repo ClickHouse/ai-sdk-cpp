@@ -12,6 +12,7 @@ add_executable(ai_tests
     integration/anthropic_integration_test.cpp
     integration/tool_calling_integration_test.cpp
     integration/clickhouse_integration_test.cpp
+    integration/multi_step_duplicate_execution_test.cpp
     
     # Utility classes
     utils/mock_openai_client.cpp

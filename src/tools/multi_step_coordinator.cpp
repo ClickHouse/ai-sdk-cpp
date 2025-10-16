@@ -102,14 +102,9 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
 
     if (step_result.finish_reason == kFinishReasonToolCalls &&
         step_result.has_tool_calls()) {
-      // Execute tools and prepare for next step
-      // Use sequential execution to avoid thread-safety issues
-      std::vector<ToolResult> tool_results =
-          ToolExecutor::execute_tools_with_options(step_result.tool_calls,
-                                                   initial_options, false);
-
-      // Store tool results in the step
-      final_result.steps.back().tool_results = tool_results;
+      // Tools have already been executed by generate_text_single_step()
+      // Use the tool results from step_result instead of re-executing
+      const std::vector<ToolResult>& tool_results = step_result.tool_results;
 
       // Check if all tools failed
       bool all_failed = true;
