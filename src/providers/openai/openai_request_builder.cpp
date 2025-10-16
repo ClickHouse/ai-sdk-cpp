@@ -11,8 +11,9 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   nlohmann::json request{{"model", options.model},
                          {"messages", nlohmann::json::array()}};
 
-  if (options.response_format)
+  if (options.response_format) {
     request["response_format"] = options.response_format.value();
+  }
   // Build messages array
   if (!options.messages.empty()) {
     // Use provided messages
@@ -168,8 +169,7 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
 
 nlohmann::json OpenAIRequestBuilder::build_request_json(
     const EmbeddingOptions& options) {
-  nlohmann::json request{{"model", options.model},
-                         {"input", options.input}};
+  nlohmann::json request{{"model", options.model}, {"input", options.input}};
 
   // Set encoding format (default to float for compatibility)
   if (options.encoding_format) {
@@ -201,7 +201,8 @@ httplib::Headers OpenAIRequestBuilder::build_headers(
     headers.emplace(key, value);
   }
 
-  // Note: Content-Type is passed separately to httplib::Post() as content_type parameter
+  // Note: Content-Type is passed separately to httplib::Post() as content_type
+  // parameter
   return headers;
 }
 

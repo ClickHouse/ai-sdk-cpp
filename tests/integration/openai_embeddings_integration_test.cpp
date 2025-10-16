@@ -35,7 +35,7 @@ class OpenAIEmbeddingsIntegrationTest : public AITestFixture {
 
   // Helper to calculate cosine similarity between two embeddings
   double cosine_similarity(const std::vector<double>& a,
-                          const std::vector<double>& b) {
+                           const std::vector<double>& b) {
     if (a.size() != b.size()) {
       return 0.0;
     }
@@ -94,11 +94,9 @@ TEST_F(OpenAIEmbeddingsIntegrationTest, MultipleStringsEmbedding) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  nlohmann::json input = nlohmann::json::array({
-    "sunny day at the beach",
-    "rainy afternoon in the city",
-    "snowy night in the mountains"
-  });
+  nlohmann::json input = nlohmann::json::array(
+      {"sunny day at the beach", "rainy afternoon in the city",
+       "snowy night in the mountains"});
 
   EmbeddingOptions options("text-embedding-3-small", input);
   auto result = client_->embeddings(options);
@@ -161,13 +159,8 @@ TEST_F(OpenAIEmbeddingsIntegrationTest, EmbeddingSimilarity) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  nlohmann::json input = nlohmann::json::array({
-    "cat",
-    "kitten",
-    "dog",
-    "puppy",
-    "car"
-  });
+  nlohmann::json input =
+      nlohmann::json::array({"cat", "kitten", "dog", "puppy", "car"});
 
   EmbeddingOptions options("text-embedding-3-small", input);
   auto result = client_->embeddings(options);
@@ -191,10 +184,12 @@ TEST_F(OpenAIEmbeddingsIntegrationTest, EmbeddingSimilarity) {
   double cat_car_sim = cosine_similarity(embeddings[0], embeddings[4]);
 
   // Similar words should have higher similarity than unrelated words
-  // Note: Single words have moderate similarity (~0.5-0.6), not as high as full sentences
+  // Note: Single words have moderate similarity (~0.5-0.6), not as high as full
+  // sentences
   EXPECT_GT(cat_kitten_sim, 0.5) << "cat and kitten should be similar";
   EXPECT_GT(dog_puppy_sim, 0.5) << "dog and puppy should be similar";
-  EXPECT_LT(cat_car_sim, cat_kitten_sim) << "cat and car should be less similar than cat and kitten";
+  EXPECT_LT(cat_car_sim, cat_kitten_sim)
+      << "cat and car should be less similar than cat and kitten";
 }
 
 // Error Handling Tests
@@ -223,11 +218,11 @@ TEST_F(OpenAIEmbeddingsIntegrationTest, InvalidModel) {
   auto result = client_->embeddings(options);
 
   EXPECT_FALSE(result.is_success());
-  EXPECT_THAT(result.error_message(),
-              testing::AnyOf(testing::HasSubstr("404"),
-                             testing::HasSubstr("model"),
-                             testing::HasSubstr("not found"),
-                             testing::HasSubstr("does not exist")));
+  EXPECT_THAT(
+      result.error_message(),
+      testing::AnyOf(testing::HasSubstr("404"), testing::HasSubstr("model"),
+                     testing::HasSubstr("not found"),
+                     testing::HasSubstr("does not exist")));
 }
 
 // Edge Cases
@@ -278,12 +273,9 @@ TEST_F(OpenAIEmbeddingsIntegrationTest, SpecialCharactersEmbedding) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  nlohmann::json input = nlohmann::json::array({
-    "Hello! How are you?",
-    "¡Hola! ¿Cómo estás?",
-    "你好！你好吗？",
-    "🌟✨🎉"
-  });
+  nlohmann::json input =
+      nlohmann::json::array({"Hello! How are you?", "¡Hola! ¿Cómo estás?",
+                             "你好！你好吗？", "🌟✨🎉"});
 
   EmbeddingOptions options("text-embedding-3-small", input);
   auto result = client_->embeddings(options);
@@ -342,10 +334,8 @@ TEST_F(OpenAIEmbeddingsIntegrationTest, TokenUsageTracking) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  nlohmann::json input = nlohmann::json::array({
-    "Short text",
-    "This is a slightly longer text with more words"
-  });
+  nlohmann::json input = nlohmann::json::array(
+      {"Short text", "This is a slightly longer text with more words"});
 
   EmbeddingOptions options("text-embedding-3-small", input);
   auto result = client_->embeddings(options);
@@ -369,8 +359,8 @@ TEST_F(OpenAIEmbeddingsIntegrationTest, NetworkFailure) {
   }
 
   // Test with localhost on unused port to simulate connection refused
-  auto failing_client = ai::openai::create_client(
-      api_key, "http://localhost:59999");
+  auto failing_client =
+      ai::openai::create_client(api_key, "http://localhost:59999");
 
   nlohmann::json input = "Test network failure";
   EmbeddingOptions options("text-embedding-3-small", input);

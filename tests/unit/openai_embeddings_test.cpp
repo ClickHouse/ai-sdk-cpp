@@ -65,11 +65,8 @@ TEST_F(OpenAIEmbeddingsTest, EmbeddingOptionsWithEncodingFormat) {
 }
 
 TEST_F(OpenAIEmbeddingsTest, EmbeddingOptionsWithArrayInput) {
-  nlohmann::json input = nlohmann::json::array({
-    "first text",
-    "second text",
-    "third text"
-  });
+  nlohmann::json input =
+      nlohmann::json::array({"first text", "second text", "third text"});
   EmbeddingOptions options("text-embedding-3-small", input);
 
   EXPECT_TRUE(options.is_valid());
@@ -160,7 +157,8 @@ TEST_F(OpenAIEmbeddingsTest, ValidateEmbeddingOptionsValidation) {
   EXPECT_FALSE(invalid_options.is_valid());
 
   // Test with null input
-  EmbeddingOptions invalid_input_options("text-embedding-3-small", nlohmann::json());
+  EmbeddingOptions invalid_input_options("text-embedding-3-small",
+                                         nlohmann::json());
   EXPECT_FALSE(invalid_input_options.is_valid());
 
   // Test with valid options
@@ -178,11 +176,9 @@ TEST_F(OpenAIEmbeddingsTest, EmbeddingsWithSingleString) {
 }
 
 TEST_F(OpenAIEmbeddingsTest, EmbeddingsWithMultipleStrings) {
-  nlohmann::json input = nlohmann::json::array({
-    "First embedding text",
-    "Second embedding text",
-    "Third embedding text"
-  });
+  nlohmann::json input =
+      nlohmann::json::array({"First embedding text", "Second embedding text",
+                             "Third embedding text"});
   EmbeddingOptions options("text-embedding-3-small", input);
 
   EXPECT_TRUE(options.is_valid());

@@ -157,11 +157,11 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   return request;
 }
 
-nlohmann::json AnthropicRequestBuilder::build_request_json(const EmbeddingOptions& options) {
+nlohmann::json AnthropicRequestBuilder::build_request_json(
+    const EmbeddingOptions& options) {
   // Note: Anthropic does not currently offer embeddings API
   // This is a placeholder for future compatibility or custom endpoints
-  nlohmann::json request{{"model", options.model},
-                          {"input", options.input}};
+  nlohmann::json request{{"model", options.model}, {"input", options.input}};
   return request;
 }
 
@@ -175,7 +175,8 @@ httplib::Headers AnthropicRequestBuilder::build_headers(
     headers.emplace(key, value);
   }
 
-  // Note: Content-Type is passed separately to httplib::Post() as content_type parameter
+  // Note: Content-Type is passed separately to httplib::Post() as content_type
+  // parameter
   return headers;
 }
 

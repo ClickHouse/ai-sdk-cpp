@@ -1,9 +1,9 @@
 #pragma once
 
+#include "embedding_options.h"
 #include "generate_options.h"
 #include "stream_options.h"
 #include "stream_result.h"
-#include "embedding_options.h"
 
 #include <memory>
 #include <string>

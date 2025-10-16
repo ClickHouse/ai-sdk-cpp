@@ -2,8 +2,8 @@
 
 #include "ai/retry/retry_policy.h"
 #include "ai/types/client.h"
-#include "ai/types/generate_options.h"
 #include "ai/types/embedding_options.h"
+#include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 #include "http/http_request_handler.h"
 
@@ -34,7 +34,8 @@ class RequestBuilder {
  public:
   virtual ~RequestBuilder() = default;
   virtual nlohmann::json build_request_json(const GenerateOptions& options) = 0;
-  virtual nlohmann::json build_request_json(const EmbeddingOptions& options) = 0;
+  virtual nlohmann::json build_request_json(
+      const EmbeddingOptions& options) = 0;
   virtual httplib::Headers build_headers(const ProviderConfig& config) = 0;
 };
 
@@ -44,12 +45,14 @@ class ResponseParser {
   virtual ~ResponseParser() = default;
   virtual GenerateResult parse_success_completion_response(
       const nlohmann::json& response) = 0;
-  virtual GenerateResult parse_error_completion_response(int status_code,
-                                              const std::string& body) = 0;
+  virtual GenerateResult parse_error_completion_response(
+      int status_code,
+      const std::string& body) = 0;
   virtual EmbeddingResult parse_success_embedding_response(
-    const nlohmann::json& response) = 0;
-  virtual EmbeddingResult parse_error_embedding_response(int status_code,
-                                              const std::string& body) = 0;
+      const nlohmann::json& response) = 0;
+  virtual EmbeddingResult parse_error_embedding_response(
+      int status_code,
+      const std::string& body) = 0;
 };
 
 // Base client that uses composition to share common functionality

@@ -26,8 +26,8 @@ BaseProviderClient::BaseProviderClient(
   ai::logger::log_debug(
       R"(BaseProviderClient initialized - base_url: {},
      completions_endpoint: {}, embeddings_endpoint: {})",
-     config.base_url, config.completions_endpoint_path,
-     config.embeddings_endpoint_path);
+      config.base_url, config.completions_endpoint_path,
+      config.embeddings_endpoint_path);
 }
 
 GenerateResult BaseProviderClient::generate_text(
@@ -66,8 +66,8 @@ GenerateResult BaseProviderClient::generate_text_single_step(
     auto headers = request_builder_->build_headers(config_);
 
     // Make the request
-    auto result =
-        http_handler_->post(config_.completions_endpoint_path, headers, json_body);
+    auto result = http_handler_->post(config_.completions_endpoint_path,
+                                      headers, json_body);
 
     if (!result.is_success()) {
       // Parse error response using provider-specific parser
@@ -146,7 +146,8 @@ StreamResult BaseProviderClient::stream_text(const StreamOptions& options) {
   return StreamResult();
 }
 
-EmbeddingResult BaseProviderClient::embeddings(const EmbeddingOptions& options) {
+EmbeddingResult BaseProviderClient::embeddings(
+    const EmbeddingOptions& options) {
   try {
     // Build request JSON using the provider-specific builder
     auto request_json = request_builder_->build_request_json(options);
@@ -157,8 +158,8 @@ EmbeddingResult BaseProviderClient::embeddings(const EmbeddingOptions& options) 
     auto headers = request_builder_->build_headers(config_);
 
     // Make the requests
-    auto result =
-        http_handler_->post(config_.embeddings_endpoint_path, headers, json_body);
+    auto result = http_handler_->post(config_.embeddings_endpoint_path, headers,
+                                      json_body);
 
     if (!result.is_success()) {
       // Parse error response using provider-specific parser
@@ -178,12 +179,11 @@ EmbeddingResult BaseProviderClient::embeddings(const EmbeddingOptions& options) 
       ai::logger::log_error("Failed to parse response JSON: {}", e.what());
       ai::logger::log_debug("Raw response text: {}", result.text);
       return EmbeddingResult("Failed to parse response: " +
-                            std::string(e.what()));
+                             std::string(e.what()));
     }
 
-    ai::logger::log_info(
-        "Embeddings successful - model: {}, response_id: {}",
-        options.model, json_response.value("id", "unknown"));
+    ai::logger::log_info("Embeddings successful - model: {}, response_id: {}",
+                         options.model, json_response.value("id", "unknown"));
 
     // Parse using provider-specific parser
     auto parsed_result =

@@ -92,7 +92,8 @@ GenerateResult AnthropicResponseParser::parse_error_completion_response(
   return utils::parse_standard_error_response("Anthropic", status_code, body);
 }
 
-EmbeddingResult AnthropicResponseParser::parse_success_embedding_response(const nlohmann::json& response) {
+EmbeddingResult AnthropicResponseParser::parse_success_embedding_response(
+    const nlohmann::json& response) {
   ai::logger::log_debug("Parsing Anthropic embeddings response");
 
   EmbeddingResult result;
@@ -123,11 +124,13 @@ EmbeddingResult AnthropicResponseParser::parse_success_embedding_response(const 
   return result;
 }
 
-EmbeddingResult AnthropicResponseParser::parse_error_embedding_response(int status_code, const std::string& body) {
-  auto generate_result = utils::parse_standard_error_response("Anthropic", status_code, body);
+EmbeddingResult AnthropicResponseParser::parse_error_embedding_response(
+    int status_code,
+    const std::string& body) {
+  auto generate_result =
+      utils::parse_standard_error_response("Anthropic", status_code, body);
   return EmbeddingResult(generate_result.error);
 }
-
 
 FinishReason AnthropicResponseParser::parse_stop_reason(
     const std::string& reason) {

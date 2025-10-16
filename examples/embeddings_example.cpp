@@ -13,18 +13,18 @@
  *   ./embeddings_example
  */
 
+#include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cmath>
-#include <iomanip>
 
 #include <ai/openai.h>
 #include <ai/types/embedding_options.h>
 
 // Helper function to calculate cosine similarity between two embeddings
 double cosine_similarity(const std::vector<double>& a,
-                        const std::vector<double>& b) {
+                         const std::vector<double>& b) {
   if (a.size() != b.size()) {
     return 0.0;
   }
@@ -47,7 +47,8 @@ double cosine_similarity(const std::vector<double>& a,
 }
 
 // Helper function to extract embedding as a vector of doubles
-std::vector<double> extract_embedding(const nlohmann::json& data, size_t index) {
+std::vector<double> extract_embedding(const nlohmann::json& data,
+                                      size_t index) {
   std::vector<double> embedding;
   if (data.is_array() && index < data.size()) {
     for (const auto& val : data[index]["embedding"]) {
@@ -64,7 +65,8 @@ int main() {
   // Create OpenAI client
   auto client = ai::openai::create_client();
   if (!client.is_valid()) {
-    std::cerr << "Error: Failed to create OpenAI client. Make sure OPENAI_API_KEY is set.\n";
+    std::cerr << "Error: Failed to create OpenAI client. Make sure "
+                 "OPENAI_API_KEY is set.\n";
     return 1;
   }
 
@@ -83,8 +85,10 @@ int main() {
     std::cout << "  Token usage: " << result1.usage.total_tokens << " tokens\n";
     std::cout << "  First 5 values: [";
     for (size_t i = 0; i < std::min(size_t(5), embedding.size()); ++i) {
-      std::cout << std::fixed << std::setprecision(6) << embedding[i].get<double>();
-      if (i < 4) std::cout << ", ";
+      std::cout << std::fixed << std::setprecision(6)
+                << embedding[i].get<double>();
+      if (i < 4)
+        std::cout << ", ";
     }
     std::cout << ", ...]\n\n";
   } else {
@@ -93,21 +97,21 @@ int main() {
 
   // Example 2: Multiple texts embedding
   std::cout << "2. Multiple Texts Embedding:\n";
-  nlohmann::json input2 = nlohmann::json::array({
-    "sunny day at the beach",
-    "rainy afternoon in the city",
-    "snowy night in the mountains"
-  });
+  nlohmann::json input2 = nlohmann::json::array(
+      {"sunny day at the beach", "rainy afternoon in the city",
+       "snowy night in the mountains"});
 
   ai::EmbeddingOptions options2("text-embedding-3-small", input2);
   auto result2 = client.embeddings(options2);
 
   if (result2) {
-    std::cout << "✓ Successfully generated " << result2.data.size() << " embeddings\n";
+    std::cout << "✓ Successfully generated " << result2.data.size()
+              << " embeddings\n";
     std::cout << "  Token usage: " << result2.usage.total_tokens << " tokens\n";
     for (size_t i = 0; i < result2.data.size(); ++i) {
-      std::cout << "  Embedding " << i+1 << " dimensions: "
-                << result2.data[i]["embedding"].size() << "\n";
+      std::cout << "  Embedding " << i + 1
+                << " dimensions: " << result2.data[i]["embedding"].size()
+                << "\n";
     }
     std::cout << "\n";
   } else {
@@ -124,21 +128,16 @@ int main() {
     auto embedding = result3.data[0]["embedding"];
     std::cout << "✓ Successfully generated embedding with custom dimensions\n";
     std::cout << "  Dimensions: " << embedding.size() << " (requested: 512)\n";
-    std::cout << "  Token usage: " << result3.usage.total_tokens << " tokens\n\n";
+    std::cout << "  Token usage: " << result3.usage.total_tokens
+              << " tokens\n\n";
   } else {
     std::cout << "✗ Error: " << result3.error_message() << "\n\n";
   }
 
   // Example 4: Semantic similarity between texts
   std::cout << "4. Calculating Semantic Similarity:\n";
-  nlohmann::json input4 = nlohmann::json::array({
-    "cat",
-    "kitten",
-    "dog",
-    "puppy",
-    "car",
-    "automobile"
-  });
+  nlohmann::json input4 = nlohmann::json::array(
+      {"cat", "kitten", "dog", "puppy", "car", "automobile"});
 
   ai::EmbeddingOptions options4("text-embedding-3-small", input4);
   auto result4 = client.embeddings(options4);
@@ -147,9 +146,8 @@ int main() {
     std::cout << "✓ Generated embeddings for similarity comparison\n\n";
 
     // Extract embeddings
-    std::vector<std::string> texts = {
-      "cat", "kitten", "dog", "puppy", "car", "automobile"
-    };
+    std::vector<std::string> texts = {"cat",   "kitten", "dog",
+                                      "puppy", "car",    "automobile"};
     std::vector<std::vector<double>> embeddings;
 
     for (size_t i = 0; i < result4.data.size(); ++i) {
@@ -170,7 +168,8 @@ int main() {
     std::cout << "  cat ↔ car:        " << std::fixed << std::setprecision(4)
               << cosine_similarity(embeddings[0], embeddings[4]) << "\n\n";
 
-    std::cout << "  Note: Similar concepts have similarity scores closer to 1.0\n\n";
+    std::cout
+        << "  Note: Similar concepts have similarity scores closer to 1.0\n\n";
   } else {
     std::cout << "✗ Error: " << result4.error_message() << "\n\n";
   }
@@ -185,8 +184,10 @@ int main() {
 
   if (result5a) {
     std::cout << "  text-embedding-3-small:\n";
-    std::cout << "    Dimensions: " << result5a.data[0]["embedding"].size() << "\n";
-    std::cout << "    Token usage: " << result5a.usage.total_tokens << " tokens\n";
+    std::cout << "    Dimensions: " << result5a.data[0]["embedding"].size()
+              << "\n";
+    std::cout << "    Token usage: " << result5a.usage.total_tokens
+              << " tokens\n";
   }
 
   // text-embedding-3-large
@@ -195,8 +196,10 @@ int main() {
 
   if (result5b) {
     std::cout << "  text-embedding-3-large:\n";
-    std::cout << "    Dimensions: " << result5b.data[0]["embedding"].size() << "\n";
-    std::cout << "    Token usage: " << result5b.usage.total_tokens << " tokens\n";
+    std::cout << "    Dimensions: " << result5b.data[0]["embedding"].size()
+              << "\n";
+    std::cout << "    Token usage: " << result5b.usage.total_tokens
+              << " tokens\n";
   }
 
   std::cout << "\n";
@@ -206,12 +209,11 @@ int main() {
 
   std::string query = "I need a programming language for web development";
   std::vector<std::string> documents = {
-    "Python is great for data science and machine learning",
-    "JavaScript is the language of the web and runs in browsers",
-    "C++ is perfect for high-performance systems programming",
-    "Java is widely used for enterprise applications",
-    "TypeScript adds types to JavaScript for better development"
-  };
+      "Python is great for data science and machine learning",
+      "JavaScript is the language of the web and runs in browsers",
+      "C++ is perfect for high-performance systems programming",
+      "Java is widely used for enterprise applications",
+      "TypeScript adds types to JavaScript for better development"};
 
   // Add query at the beginning
   nlohmann::json input6 = nlohmann::json::array();
@@ -247,8 +249,9 @@ int main() {
     for (size_t i = 0; i < similarities.size(); ++i) {
       size_t idx = similarities[i].first;
       double sim = similarities[i].second;
-      std::cout << "  " << (i+1) << ". [" << std::fixed << std::setprecision(4) << sim << "] "
-                << documents[idx] << "\n";
+      std::cout << "  " << (i + 1) << ". [" << std::fixed
+                << std::setprecision(4) << sim << "] " << documents[idx]
+                << "\n";
     }
     std::cout << "\n";
   } else {
@@ -270,10 +273,12 @@ int main() {
 
   std::cout << "\nExample completed!\n";
   std::cout << "\nTips:\n";
-  std::cout << "  - text-embedding-3-small: 1536 dimensions, faster and cheaper\n";
+  std::cout
+      << "  - text-embedding-3-small: 1536 dimensions, faster and cheaper\n";
   std::cout << "  - text-embedding-3-large: 3072 dimensions, higher quality\n";
   std::cout << "  - Use custom dimensions to reduce vector storage size\n";
-  std::cout << "  - Cosine similarity scores closer to 1.0 indicate more similar texts\n";
+  std::cout << "  - Cosine similarity scores closer to 1.0 indicate more "
+               "similar texts\n";
   std::cout << "\nMake sure to set your API key:\n";
   std::cout << "  export OPENAI_API_KEY=your_openai_key\n";
 

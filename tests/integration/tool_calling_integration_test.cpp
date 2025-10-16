@@ -56,15 +56,16 @@ class ToolTestFixtures {
           double b = args["b"].get<double>();
 
           double result = 0.0;
-          if (op == "add")
+          if (op == "add") {
             result = a + b;
-          else if (op == "subtract")
+          } else if (op == "subtract") {
             result = a - b;
-          else if (op == "multiply")
+          } else if (op == "multiply") {
             result = a * b;
-          else if (op == "divide") {
-            if (b == 0.0)
+          } else if (op == "divide") {
+            if (b == 0.0) {
               throw std::runtime_error("Division by zero");
+            }
             result = a / b;
           }
 

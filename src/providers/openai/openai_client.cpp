@@ -15,13 +15,14 @@ namespace openai {
 OpenAIClient::OpenAIClient(const std::string& api_key,
                            const std::string& base_url)
     : BaseProviderClient(
-          providers::ProviderConfig{.api_key = api_key,
-                                    .base_url = base_url,
-                                    .completions_endpoint_path = "/v1/chat/completions",
-                                    .embeddings_endpoint_path = "/v1/embeddings",
-                                    .auth_header_name = "Authorization",
-                                    .auth_header_prefix = "Bearer ",
-                                    .extra_headers = {}},
+          providers::ProviderConfig{
+              .api_key = api_key,
+              .base_url = base_url,
+              .completions_endpoint_path = "/v1/chat/completions",
+              .embeddings_endpoint_path = "/v1/embeddings",
+              .auth_header_name = "Authorization",
+              .auth_header_prefix = "Bearer ",
+              .extra_headers = {}},
           std::make_unique<OpenAIRequestBuilder>(),
           std::make_unique<OpenAIResponseParser>()) {
   ai::logger::log_debug("OpenAI client initialized with base_url: {}",
@@ -32,14 +33,15 @@ OpenAIClient::OpenAIClient(const std::string& api_key,
                            const std::string& base_url,
                            const retry::RetryConfig& retry_config)
     : BaseProviderClient(
-          providers::ProviderConfig{.api_key = api_key,
-                                    .base_url = base_url,
-                                    .completions_endpoint_path = "/v1/chat/completions",
-                                    .embeddings_endpoint_path = "/v1/embeddings",
-                                    .auth_header_name = "Authorization",
-                                    .auth_header_prefix = "Bearer ",
-                                    .extra_headers = {},
-                                    .retry_config = retry_config},
+          providers::ProviderConfig{
+              .api_key = api_key,
+              .base_url = base_url,
+              .completions_endpoint_path = "/v1/chat/completions",
+              .embeddings_endpoint_path = "/v1/embeddings",
+              .auth_header_name = "Authorization",
+              .auth_header_prefix = "Bearer ",
+              .extra_headers = {},
+              .retry_config = retry_config},
           std::make_unique<OpenAIRequestBuilder>(),
           std::make_unique<OpenAIResponseParser>()) {
   ai::logger::log_debug(
@@ -63,8 +65,8 @@ StreamResult OpenAIClient::stream_text(const StreamOptions& options) {
 
   // Create stream implementation
   auto impl = std::make_unique<OpenAIStreamImpl>();
-  impl->start_stream(config_.base_url + config_.completions_endpoint_path, headers,
-                     request_json);
+  impl->start_stream(config_.base_url + config_.completions_endpoint_path,
+                     headers, request_json);
 
   ai::logger::log_info("Text streaming started - model: {}", options.model);
 

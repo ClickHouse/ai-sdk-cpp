@@ -134,7 +134,8 @@ GenerateResult OpenAIResponseParser::parse_error_completion_response(
   return utils::parse_standard_error_response("OpenAI", status_code, body);
 }
 
-EmbeddingResult OpenAIResponseParser::parse_success_embedding_response(const nlohmann::json& response) {
+EmbeddingResult OpenAIResponseParser::parse_success_embedding_response(
+    const nlohmann::json& response) {
   ai::logger::log_debug("Parsing OpenAI embeddings response");
 
   EmbeddingResult result;
@@ -165,8 +166,11 @@ EmbeddingResult OpenAIResponseParser::parse_success_embedding_response(const nlo
   return result;
 }
 
-EmbeddingResult OpenAIResponseParser::parse_error_embedding_response(int status_code, const std::string& body) {
-  auto generate_result = utils::parse_standard_error_response("OpenAI", status_code, body);
+EmbeddingResult OpenAIResponseParser::parse_error_embedding_response(
+    int status_code,
+    const std::string& body) {
+  auto generate_result =
+      utils::parse_standard_error_response("OpenAI", status_code, body);
   return EmbeddingResult(generate_result.error);
 }
 

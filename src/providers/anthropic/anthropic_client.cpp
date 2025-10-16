@@ -46,7 +46,7 @@ StreamResult AnthropicClient::stream_text(const StreamOptions& options) {
   // Create stream implementation
   auto impl = std::make_unique<AnthropicStreamImpl>();
   impl->start_stream(config_.base_url + config_.completions_endpoint_path,
-                        headers, request_json);
+                     headers, request_json);
 
   ai::logger::log_info("Text streaming started - model: {}", options.model);
 
