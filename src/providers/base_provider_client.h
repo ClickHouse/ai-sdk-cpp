@@ -2,6 +2,7 @@
 
 #include "ai/retry/retry_policy.h"
 #include "ai/types/client.h"
+#include "ai/types/embedding_options.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 #include "http/http_request_handler.h"
@@ -18,7 +19,8 @@ namespace providers {
 struct ProviderConfig {
   std::string api_key;
   std::string base_url;
-  std::string endpoint_path;  // e.g., "/v1/chat/completions" or "/v1/messages"
+  std::string completions_endpoint_path;  // e.g. "/v1/chat/completions"
+  std::string embeddings_endpoint_path;
   std::string auth_header_name;    // e.g., "Authorization" or "x-api-key"
   std::string auth_header_prefix;  // e.g., "Bearer " or ""
   httplib::Headers extra_headers;  // Additional headers like anthropic-version
@@ -32,6 +34,8 @@ class RequestBuilder {
  public:
   virtual ~RequestBuilder() = default;
   virtual nlohmann::json build_request_json(const GenerateOptions& options) = 0;
+  virtual nlohmann::json build_request_json(
+      const EmbeddingOptions& options) = 0;
   virtual httplib::Headers build_headers(const ProviderConfig& config) = 0;
 };
 
@@ -39,10 +43,16 @@ class RequestBuilder {
 class ResponseParser {
  public:
   virtual ~ResponseParser() = default;
-  virtual GenerateResult parse_success_response(
+  virtual GenerateResult parse_success_completion_response(
       const nlohmann::json& response) = 0;
-  virtual GenerateResult parse_error_response(int status_code,
-                                              const std::string& body) = 0;
+  virtual GenerateResult parse_error_completion_response(
+      int status_code,
+      const std::string& body) = 0;
+  virtual EmbeddingResult parse_success_embedding_response(
+      const nlohmann::json& response) = 0;
+  virtual EmbeddingResult parse_error_embedding_response(
+      int status_code,
+      const std::string& body) = 0;
 };
 
 // Base client that uses composition to share common functionality
@@ -55,6 +65,7 @@ class BaseProviderClient : public Client {
   // Implements the common flow using the composed components
   GenerateResult generate_text(const GenerateOptions& options) override;
   StreamResult stream_text(const StreamOptions& options) override;
+  EmbeddingResult embeddings(const EmbeddingOptions& options) override;
 
   bool is_valid() const override { return !config_.api_key.empty(); }
 
