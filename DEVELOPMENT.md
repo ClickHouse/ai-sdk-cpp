@@ -22,7 +22,7 @@ This document provides comprehensive information about developing, building, and
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ai-sdk/ai-sdk-cpp.git
+git clone --recursive https://github.com/ClickHouse/ai-sdk-cpp.git
 cd ai-sdk-cpp
 ```
 
