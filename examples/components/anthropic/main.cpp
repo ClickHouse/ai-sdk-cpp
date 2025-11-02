@@ -26,7 +26,7 @@ int main() {
   // Test core functionality
   std::cout << "Testing core functionality...\n";
   ai::GenerateOptions options;
-  options.model = "claude-3-5-sonnet-20241022";
+  options.model = "claude-sonnet-4-5-20250929";
   options.prompt = "Hello world";
   std::cout << "✓ Core types work fine\n\n";
 
@@ -37,8 +37,8 @@ int main() {
     auto client = ai::anthropic::create_client();
     std::cout << "✓ Anthropic client created successfully\n";
     std::cout << "✓ Available models: "
-              << ai::anthropic::models::kClaudeSonnet35 << ", "
-              << ai::anthropic::models::kClaudeHaiku35 << "\n";
+              << ai::anthropic::models::kClaudeSonnet45 << ", "
+              << ai::anthropic::models::kClaudeHaiku45 << "\n";
   } catch (const std::exception& e) {
     std::cout << "✗ Anthropic client failed: " << e.what() << "\n";
   }

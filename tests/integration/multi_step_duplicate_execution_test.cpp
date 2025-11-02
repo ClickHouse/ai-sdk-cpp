@@ -41,7 +41,7 @@ class MultiStepDuplicateExecutionTest
       if (api_key) {
         use_real_api_ = true;
         client_ = ai::anthropic::create_client(api_key);
-        model_ = ai::anthropic::models::kClaudeSonnet35;
+        model_ = ai::anthropic::models::kClaudeSonnet45;
       } else {
         use_real_api_ = false;
       }

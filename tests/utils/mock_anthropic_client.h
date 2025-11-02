@@ -94,7 +94,7 @@ class AnthropicResponseBuilder {
  public:
   static std::string buildSuccessResponse(
       const std::string& content = "Test response",
-      const std::string& model = "claude-3-5-sonnet-20241022",
+      const std::string& model = "claude-sonnet-4-5-20250929",
       int input_tokens = 10,
       int output_tokens = 20);
 

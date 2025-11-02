@@ -98,7 +98,7 @@ int main() {
 
   auto client4 = ai::anthropic::create_client();
   ai::GenerateOptions options4;
-  options4.model = ai::anthropic::models::kClaudeSonnet35;
+  options4.model = ai::anthropic::models::kClaudeSonnet45;
   options4.prompt =
       "Write a haiku about programming. Just the haiku, nothing else.";
 

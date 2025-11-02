@@ -26,7 +26,7 @@ class AITestFixture : public ::testing::Test {
   // Anthropic test data
   static constexpr const char* kTestAnthropicApiKey = "sk-ant-test123456789";
   static constexpr const char* kTestAnthropicModel =
-      "claude-3-5-sonnet-20241022";
+      "claude-sonnet-4-5-20250929";
   static constexpr const char* kTestAnthropicBaseUrl =
       "https://api.anthropic.com";
 };

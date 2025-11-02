@@ -81,17 +81,17 @@ TEST_F(AnthropicClientTest, ConstructorWithHttpUrl) {
 TEST_F(AnthropicClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();
 
-  EXPECT_THAT(models, testing::Contains("claude-3-5-sonnet-20241022"));
-  EXPECT_THAT(models, testing::Contains("claude-3-haiku-20240307"));
-  EXPECT_THAT(models, testing::Contains("claude-3-opus-20240229"));
-  EXPECT_THAT(models, testing::Contains("claude-3-sonnet-20240229"));
+  EXPECT_THAT(models, testing::Contains("claude-sonnet-4-5-20250929"));
+  EXPECT_THAT(models, testing::Contains("claude-haiku-4-5-20251001"));
+  EXPECT_THAT(models, testing::Contains("claude-opus-4-1-20250805"));
+  EXPECT_THAT(models, testing::Contains("claude-sonnet-4-20250514"));
   EXPECT_FALSE(models.empty());
 }
 
 TEST_F(AnthropicClientTest, SupportsValidModel) {
-  EXPECT_TRUE(client_->supports_model("claude-3-5-sonnet-20241022"));
-  EXPECT_TRUE(client_->supports_model("claude-3-haiku-20240307"));
-  EXPECT_TRUE(client_->supports_model("claude-3-opus-20240229"));
+  EXPECT_TRUE(client_->supports_model("claude-sonnet-4-5-20250929"));
+  EXPECT_TRUE(client_->supports_model("claude-haiku-4-5-20251001"));
+  EXPECT_TRUE(client_->supports_model("claude-opus-4-1-20250805"));
 }
 
 TEST_F(AnthropicClientTest, DoesNotSupportInvalidModel) {
