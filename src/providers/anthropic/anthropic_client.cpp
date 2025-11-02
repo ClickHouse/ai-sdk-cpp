@@ -59,13 +59,13 @@ std::string AnthropicClient::provider_name() const {
 }
 
 std::vector<std::string> AnthropicClient::supported_models() const {
-  return {"claude-sonnet-4-5-20250929",   // Latest Sonnet 4.5
-          "claude-haiku-4-5-20251001",    // Latest Haiku 4.5
-          "claude-opus-4-1-20250805",     // Latest Opus 4.1
-          "claude-sonnet-4-20250514",     // Sonnet 4.0
-          "claude-3-5-sonnet-20241022",   // Legacy 3.5 Sonnet
-          "claude-3-5-haiku-20241022",    // Legacy 3.5 Haiku
-          "claude-3-opus-20240229", "claude-3-sonnet-20240229",
+  return {"claude-sonnet-4-5-20250929",  // Latest Sonnet 4.5
+          "claude-haiku-4-5-20251001",   // Latest Haiku 4.5
+          "claude-opus-4-1-20250805",    // Latest Opus 4.1
+          "claude-sonnet-4-20250514",    // Sonnet 4.0
+          "claude-3-5-sonnet-20241022",  // Legacy 3.5 Sonnet
+          "claude-3-5-haiku-20241022",   // Legacy 3.5 Haiku
+          "claude-3-opus-20240229",     "claude-3-sonnet-20240229",
           "claude-3-haiku-20240307"};
 }
 

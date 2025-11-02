@@ -703,8 +703,8 @@ TEST_F(AnthropicSpecificToolTest, MaxTokensRequiredWithTools) {
       << "Expected successful result but got error: " << result.error_message();
   EXPECT_FALSE(result.error.has_value());
 
-  // Note: When tools are provided, the model may return tool calls instead of text
-  // This test just verifies that requests with tools + max_tokens succeed
+  // Note: When tools are provided, the model may return tool calls instead of
+  // text This test just verifies that requests with tools + max_tokens succeed
   EXPECT_LE(result.usage.completion_tokens, 200);
 }
 
