@@ -86,7 +86,7 @@ void test_anthropic_tools() {
                         {{"input", "string"}}, simple_test_tool)}};
 
   ai::GenerateOptions options;
-  options.model = ai::anthropic::models::kClaudeSonnet35;
+  options.model = ai::anthropic::models::kClaudeSonnet45;
   options.prompt = "Please use the test_tool with input 'hello anthropic'";
   options.tools = tools;
   options.tool_choice =

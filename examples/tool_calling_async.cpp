@@ -337,12 +337,12 @@ int main() {
 
   auto anthropic_client = ai::anthropic::create_client();
 
-  std::cout << "Testing async tools with Claude 3.5 Sonnet\n\n";
+  std::cout << "Testing async tools with Claude Sonnet 4.5\n\n";
 
   start_time = std::chrono::high_resolution_clock::now();
 
   ai::GenerateOptions anthropic_options;
-  anthropic_options.model = ai::anthropic::models::kClaudeSonnet35;
+  anthropic_options.model = ai::anthropic::models::kClaudeSonnet45;
   anthropic_options.prompt = R"(
     Please help me with these THREE tasks. You MUST use the tools to complete ALL of them:
     1. Use the fetch_news tool to get tech news articles  

@@ -146,7 +146,7 @@ class ToolCallingIntegrationTest
       if (api_key) {
         use_real_api_ = true;
         client_ = ai::anthropic::create_client(api_key);
-        model_ = ai::anthropic::models::kClaudeSonnet35;
+        model_ = ai::anthropic::models::kClaudeSonnet45;
       } else {
         use_real_api_ = false;
       }
@@ -672,7 +672,7 @@ class AnthropicSpecificToolTest : public ::testing::Test {
     if (api_key) {
       use_real_api_ = true;
       client_ = ai::anthropic::create_client(api_key);
-      model_ = ai::anthropic::models::kClaudeSonnet35;
+      model_ = ai::anthropic::models::kClaudeSonnet45;
     } else {
       use_real_api_ = false;
     }
@@ -698,8 +698,13 @@ TEST_F(AnthropicSpecificToolTest, MaxTokensRequiredWithTools) {
 
   auto result = client_->generate_text(options);
 
-  TestAssertions::assertSuccess(result);
-  EXPECT_FALSE(result.text.empty());
+  // Verify the request succeeded (may have tool calls instead of text)
+  EXPECT_TRUE(result.is_success())
+      << "Expected successful result but got error: " << result.error_message();
+  EXPECT_FALSE(result.error.has_value());
+
+  // Note: When tools are provided, the model may return tool calls instead of
+  // text This test just verifies that requests with tools + max_tokens succeed
   EXPECT_LE(result.usage.completion_tokens, 200);
 }
 

@@ -74,7 +74,7 @@
 /// ```cpp
 /// auto client = ai::anthropic::create_client();
 /// auto result = client.generate_text({
-///     .model = ai::anthropic::models::kClaude35Sonnet,
+///     .model = ai::anthropic::models::kClaudeSonnet45,
 ///     .system = "You are a helpful assistant.",
 ///     .prompt = "Explain quantum computing in simple terms."
 /// });

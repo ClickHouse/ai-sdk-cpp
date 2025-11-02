@@ -271,7 +271,7 @@ std::vector<std::string> TestDataGenerator::createAnthropicStreamingEvents() {
       "data: "
       "{\"type\":\"message_start\",\"message\":{\"id\":\"msg_stream1\","
       "\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"model\":"
-      "\"claude-3-5-sonnet-20241022\",\"stop_reason\":null,\"stop_sequence\":"
+      "\"claude-sonnet-4-5-20250929\",\"stop_reason\":null,\"stop_sequence\":"
       "null,\"usage\":{\"input_tokens\":25,\"output_tokens\":1}}}\n\n",
       "data: "
       "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{"

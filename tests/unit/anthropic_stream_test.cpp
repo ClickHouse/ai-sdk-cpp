@@ -15,19 +15,19 @@ class AnthropicStreamTest : public AnthropicTestFixture {};
 // StreamOptions Tests
 TEST_F(AnthropicStreamTest, StreamOptionsBasicConstructor) {
   StreamOptions options(
-      GenerateOptions("claude-3-5-sonnet-20241022", "Hello, world!"));
+      GenerateOptions("claude-sonnet-4-5-20250929", "Hello, world!"));
 
-  EXPECT_EQ(options.model, "claude-3-5-sonnet-20241022");
+  EXPECT_EQ(options.model, "claude-sonnet-4-5-20250929");
   EXPECT_EQ(options.prompt, "Hello, world!");
   EXPECT_TRUE(options.system.empty());
   EXPECT_TRUE(options.messages.empty());
 }
 
 TEST_F(AnthropicStreamTest, StreamOptionsWithSystemPrompt) {
-  StreamOptions options(GenerateOptions("claude-3-5-sonnet-20241022",
+  StreamOptions options(GenerateOptions("claude-sonnet-4-5-20250929",
                                         "System prompt", "User prompt"));
 
-  EXPECT_EQ(options.model, "claude-3-5-sonnet-20241022");
+  EXPECT_EQ(options.model, "claude-sonnet-4-5-20250929");
   EXPECT_EQ(options.system, "System prompt");
   EXPECT_EQ(options.prompt, "User prompt");
 }
@@ -35,23 +35,23 @@ TEST_F(AnthropicStreamTest, StreamOptionsWithSystemPrompt) {
 TEST_F(AnthropicStreamTest, StreamOptionsWithMessages) {
   Messages messages = createSampleAnthropicConversation();
   StreamOptions options(
-      GenerateOptions("claude-3-5-sonnet-20241022", std::move(messages)));
+      GenerateOptions("claude-sonnet-4-5-20250929", std::move(messages)));
 
-  EXPECT_EQ(options.model, "claude-3-5-sonnet-20241022");
+  EXPECT_EQ(options.model, "claude-sonnet-4-5-20250929");
   EXPECT_FALSE(options.messages.empty());
   EXPECT_TRUE(options.has_messages());
 }
 
 TEST_F(AnthropicStreamTest, StreamOptionsValidation) {
   StreamOptions valid_options(
-      GenerateOptions("claude-3-5-sonnet-20241022", "Valid prompt"));
+      GenerateOptions("claude-sonnet-4-5-20250929", "Valid prompt"));
   EXPECT_TRUE(valid_options.is_valid());
 
   StreamOptions invalid_model(GenerateOptions("", "Valid prompt"));
   EXPECT_FALSE(invalid_model.is_valid());
 
   StreamOptions invalid_prompt(
-      GenerateOptions("claude-3-5-sonnet-20241022", ""));
+      GenerateOptions("claude-sonnet-4-5-20250929", ""));
   EXPECT_FALSE(invalid_prompt.is_valid());
 }
 
@@ -190,7 +190,7 @@ class AnthropicStreamErrorTest : public AnthropicTestFixture {};
 TEST_F(AnthropicStreamErrorTest, HandleStreamConnectionError) {
   ControllableAnthropicClient client(kTestAnthropicApiKey);
   StreamOptions options(
-      GenerateOptions("claude-3-5-sonnet-20241022", "Test prompt"));
+      GenerateOptions("claude-sonnet-4-5-20250929", "Test prompt"));
 
   client.setShouldFail(true);
 
@@ -204,7 +204,7 @@ TEST_F(AnthropicStreamErrorTest, HandleStreamConnectionError) {
 TEST_F(AnthropicStreamErrorTest, HandleStreamTimeout) {
   ControllableAnthropicClient client(kTestAnthropicApiKey);
   StreamOptions options(
-      GenerateOptions("claude-3-5-sonnet-20241022", "Test prompt"));
+      GenerateOptions("claude-sonnet-4-5-20250929", "Test prompt"));
 
   client.setShouldTimeout(true);
 
@@ -285,13 +285,13 @@ TEST_F(AnthropicStreamIntegrationTest, StreamWithClientConfiguration) {
   EXPECT_TRUE(client.is_valid());
 
   StreamOptions options(
-      GenerateOptions("claude-3-5-sonnet-20241022", "Stream test"));
+      GenerateOptions("claude-sonnet-4-5-20250929", "Stream test"));
   auto result = client.stream_text(options);
 
   EXPECT_EQ(client.getCallCount(), 1);
 
   auto last_options = client.getLastStreamOptions();
-  EXPECT_EQ(last_options.model, "claude-3-5-sonnet-20241022");
+  EXPECT_EQ(last_options.model, "claude-sonnet-4-5-20250929");
   EXPECT_EQ(last_options.prompt, "Stream test");
 }
 
@@ -347,12 +347,12 @@ TEST_F(AnthropicStreamEventTypesTest, MessageStartEvent) {
   std::string event_data =
       "data: "
       "{\"type\":\"message_start\",\"message\":{\"id\":\"msg_123\",\"type\":"
-      "\"message\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-3-"
-      "5-sonnet-20241022\",\"stop_reason\":null,\"stop_sequence\":null,"
+      "\"message\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-"
+      "sonnet-4-5-20250929\",\"stop_reason\":null,\"stop_sequence\":null,"
       "\"usage\":{\"input_tokens\":25,\"output_tokens\":1}}}\n\n";
 
   EXPECT_THAT(event_data, testing::HasSubstr("message_start"));
-  EXPECT_THAT(event_data, testing::HasSubstr("claude-3-5-sonnet-20241022"));
+  EXPECT_THAT(event_data, testing::HasSubstr("claude-sonnet-4-5-20250929"));
   EXPECT_THAT(event_data, testing::HasSubstr("input_tokens"));
 }
 
