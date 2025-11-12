@@ -1,0 +1,45 @@
+[Unit]
+Description=AI SQL Generator Worker
+Documentation=https://github.com/ClickHouse/ai-sdk-cpp
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aiworker
+Group=aiworker
+
+# Binary location
+ExecStart=/usr/local/bin/ai_worker
+
+# Working directory
+WorkingDirectory=/var/lib/ai_worker
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Security hardening
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadOnlyPaths=/etc/ai_worker
+
+# Resource limits
+LimitNOFILE=4096
+MemoryLimit=512M
+CPUQuota=50%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai_worker
+
+# Environment
+Environment="OPENAI_API_KEY_FILE=/etc/ai_worker/openai_key"
+
+[Install]
+WantedBy=multi-user.target

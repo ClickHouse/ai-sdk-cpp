@@ -53,6 +53,9 @@ add_ai_example(test_tool_integration test_tool_integration.cpp)
 # Embeddings example
 add_ai_example(embeddings_example embeddings_example.cpp)
 
+# PostgreSQL AI SQL Generator - Standalone project
+add_subdirectory(pg_gen_ai)
+
 # Component-specific examples
 add_subdirectory(components/openai)
 add_subdirectory(components/anthropic) 
@@ -68,6 +71,7 @@ message(STATUS "       ./examples/multi_provider")
 message(STATUS "       ./examples/error_handling")
 message(STATUS "       ./examples/test_openai")
 message(STATUS "       ./examples/test_anthropic")
+message(STATUS "       ./examples/postgres_gen_ai")
 message(STATUS "       ./examples/openrouter_example")
 message(STATUS "")
 message(STATUS "Component-specific examples:")
