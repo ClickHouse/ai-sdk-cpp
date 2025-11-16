@@ -23,11 +23,9 @@ BaseProviderClient::BaseProviderClient(
 
   http_handler_ = std::make_unique<http::HttpRequestHandler>(http_config);
 
-  ai::logger::log_debug(
-      R"(BaseProviderClient initialized - base_url: {},
-     completions_endpoint: {}, embeddings_endpoint: {})",
-      config.base_url, config.completions_endpoint_path,
-      config.embeddings_endpoint_path);
+  ai::logger::log_info("BaseProviderClient initialized - api_key_length={} base_url={} completions_endpoint={} embeddings_endpoint={}",
+                       config.api_key.size(), config.base_url, config.completions_endpoint_path,
+                       config.embeddings_endpoint_path);
 }
 
 GenerateResult BaseProviderClient::generate_text(

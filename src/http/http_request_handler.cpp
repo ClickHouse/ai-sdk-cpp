@@ -95,6 +95,16 @@ GenerateResult HttpRequestHandler::execute_single_request(
       return result;
     }
 
+    // For non-200 responses, log status and body (truncated) so callers
+    // running inside host processes (e.g., Postgres) can see the server
+    // response in logs and we can diagnose errors.
+    const size_t kMaxLogBody = 4096;
+    std::string truncated_body = res->body.substr(0, std::min(kMaxLogBody, res->body.size()));
+    ai::logger::log_error("HTTP request returned non-200 status={} body={}{}",
+                         res->status,
+                         truncated_body,
+                         (res->body.size() > kMaxLogBody ? "...[truncated]" : ""));
+
     // For non-200 responses, return error with full body for parsing
     GenerateResult error_result;
     error_result.error = res->body;

@@ -103,6 +103,22 @@ set(ANTHROPIC_SOURCES
 target_sources(ai-sdk-cpp-openai PRIVATE ${OPENAI_SOURCES})
 target_sources(ai-sdk-cpp-anthropic PRIVATE ${ANTHROPIC_SOURCES})
 
+set(GEMINI_SOURCES
+    src/providers/gemini/gemini_client.cpp
+    src/providers/gemini/gemini_request_builder.cpp
+    src/providers/gemini/gemini_response_parser.cpp
+    src/providers/gemini/gemini_factory.cpp
+)
+
+add_library(ai-sdk-cpp-gemini)
+add_library(ai::gemini ALIAS ai-sdk-cpp-gemini)
+target_sources(ai-sdk-cpp-gemini PRIVATE ${GEMINI_SOURCES})
+configure_ai_component(ai-sdk-cpp-gemini)
+
+# Link gemini into main interface
+target_link_libraries(ai-sdk-cpp INTERFACE ai::gemini)
+target_compile_definitions(ai-sdk-cpp INTERFACE AI_SDK_HAS_GEMINI=1)
+
 # Link dependencies
 target_link_libraries(ai-sdk-cpp-core
     PUBLIC
@@ -135,6 +151,22 @@ foreach(provider openai anthropic)
     )
 endforeach()
 
+# Configure gemini component
+target_link_libraries(ai-sdk-cpp-gemini
+    PUBLIC
+        ai::core
+        nlohmann_json::nlohmann_json
+    PRIVATE
+        $<BUILD_INTERFACE:httplib::httplib>
+        $<BUILD_INTERFACE:concurrentqueue>
+)
+target_compile_definitions(ai-sdk-cpp-gemini
+    PUBLIC
+        AI_SDK_HAS_GEMINI=1
+    PRIVATE
+        ${HTTPLIB_COMPILE_DEFS}
+)
+
 # Core needs HTTP definitions too
 target_compile_definitions(ai-sdk-cpp-core
     PRIVATE
@@ -157,7 +189,7 @@ target_compile_definitions(ai-sdk-cpp
 )
 
 # List of all concrete component targets
-set(COMPONENT_TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic)
+set(COMPONENT_TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic ai-sdk-cpp-gemini)
 
 # Common compile options
 if(MSVC)

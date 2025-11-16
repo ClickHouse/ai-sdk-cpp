@@ -12,6 +12,8 @@
 #include "anthropic.h"
 #endif
 
+#include "gemini.h"
+
 // Type definitions
 #include "types/client.h"
 #include "types/enums.h"

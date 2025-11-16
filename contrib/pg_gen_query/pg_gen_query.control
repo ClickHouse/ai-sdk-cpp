@@ -1,0 +1,4 @@
+# pg_gen_query extension
+comment = 'Generate SQL from natural language using ClickHouse AI SDK'
+default_version = '1.0'
+module_pathname = '$libdir/pg_gen_query'
