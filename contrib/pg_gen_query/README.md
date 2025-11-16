@@ -14,7 +14,6 @@ Features
 - Auto-execute read-only: executes returned SQL only when it begins with `SELECT`.
 - Preview-only: returns generated SQL without executing when not a `SELECT`.
 
-<<<<<<< Updated upstream
 Build & Install
 -
 - From `contrib/pg_gen_query`:
@@ -74,5 +73,3 @@ SELECT pg_gen_query('return the names of events in New York');
 
 
 
-=======
->>>>>>> Stashed changes
