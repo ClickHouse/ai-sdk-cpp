@@ -4,12 +4,13 @@
  * This example demonstrates basic text generation using the AI SDK.
  * It shows how to:
  * - Use the simple generate_text API
- * - Handle both OpenAI and Anthropic providers
+ * - Handle OpenAI, Anthropic, and Bedrock providers
  * - Check for errors and display results
  *
  * Usage:
  *   export OPENAI_API_KEY=your_key_here
  *   export ANTHROPIC_API_KEY=your_key_here
+ *   # For Bedrock: configure AWS credentials (env vars, profile, or IAM role)
  *   ./basic_chat
  */
 
@@ -18,6 +19,10 @@
 
 #include <ai/anthropic.h>
 #include <ai/openai.h>
+
+#ifdef AI_SDK_HAS_BEDROCK
+#include <ai/bedrock.h>
+#endif
 
 int main() {
   std::cout << "AI SDK C++ - Basic Chat Example\n";
@@ -111,8 +116,38 @@ int main() {
     std::cout << "Error: " << result4.error_message() << "\n\n";
   }
 
-  // Example 5: Using GenerateOptions for more control
-  std::cout << "5. Using GenerateOptions for fine control:\n";
+  // Example 5: Try AWS Bedrock (if available and credentials configured)
+#ifdef AI_SDK_HAS_BEDROCK
+  std::cout << "5. Generating text with AWS Bedrock:\n";
+  std::cout << "Question: What are the benefits of cloud computing?\n\n";
+
+  auto maybe_bedrock = ai::bedrock::try_create_client();
+  if (maybe_bedrock.has_value()) {
+    auto& bedrock_client = maybe_bedrock.value();
+    ai::GenerateOptions bedrock_options;
+    bedrock_options.model = ai::bedrock::models::kClaudeSonnet;
+    bedrock_options.prompt =
+        "What are the benefits of cloud computing? Give a brief answer.";
+    bedrock_options.max_tokens = 150;
+
+    auto bedrock_result = bedrock_client.generate_text(bedrock_options);
+
+    if (bedrock_result) {
+      std::cout << "Answer: " << bedrock_result.text << "\n";
+      std::cout << "Usage: " << bedrock_result.usage.total_tokens << " tokens\n\n";
+    } else {
+      std::cout << "Error: " << bedrock_result.error_message() << "\n\n";
+    }
+  } else {
+    std::cout << "Bedrock client not available (check AWS credentials)\n\n";
+  }
+#else
+  std::cout << "5. AWS Bedrock: Not available in this build\n";
+  std::cout << "   Build with -DAI_SDK_ENABLE_BEDROCK=ON to enable\n\n";
+#endif
+
+  // Example 6: Using GenerateOptions for more control
+  std::cout << "6. Using GenerateOptions for fine control:\n";
 
   ai::GenerateOptions options;
   options.model = ai::openai::models::kGpt4o;
@@ -135,6 +170,7 @@ int main() {
   std::cout << "\nTip: Make sure to set your API keys:\n";
   std::cout << "  export OPENAI_API_KEY=your_openai_key\n";
   std::cout << "  export ANTHROPIC_API_KEY=your_anthropic_key\n";
+  std::cout << "  # For Bedrock: configure AWS credentials\n";
 
   return 0;
 }

@@ -1,6 +1,7 @@
 # Build directories
 build/
 build-*/
+build_*/
 out/
 bin/
 lib/
@@ -159,3 +160,6 @@ config.json
 .envrc
 .cache/
 .claude/
+
+# Kiro specs
+.kiro/
