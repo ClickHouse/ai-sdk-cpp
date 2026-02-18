@@ -306,25 +306,168 @@ This approach works with any OpenAI-compatible API provider. Simply provide:
 
 See the [OpenRouter example](examples/openrouter_example.cpp) for a complete demonstration.
 
+#### Amazon Bedrock Integration
+
+Amazon Bedrock provides access to foundation models from Anthropic, Amazon, Meta, and others through AWS infrastructure. The Bedrock provider uses AWS credentials and IAM for authentication.
+
+```cpp
+#include <ai/bedrock.h>
+#include <iostream>
+
+int main() {
+    // Uses AWS_REGION env var and default credential chain
+    auto client = ai::bedrock::create_client();
+    
+    auto result = client.generate_text({
+        .model = ai::bedrock::models::kClaudeSonnet,
+        .system = "You are a helpful assistant.",
+        .prompt = "Explain cloud computing in simple terms."
+    });
+
+    if (result) {
+        std::cout << result->text << std::endl;
+    }
+
+    return 0;
+}
+```
+
+##### Bedrock Configuration Options
+
+```cpp
+#include <ai/bedrock.h>
+
+int main() {
+    ai::bedrock::BedrockConfig config;
+    
+    // AWS region (required - or set AWS_REGION env var)
+    config.region = "us-east-1";
+    
+    // Optional: Use a specific AWS profile
+    config.profile = "my-profile";
+    
+    // Optional: Custom endpoint for VPC endpoints or local testing
+    config.endpoint_override = "https://vpce-xxx.bedrock-runtime.us-east-1.vpce.amazonaws.com";
+    
+    // Optional: Cross-account access via STS AssumeRole
+    config.role_arn = "arn:aws:iam::123456789012:role/BedrockAccessRole";
+    config.external_id = "my-external-id";  // Optional security enhancement
+    
+    // Optional: EKS/OIDC web identity federation
+    config.web_identity_token_file = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token";
+    
+    auto client = ai::bedrock::create_client(config);
+    
+    return 0;
+}
+```
+
+##### Bedrock Security Configuration
+
+```cpp
+ai::bedrock::SecurityConfig security;
+
+// Concurrency control
+security.max_concurrent_requests = 10;
+
+// Circuit breaker settings
+security.circuit_breaker_threshold = 5;
+security.circuit_breaker_timeout = std::chrono::seconds(30);
+
+// Timeouts
+security.connection_timeout = std::chrono::seconds(5);
+security.request_timeout = std::chrono::seconds(120);
+
+// Input validation limits
+security.max_prompt_length = 200000;
+security.max_message_length = 200000;
+security.max_tokens_limit = 200000;
+
+ai::bedrock::BedrockConfig config;
+config.security = security;
+auto client = ai::bedrock::create_client(config);
+```
+
+##### Available Bedrock Models
+
+```cpp
+// Claude models
+ai::bedrock::models::kClaudeSonnet   // anthropic.claude-3-5-sonnet-20241022-v2:0
+ai::bedrock::models::kClaudeHaiku    // anthropic.claude-3-5-haiku-20241022-v1:0
+ai::bedrock::models::kClaudeOpus     // anthropic.claude-3-opus-20240229-v1:0
+
+// Amazon Titan models
+ai::bedrock::models::kTitanTextExpress  // amazon.titan-text-express-v1
+ai::bedrock::models::kTitanTextLite     // amazon.titan-text-lite-v1
+ai::bedrock::models::kTitanTextPremier  // amazon.titan-text-premier-v1:0
+
+// Meta Llama models
+ai::bedrock::models::kLlama3_8B   // meta.llama3-8b-instruct-v1:0
+ai::bedrock::models::kLlama3_70B  // meta.llama3-70b-instruct-v1:0
+```
+
+##### Bedrock Streaming
+
+```cpp
+#include <ai/bedrock.h>
+#include <iostream>
+
+int main() {
+    auto client = ai::bedrock::create_client();
+    
+    auto stream = client.stream_text({
+        .model = ai::bedrock::models::kClaudeSonnet,
+        .system = "You are a helpful assistant.",
+        .prompt = "Write a haiku about programming."
+    });
+    
+    for (const auto& chunk : stream) {
+        if (chunk.text) {
+            std::cout << chunk.text.value() << std::flush;
+        }
+    }
+    
+    return 0;
+}
+```
+
+##### Building with Bedrock Support
+
+Bedrock support requires the AWS SDK for C++. Enable it with the CMake option:
+
+```bash
+cmake -B build -DAI_SDK_ENABLE_BEDROCK=ON
+cmake --build build
+```
+
+On macOS with Homebrew:
+```bash
+brew install aws-sdk-cpp
+cmake -B build -DAI_SDK_ENABLE_BEDROCK=ON
+cmake --build build
+```
+
 ## Features
 
 ### Currently Supported
 
-- ✅ **Text Generation**: Generate text completions with OpenAI and Anthropic models
+- ✅ **Text Generation**: Generate text completions with OpenAI, Anthropic, and Bedrock models
 - ✅ **Streaming**: Real-time streaming of generated content
 - ✅ **Multi-turn Conversations**: Support for conversation history
 - ✅ **Error Handling**: Comprehensive error handling with optional types
+- ✅ **Amazon Bedrock**: AWS-native access to Claude, Titan, and Llama models
 
 ### Recently Added
 
 - ✅ **Tool Calling**: Function calling and tool integration with multi-step support
 - ✅ **Async Tools**: Asynchronous tool execution with parallel processing
 - ✅ **Configurable Retries**: Customizable retry behavior with exponential backoff
+- ✅ **Bedrock Provider**: Production-ready AWS Bedrock integration with security features
 
 ### Coming Soon
 
 - 🚧 **Additional Providers**: Google, Cohere, and other providers
-- 🚧 **Embeddings**: Text embedding support
+- 🚧 **Embeddings**: Text embedding support (Bedrock embeddings planned for V2)
 - 🚧 **Image Generation**: Support for image generation models
 
 ## Examples
