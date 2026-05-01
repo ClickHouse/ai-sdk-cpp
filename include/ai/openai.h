@@ -39,18 +39,19 @@ constexpr const char* kTextEmbedding3Large = "text-embedding-3-large";
 /// These are scheduled for retirement; prefer the GPT-5 series above.
 
 // Deprecated GPT-5 snapshots (superseded by 5.4)
-constexpr const char* kGpt5 = "gpt-5";          // DEPRECATED
-constexpr const char* kGpt51 = "gpt-5.1";       // DEPRECATED
-constexpr const char* kGpt52 = "gpt-5.2";       // DEPRECATED
+constexpr const char* kGpt5 = "gpt-5";     // DEPRECATED
+constexpr const char* kGpt51 = "gpt-5.1";  // DEPRECATED
+constexpr const char* kGpt52 = "gpt-5.2";  // DEPRECATED
 
 // Deprecated GPT-4.1 nano
 constexpr const char* kGpt41Nano = "gpt-4.1-nano";  // DEPRECATED
 
 // Deprecated GPT-4o family (retired in ChatGPT; deprecated in API)
-constexpr const char* kGpt4o = "gpt-4o";                            // DEPRECATED
-constexpr const char* kGpt4oMini = "gpt-4o-mini";                   // DEPRECATED
-constexpr const char* kGpt4oAudioPreview = "gpt-4o-audio-preview";  // DEPRECATED
-constexpr const char* kChatGpt4oLatest = "chatgpt-4o-latest";       // DEPRECATED
+constexpr const char* kGpt4o = "gpt-4o";           // DEPRECATED
+constexpr const char* kGpt4oMini = "gpt-4o-mini";  // DEPRECATED
+constexpr const char* kGpt4oAudioPreview =
+    "gpt-4o-audio-preview";                                    // DEPRECATED
+constexpr const char* kChatGpt4oLatest = "chatgpt-4o-latest";  // DEPRECATED
 
 // Deprecated GPT-4 series (shutdown 2026-10-23)
 constexpr const char* kGpt4Turbo = "gpt-4-turbo";  // DEPRECATED
@@ -60,12 +61,12 @@ constexpr const char* kGpt4 = "gpt-4";             // DEPRECATED
 constexpr const char* kGpt35Turbo = "gpt-3.5-turbo";  // DEPRECATED
 
 // Deprecated o-series reasoning models (shutdown 2026-10-23)
-constexpr const char* kO1 = "o1";                // DEPRECATED
-constexpr const char* kO1Mini = "o1-mini";       // DEPRECATED
-constexpr const char* kO1Preview = "o1-preview"; // DEPRECATED
-constexpr const char* kO3 = "o3";                // DEPRECATED
-constexpr const char* kO3Mini = "o3-mini";       // DEPRECATED
-constexpr const char* kO4Mini = "o4-mini";       // DEPRECATED
+constexpr const char* kO1 = "o1";                 // DEPRECATED
+constexpr const char* kO1Mini = "o1-mini";        // DEPRECATED
+constexpr const char* kO1Preview = "o1-preview";  // DEPRECATED
+constexpr const char* kO3 = "o3";                 // DEPRECATED
+constexpr const char* kO3Mini = "o3-mini";        // DEPRECATED
+constexpr const char* kO4Mini = "o4-mini";        // DEPRECATED
 
 /// Default model used when none is specified
 constexpr const char* kDefaultModel = kGpt54;

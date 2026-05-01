@@ -63,21 +63,13 @@ std::vector<std::string> AnthropicClient::supported_models() const {
   // snapshot variants (e.g. "claude-sonnet-4-5-20250929") are accepted by the
   // Anthropic API; list both so identifiers in `ai::anthropic::models::*`
   // resolve via `supports_model()`.
-  return {"claude-opus-4-7",
-          "claude-sonnet-4-6",
-          "claude-opus-4-6",
-          "claude-haiku-4-5",
-          "claude-haiku-4-5-20251001",
-          "claude-opus-4-5",
-          "claude-opus-4-5-20251101",
-          "claude-sonnet-4-5",
-          "claude-sonnet-4-5-20250929",
-          "claude-opus-4-1",
+  return {"claude-opus-4-7", "claude-sonnet-4-6", "claude-opus-4-6",
+          "claude-haiku-4-5", "claude-haiku-4-5-20251001", "claude-opus-4-5",
+          "claude-opus-4-5-20251101", "claude-sonnet-4-5",
+          "claude-sonnet-4-5-20250929", "claude-opus-4-1",
           "claude-opus-4-1-20250805",
           // Deprecated, retire 2026-06-15:
-          "claude-sonnet-4-0",
-          "claude-sonnet-4-20250514",
-          "claude-opus-4-0",
+          "claude-sonnet-4-0", "claude-sonnet-4-20250514", "claude-opus-4-0",
           "claude-opus-4-20250514"};
 }
 

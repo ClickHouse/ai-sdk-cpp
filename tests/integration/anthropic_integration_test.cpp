@@ -476,8 +476,8 @@ TEST_F(AnthropicIntegrationTest, DefaultModelGeneration) {
   if (result.model.has_value()) {
     // Anthropic returns either the alias (e.g. "claude-sonnet-4-6") or its
     // full snapshot. Assert the API echoed back the configured default.
-    EXPECT_TRUE(result.model.value().find(ai::anthropic::models::kDefaultModel) !=
-                std::string::npos)
+    EXPECT_TRUE(result.model.value().find(
+                    ai::anthropic::models::kDefaultModel) != std::string::npos)
         << "Expected model to contain '" << ai::anthropic::models::kDefaultModel
         << "', but got: " << result.model.value();
   }
