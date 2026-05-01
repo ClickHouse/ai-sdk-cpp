@@ -53,6 +53,9 @@ add_ai_example(test_tool_integration test_tool_integration.cpp)
 # Embeddings example
 add_ai_example(embeddings_example embeddings_example.cpp)
 
+# Langfuse tracing example
+add_ai_example(langfuse_tracing langfuse_tracing.cpp)
+
 # Component-specific examples
 add_subdirectory(components/openai)
 add_subdirectory(components/anthropic) 

@@ -16,7 +16,7 @@ int main() {
     // Test simple generation
     std::cout << "Testing OpenAI text generation...\n\n";
 
-    ai::GenerateOptions options(ai::openai::models::kGpt4oMini,
+    ai::GenerateOptions options(ai::openai::models::kGpt54Mini,
                                 "You are a friendly assistant!",
                                 "Why is the sky blue? Give a short answer.");
 
@@ -35,7 +35,7 @@ int main() {
     std::cout << "\nTesting streaming...\n";
 
     ai::GenerateOptions stream_opts(
-        ai::openai::models::kGpt4oMini,
+        ai::openai::models::kGpt54Mini,
         "Count from 1 to 5 slowly and along with each number say 'tick'");
     ai::StreamOptions stream_options(stream_opts);
 

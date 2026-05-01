@@ -45,6 +45,7 @@ set(HTTPLIB_COMPILE_DEFS
 add_library(ai-sdk-cpp-core)
 add_library(ai-sdk-cpp-openai)
 add_library(ai-sdk-cpp-anthropic)
+add_library(ai-sdk-cpp-langfuse)
 add_library(ai-sdk-cpp INTERFACE)
 
 # Set library aliases
@@ -52,11 +53,13 @@ add_library(ai::sdk ALIAS ai-sdk-cpp)
 add_library(ai::core ALIAS ai-sdk-cpp-core)
 add_library(ai::openai ALIAS ai-sdk-cpp-openai)
 add_library(ai::anthropic ALIAS ai-sdk-cpp-anthropic)
+add_library(ai::langfuse ALIAS ai-sdk-cpp-langfuse)
 
 # Configure all component libraries
 configure_ai_component(ai-sdk-cpp-core)
 configure_ai_component(ai-sdk-cpp-openai)
 configure_ai_component(ai-sdk-cpp-anthropic)
+configure_ai_component(ai-sdk-cpp-langfuse)
 
 # Configure main interface library
 target_include_directories(ai-sdk-cpp 
@@ -103,6 +106,12 @@ set(ANTHROPIC_SOURCES
 target_sources(ai-sdk-cpp-openai PRIVATE ${OPENAI_SOURCES})
 target_sources(ai-sdk-cpp-anthropic PRIVATE ${ANTHROPIC_SOURCES})
 
+# Langfuse tracing component
+target_sources(ai-sdk-cpp-langfuse
+    PRIVATE
+        src/langfuse/tracer.cpp
+)
+
 # Link dependencies
 target_link_libraries(ai-sdk-cpp-core
     PUBLIC
@@ -124,7 +133,7 @@ foreach(provider openai anthropic)
             $<BUILD_INTERFACE:httplib::httplib>
             $<BUILD_INTERFACE:concurrentqueue>
     )
-    
+
     # Set component availability and HTTP definitions
     string(TOUPPER ${provider} PROVIDER_UPPER)
     target_compile_definitions(ai-sdk-cpp-${provider}
@@ -134,6 +143,23 @@ foreach(provider openai anthropic)
             ${HTTPLIB_COMPILE_DEFS}
     )
 endforeach()
+
+# Langfuse tracing component links to core and uses httplib + OpenSSL.
+target_link_libraries(ai-sdk-cpp-langfuse
+    PUBLIC
+        ai::core
+        nlohmann_json::nlohmann_json
+    PRIVATE
+        $<BUILD_INTERFACE:httplib::httplib>
+        $<BUILD_INTERFACE:OpenSSL::SSL>
+        $<BUILD_INTERFACE:OpenSSL::Crypto>
+)
+target_compile_definitions(ai-sdk-cpp-langfuse
+    PUBLIC
+        AI_SDK_HAS_LANGFUSE=1
+    PRIVATE
+        ${HTTPLIB_COMPILE_DEFS}
+)
 
 # Core needs HTTP definitions too
 target_compile_definitions(ai-sdk-cpp-core
@@ -147,6 +173,7 @@ target_link_libraries(ai-sdk-cpp
         ai::core
         ai::openai
         ai::anthropic
+        ai::langfuse
 )
 
 # Define all component availability for main library
@@ -154,10 +181,16 @@ target_compile_definitions(ai-sdk-cpp
     INTERFACE
         AI_SDK_HAS_OPENAI=1
         AI_SDK_HAS_ANTHROPIC=1
+        AI_SDK_HAS_LANGFUSE=1
 )
 
 # List of all concrete component targets
-set(COMPONENT_TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic)
+set(COMPONENT_TARGETS
+    ai-sdk-cpp-core
+    ai-sdk-cpp-openai
+    ai-sdk-cpp-anthropic
+    ai-sdk-cpp-langfuse
+)
 
 # Common compile options
 if(MSVC)

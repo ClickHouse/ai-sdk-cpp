@@ -26,7 +26,7 @@ int main() {
   // Test core functionality
   std::cout << "Testing core functionality...\n";
   ai::GenerateOptions options;
-  options.model = "gpt-4o";
+  options.model = "gpt-5.4";
   options.prompt = "Hello world";
   std::cout << "✓ Core types work fine\n\n";
 
@@ -36,8 +36,8 @@ int main() {
   try {
     auto openai_client = ai::openai::create_client();
     std::cout << "✓ OpenAI client created successfully\n";
-    std::cout << "✓ Available models: " << ai::openai::models::kGpt4o << ", "
-              << ai::openai::models::kGpt4oMini << "\n";
+    std::cout << "✓ Available models: " << ai::openai::models::kGpt54 << ", "
+              << ai::openai::models::kGpt54Mini << "\n";
   } catch (const std::exception& e) {
     std::cout << "✗ OpenAI client failed: " << e.what() << "\n";
   }
@@ -52,7 +52,7 @@ int main() {
     auto anthropic_client = ai::anthropic::create_client();
     std::cout << "✓ Anthropic client created successfully\n";
     std::cout << "✓ Available models: "
-              << ai::anthropic::models::kClaudeSonnet45 << ", "
+              << ai::anthropic::models::kClaudeSonnet46 << ", "
               << ai::anthropic::models::kClaudeHaiku45 << "\n";
   } catch (const std::exception& e) {
     std::cout << "✗ Anthropic client failed: " << e.what() << "\n";
