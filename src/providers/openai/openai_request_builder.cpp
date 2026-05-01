@@ -16,6 +16,13 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   }
   // Build messages array
   if (!options.messages.empty()) {
+    // Prepend system as a message when caller supplies a messages array; the
+    // OpenAI Chat Completions API takes the system prompt as a leading
+    // role=system message rather than a separate top-level field.
+    if (!options.system.empty()) {
+      request["messages"].push_back(
+          {{"role", "system"}, {"content", options.system}});
+    }
     // Use provided messages
     for (const auto& msg : options.messages) {
       nlohmann::json message;
