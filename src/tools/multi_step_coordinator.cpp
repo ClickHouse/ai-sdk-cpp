@@ -21,7 +21,8 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
   //   - `initial_messages` is the user's original input, kept immutable.
   //   - `response_messages` is the running accumulator of assistant turns and
   //     tool result messages produced across steps.
-  //   - Each step's input messages are `[initial_messages..., response_messages...]`.
+  //   - Each step's input messages are `[initial_messages...,
+  //   response_messages...]`.
   //   - `system` and other top-level options stay on `initial_options` and the
   //     provider request builder threads them through unchanged.
   Messages initial_messages = initial_options.messages;
