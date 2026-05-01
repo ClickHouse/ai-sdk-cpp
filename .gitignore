@@ -16,6 +16,7 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps/
+tests/cmake_test_discovery_*.json
 
 # vcpkg
 vcpkg_installed/
