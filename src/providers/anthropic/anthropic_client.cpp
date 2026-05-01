@@ -59,14 +59,18 @@ std::string AnthropicClient::provider_name() const {
 }
 
 std::vector<std::string> AnthropicClient::supported_models() const {
-  return {"claude-sonnet-4-5-20250929",  // Latest Sonnet 4.5
-          "claude-haiku-4-5-20251001",   // Latest Haiku 4.5
-          "claude-opus-4-1-20250805",    // Latest Opus 4.1
-          "claude-sonnet-4-20250514",    // Sonnet 4.0
-          "claude-3-5-sonnet-20241022",  // Legacy 3.5 Sonnet
-          "claude-3-5-haiku-20241022",   // Legacy 3.5 Haiku
-          "claude-3-opus-20240229",     "claude-3-sonnet-20240229",
-          "claude-3-haiku-20240307"};
+  // Both the friendly aliases (e.g. "claude-sonnet-4-5") and their dated
+  // snapshot variants (e.g. "claude-sonnet-4-5-20250929") are accepted by the
+  // Anthropic API; list both so identifiers in `ai::anthropic::models::*`
+  // resolve via `supports_model()`.
+  return {"claude-opus-4-7", "claude-sonnet-4-6", "claude-opus-4-6",
+          "claude-haiku-4-5", "claude-haiku-4-5-20251001", "claude-opus-4-5",
+          "claude-opus-4-5-20251101", "claude-sonnet-4-5",
+          "claude-sonnet-4-5-20250929", "claude-opus-4-1",
+          "claude-opus-4-1-20250805",
+          // Deprecated, retire 2026-06-15:
+          "claude-sonnet-4-0", "claude-sonnet-4-20250514", "claude-opus-4-0",
+          "claude-opus-4-20250514"};
 }
 
 bool AnthropicClient::supports_model(const std::string& model_name) const {

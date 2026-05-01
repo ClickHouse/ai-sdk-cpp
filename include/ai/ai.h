@@ -43,7 +43,7 @@
 /// auto client = ai::openai::create_client();
 ///
 /// auto result = client.generate_text({
-///     .model = ai::openai::models::kGpt4o,
+///     .model = ai::openai::models::kGpt54,
 ///     .system = "You are a friendly assistant!",
 ///     .prompt = "Why is the sky blue?"
 /// });
@@ -58,7 +58,7 @@
 /// auto client = ai::openai::create_client();
 ///
 /// auto stream = client.stream_text({
-///     .model = ai::openai::models::kGpt4o,
+///     .model = ai::openai::models::kGpt54,
 ///     .system = "You are a helpful assistant.",
 ///     .prompt = "Write a short story about a robot."
 /// });
@@ -74,7 +74,7 @@
 /// ```cpp
 /// auto client = ai::anthropic::create_client();
 /// auto result = client.generate_text({
-///     .model = ai::anthropic::models::kClaudeSonnet45,
+///     .model = ai::anthropic::models::kClaudeSonnet46,
 ///     .system = "You are a helpful assistant.",
 ///     .prompt = "Explain quantum computing in simple terms."
 /// });

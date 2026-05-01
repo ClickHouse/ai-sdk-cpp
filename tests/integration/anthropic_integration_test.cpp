@@ -474,13 +474,12 @@ TEST_F(AnthropicIntegrationTest, DefaultModelGeneration) {
   // Verify we're using the expected default model
   EXPECT_EQ(client_->default_model(), ai::anthropic::models::kDefaultModel);
   if (result.model.has_value()) {
-    // Anthropic returns the full model version (e.g.,
-    // "claude-sonnet-4-5-20250929") while kDefaultModel is
-    // "claude-sonnet-4-5"
-    EXPECT_TRUE(result.model.value().find("claude-sonnet-4-5") !=
-                std::string::npos)
-        << "Expected model to contain 'claude-sonnet-4-5', but got: "
-        << result.model.value();
+    // Anthropic returns either the alias (e.g. "claude-sonnet-4-6") or its
+    // full snapshot. Assert the API echoed back the configured default.
+    EXPECT_TRUE(result.model.value().find(
+                    ai::anthropic::models::kDefaultModel) != std::string::npos)
+        << "Expected model to contain '" << ai::anthropic::models::kDefaultModel
+        << "', but got: " << result.model.value();
   }
 }
 

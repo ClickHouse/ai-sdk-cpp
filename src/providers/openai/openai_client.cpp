@@ -79,9 +79,14 @@ std::string OpenAIClient::provider_name() const {
 }
 
 std::vector<std::string> OpenAIClient::supported_models() const {
-  return {models::kGpt4o,       models::kGpt4oMini,   models::kGpt4Turbo,
-          models::kGpt35Turbo,  models::kGpt4,        "gpt-4-0125-preview",
-          "gpt-4-1106-preview", "gpt-3.5-turbo-0125", "gpt-3.5-turbo-1106"};
+  return {// Current GPT-5 series
+          models::kGpt54, models::kGpt54Pro, models::kGpt54Mini,
+          models::kGpt54Nano, models::kGpt5Mini, models::kGpt5Nano,
+          // Current GPT-4.1 series
+          models::kGpt41, models::kGpt41Mini,
+          // Legacy / deprecated (still functional via API)
+          models::kGpt4o, models::kGpt4oMini, models::kGpt4Turbo, models::kGpt4,
+          models::kGpt35Turbo};
 }
 
 bool OpenAIClient::supports_model(const std::string& model_name) const {

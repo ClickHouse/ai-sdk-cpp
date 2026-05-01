@@ -207,7 +207,7 @@ int main() {
   auto start_time = std::chrono::high_resolution_clock::now();
 
   ai::GenerateOptions options1;
-  options1.model = ai::openai::models::kGpt4o;
+  options1.model = ai::openai::models::kGpt54;
   options1.prompt = "Get me the latest tech news articles";
   options1.tools = tools;
   options1.max_tokens = 200;
@@ -234,7 +234,7 @@ int main() {
   start_time = std::chrono::high_resolution_clock::now();
 
   ai::GenerateOptions options2;
-  options2.model = ai::openai::models::kGpt4o;
+  options2.model = ai::openai::models::kGpt54;
   options2.prompt = R"(
     Please help me with these tasks:
     1. Fetch the latest sports news
@@ -271,7 +271,7 @@ int main() {
   start_time = std::chrono::high_resolution_clock::now();
 
   ai::GenerateOptions options3;
-  options3.model = ai::openai::models::kGpt4o;
+  options3.model = ai::openai::models::kGpt54;
   options3.prompt = R"(
     Please help me with these tasks:
     1. Fetch tech news articles
@@ -342,7 +342,7 @@ int main() {
   start_time = std::chrono::high_resolution_clock::now();
 
   ai::GenerateOptions anthropic_options;
-  anthropic_options.model = ai::anthropic::models::kClaudeSonnet45;
+  anthropic_options.model = ai::anthropic::models::kClaudeSonnet46;
   anthropic_options.prompt = R"(
     Please help me with these THREE tasks. You MUST use the tools to complete ALL of them:
     1. Use the fetch_news tool to get tech news articles  

@@ -79,22 +79,20 @@ TEST_F(OpenAIClientTest, ConstructorWithHttpUrl) {
 TEST_F(OpenAIClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();
 
-  EXPECT_THAT(models, testing::Contains("gpt-4o"));
-  EXPECT_THAT(models, testing::Contains("gpt-4o-mini"));
-  EXPECT_THAT(models, testing::Contains("gpt-4"));
-  EXPECT_THAT(models, testing::Contains("gpt-3.5-turbo"));
+  EXPECT_THAT(models, testing::Contains("gpt-5.4"));
+  EXPECT_THAT(models, testing::Contains("gpt-5-mini"));
+  EXPECT_THAT(models, testing::Contains("gpt-4.1"));
   EXPECT_FALSE(models.empty());
 }
 
 TEST_F(OpenAIClientTest, SupportsValidModel) {
-  EXPECT_TRUE(client_->supports_model("gpt-4o"));
-  EXPECT_TRUE(client_->supports_model("gpt-4"));
-  EXPECT_TRUE(client_->supports_model("gpt-3.5-turbo"));
+  EXPECT_TRUE(client_->supports_model("gpt-5.4"));
+  EXPECT_TRUE(client_->supports_model("gpt-4.1"));
 }
 
 TEST_F(OpenAIClientTest, DoesNotSupportInvalidModel) {
   EXPECT_FALSE(client_->supports_model("invalid-model"));
-  EXPECT_FALSE(client_->supports_model("claude-3"));
+  EXPECT_FALSE(client_->supports_model("claude-sonnet-4-6"));
   EXPECT_FALSE(client_->supports_model(""));
 }
 
