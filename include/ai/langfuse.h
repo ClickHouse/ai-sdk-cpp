@@ -68,12 +68,25 @@ struct Config {
   int connection_timeout_sec = 10;
   int read_timeout_sec = 30;
 
-  /// If true, suppress HTTP/JSON errors from `Trace::end()` (best-effort
-  /// tracing). Failures are still logged via the SDK logger.
-  bool best_effort = true;
+  /// Error policy for `Trace::end()`. Strict (the default) reports HTTP/JSON
+  /// failures via the return value so misconfigurations surface immediately;
+  /// kBestEffort swallows them (failures are still logged).
+  enum class ErrorPolicy { kStrict, kBestEffort };
+  ErrorPolicy error_policy = ErrorPolicy::kStrict;
 };
 
 class Trace;
+
+/// Optional fields settable at trace-creation time. Mirrors the
+/// struct-of-options style used elsewhere in the SDK (GenerateOptions, Config).
+struct TraceOptions {
+  std::optional<JsonValue> input;
+  std::optional<JsonValue> output;
+  std::optional<std::string> user_id;
+  std::optional<std::string> session_id;
+  std::optional<JsonValue> metadata;
+  std::vector<std::string> tags;
+};
 
 /// Tracer holds the Langfuse credentials and is the entry point for creating
 /// traces. Construct one per process; it is safe to create multiple traces
@@ -81,6 +94,8 @@ class Trace;
 class Tracer {
  public:
   explicit Tracer(Config config);
+  ~Tracer();  // Out-of-line: HttpState is forward-declared; its destructor
+              // needs the complete type, which lives in tracer.cpp.
 
   /// True iff host, public_key and secret_key are set.
   bool is_valid() const;
@@ -89,13 +104,8 @@ class Tracer {
 
   /// Start a new trace. Returns a shared handle so callbacks attached via
   /// `Trace::instrument()` can keep it alive until generate_text returns.
-  std::shared_ptr<Trace> start_trace(
-      const std::string& name,
-      std::optional<JsonValue> input = std::nullopt,
-      std::optional<std::string> user_id = std::nullopt,
-      std::optional<std::string> session_id = std::nullopt,
-      std::optional<JsonValue> metadata = std::nullopt,
-      std::vector<std::string> tags = {});
+  std::shared_ptr<Trace> start_trace(const std::string& name,
+                                     TraceOptions opts = {});
 
   /// POST a batch of ingestion events to Langfuse. Returns true on 2xx.
   /// Public so advanced callers can build their own event batches; most users
@@ -103,7 +113,14 @@ class Tracer {
   bool send_batch(const JsonValue& events);
 
  private:
+  // Lazily constructed httplib client + base path + Basic-auth header. Cached
+  // to avoid TLS handshake per send_batch call. Guarded by mu_.
+  struct HttpState;
+  HttpState& http_state();
+
   Config config_;
+  std::mutex mu_;
+  std::unique_ptr<HttpState> http_;
 };
 
 /// A Trace owns a list of pending ingestion events and writes them all to
@@ -141,13 +158,19 @@ class Trace : public std::enable_shared_from_this<Trace> {
   void finish_generation(const GenerateResult& result);
 
   /// Flush all accumulated events to Langfuse. Idempotent; subsequent calls
-  /// are no-ops. Returns true on success (or when best_effort is enabled and
-  /// the request failed).
+  /// are no-ops. After end(), further set_* / instrument / finish_generation
+  /// calls become no-ops to prevent silently dropping events. Returns true on
+  /// success (or when Config::error_policy is kBestEffort and the request
+  /// failed).
   bool end();
 
   /// Generate a new UUID v4. Exposed so callers (and `Tracer::start_trace`)
   /// can mint trace ids without re-implementing UUID generation.
   static std::string new_uuid();
+
+  /// Format a system_clock time_point as RFC 3339 / ISO 8601 with millisecond
+  /// precision and trailing 'Z'. Public so callers can stamp custom events.
+  static std::string to_iso8601(std::chrono::system_clock::time_point t);
 
  private:
   struct PendingGeneration {
@@ -168,9 +191,6 @@ class Trace : public std::enable_shared_from_this<Trace> {
   // Builds and pushes the trace-create event with the current
   // input/output/metadata/tags.
   JsonValue build_trace_event() const;
-
-  // Helpers
-  static std::string now_iso8601();
 
   Tracer& tracer_;
   std::string id_;

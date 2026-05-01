@@ -144,7 +144,8 @@ foreach(provider openai anthropic)
     )
 endforeach()
 
-# Langfuse tracing component links to core and uses httplib + OpenSSL.
+# Langfuse tracing component links to core and uses httplib + OpenSSL +
+# stduuid (header-only, vendored under third_party/stduuid-header-only).
 target_link_libraries(ai-sdk-cpp-langfuse
     PUBLIC
         ai::core
@@ -153,6 +154,7 @@ target_link_libraries(ai-sdk-cpp-langfuse
         $<BUILD_INTERFACE:httplib::httplib>
         $<BUILD_INTERFACE:OpenSSL::SSL>
         $<BUILD_INTERFACE:OpenSSL::Crypto>
+        $<BUILD_INTERFACE:stduuid::stduuid>
 )
 target_compile_definitions(ai-sdk-cpp-langfuse
     PUBLIC

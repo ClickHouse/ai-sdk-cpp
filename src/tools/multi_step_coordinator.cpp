@@ -16,32 +16,34 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
     return generate_func(initial_options);
   }
 
-  // Mirror the Vercel AI SDK `generateText` pattern
-  // (packages/ai/src/generate-text/generate-text.ts):
-  //   - `initial_messages` is the user's original input, kept immutable.
-  //   - `response_messages` is the running accumulator of assistant turns and
-  //     tool result messages produced across steps.
-  //   - Each step's input messages are `[initial_messages...,
-  //   response_messages...]`.
-  //   - `system` and other top-level options stay on `initial_options` and the
-  //     provider request builder threads them through unchanged.
+  // initial_messages is the user's original input, kept immutable across
+  // steps; response_messages accumulates assistant turns and tool-result
+  // turns. Each step's input is [initial_messages..., response_messages...].
+  // system and other top-level options stay on initial_options.
   Messages initial_messages = initial_options.messages;
   if (initial_messages.empty() && !initial_options.prompt.empty()) {
     initial_messages.push_back(Message::user(initial_options.prompt));
   }
+  const size_t initial_count = initial_messages.size();
   Messages response_messages;
+
+  // step_messages is grown in place each iteration (truncate to the immutable
+  // prefix, then append response_messages) so we don't re-copy
+  // initial_messages every step.
+  Messages step_messages = std::move(initial_messages);
+  GenerateOptions step_options = initial_options;
+  step_options.prompt.clear();
 
   GenerateResult final_result;
 
   for (int step = 0; step < initial_options.max_steps; ++step) {
-    GenerateOptions step_options = initial_options;
-    // Once we move to messages-based stepping, clear `prompt` so the request
-    // builder doesn't double-send it.
-    step_options.prompt = "";
-    step_options.messages = initial_messages;
-    step_options.messages.insert(step_options.messages.end(),
-                                 response_messages.begin(),
-                                 response_messages.end());
+    // Truncate to the immutable prefix and re-append the running accumulator.
+    // (vector::resize would require Message to be default-constructible.)
+    step_messages.erase(std::next(step_messages.begin(), initial_count),
+                        step_messages.end());
+    step_messages.insert(step_messages.end(), response_messages.begin(),
+                         response_messages.end());
+    step_options.messages = step_messages;
 
     ai::logger::log_debug("Executing step {} of {}, messages={}", step + 1,
                           initial_options.max_steps,
@@ -154,17 +156,6 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
   }
 
   return final_result;
-}
-
-GenerateOptions MultiStepCoordinator::create_next_step_options(
-    const GenerateOptions& base_options,
-    const GenerateResult& /*previous_result*/,
-    const std::vector<ToolResult>& /*tool_results*/) {
-  // Retained for ABI compatibility with the public header. The new
-  // execute_multi_step builds step inputs inline; this helper is no longer on
-  // the hot path. Returning base_options is harmless since callers within
-  // this translation unit no longer invoke it.
-  return base_options;
 }
 
 Messages MultiStepCoordinator::tool_results_to_messages(
