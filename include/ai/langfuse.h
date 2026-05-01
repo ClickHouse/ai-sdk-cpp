@@ -20,7 +20,8 @@
 /// trace->set_input(user_prompt);
 ///
 /// ai::GenerateOptions options{...};
-/// auto result = ai::langfuse::generate_text(client, std::move(options), *trace);
+/// auto result = ai::langfuse::generate_text(client, std::move(options),
+/// *trace);
 ///
 /// trace->set_output(result.text);
 /// trace->end();  // synchronous flush
@@ -200,10 +201,11 @@ class Trace : public std::enable_shared_from_this<Trace> {
 /// Convenience wrapper around `Trace::instrument` + `Client::generate_text` +
 /// `Trace::finish_generation`. Does not call `Trace::end()` so the caller can
 /// still attach output/metadata/tags to the trace.
-GenerateResult generate_text(Client& client,
-                             GenerateOptions options,
-                             Trace& trace,
-                             const std::string& generation_name = "generate_text");
+GenerateResult generate_text(
+    Client& client,
+    GenerateOptions options,
+    Trace& trace,
+    const std::string& generation_name = "generate_text");
 
 }  // namespace langfuse
 }  // namespace ai

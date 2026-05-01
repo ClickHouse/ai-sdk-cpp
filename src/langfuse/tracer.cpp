@@ -1,12 +1,10 @@
 #include "ai/langfuse.h"
-
 #include "ai/logger.h"
 
 #include <cstdio>
 #include <ctime>
-#include <random>
-
 #include <httplib.h>
+#include <random>
 
 namespace ai {
 namespace langfuse {
@@ -80,15 +78,20 @@ std::string base64_encode(const std::string& in) {
 
 JsonValue model_parameters_from(const GenerateOptions& options) {
   JsonValue params = JsonValue::object();
-  if (options.temperature) params["temperature"] = *options.temperature;
-  if (options.max_tokens) params["max_tokens"] = *options.max_tokens;
-  if (options.top_p) params["top_p"] = *options.top_p;
-  if (options.seed) params["seed"] = *options.seed;
+  if (options.temperature)
+    params["temperature"] = *options.temperature;
+  if (options.max_tokens)
+    params["max_tokens"] = *options.max_tokens;
+  if (options.top_p)
+    params["top_p"] = *options.top_p;
+  if (options.seed)
+    params["seed"] = *options.seed;
   if (options.frequency_penalty)
     params["frequency_penalty"] = *options.frequency_penalty;
   if (options.presence_penalty)
     params["presence_penalty"] = *options.presence_penalty;
-  if (options.max_steps > 1) params["max_steps"] = options.max_steps;
+  if (options.max_steps > 1)
+    params["max_steps"] = options.max_steps;
   return params;
 }
 
@@ -143,11 +146,16 @@ std::shared_ptr<Trace> Tracer::start_trace(
     std::optional<JsonValue> metadata,
     std::vector<std::string> tags) {
   auto trace = std::make_shared<Trace>(*this, Trace::new_uuid(), name);
-  if (input) trace->set_input(std::move(*input));
-  if (user_id) trace->set_user_id(std::move(*user_id));
-  if (session_id) trace->set_session_id(std::move(*session_id));
-  if (metadata) trace->set_metadata(std::move(*metadata));
-  for (auto& t : tags) trace->add_tag(std::move(t));
+  if (input)
+    trace->set_input(std::move(*input));
+  if (user_id)
+    trace->set_user_id(std::move(*user_id));
+  if (session_id)
+    trace->set_session_id(std::move(*session_id));
+  if (metadata)
+    trace->set_metadata(std::move(*metadata));
+  for (auto& t : tags)
+    trace->add_tag(std::move(t));
   return trace;
 }
 
@@ -263,18 +271,21 @@ void Trace::instrument(GenerateOptions& options,
   std::weak_ptr<Trace> self = shared_from_this();
 
   auto user_tool_start = options.on_tool_call_start;
-  options.on_tool_call_start =
-      [self, user_tool_start](const ToolCall& call) {
-        if (auto sp = self.lock()) sp->record_tool_call_start(call);
-        if (user_tool_start) (*user_tool_start)(call);
-      };
+  options.on_tool_call_start = [self, user_tool_start](const ToolCall& call) {
+    if (auto sp = self.lock())
+      sp->record_tool_call_start(call);
+    if (user_tool_start)
+      (*user_tool_start)(call);
+  };
 
   auto user_tool_finish = options.on_tool_call_finish;
-  options.on_tool_call_finish =
-      [self, user_tool_finish](const ToolResult& result) {
-        if (auto sp = self.lock()) sp->record_tool_call_finish(result);
-        if (user_tool_finish) (*user_tool_finish)(result);
-      };
+  options.on_tool_call_finish = [self,
+                                 user_tool_finish](const ToolResult& result) {
+    if (auto sp = self.lock())
+      sp->record_tool_call_finish(result);
+    if (user_tool_finish)
+      (*user_tool_finish)(result);
+  };
 }
 
 void Trace::record_tool_call_start(const ToolCall& call) {
@@ -313,8 +324,8 @@ void Trace::record_tool_call_finish(const ToolResult& result) {
     body["startTime"] = now_iso8601();
     body["endTime"] = now_iso8601();
     body["input"] = result.arguments;
-    body["output"] = result.is_success() ? result.result
-                                         : JsonValue(result.error_message());
+    body["output"] =
+        result.is_success() ? result.result : JsonValue(result.error_message());
     body["level"] = result.is_success() ? "DEFAULT" : "ERROR";
     if (active_generation_)
       body["parentObservationId"] = active_generation_->id;
@@ -328,7 +339,8 @@ void Trace::record_tool_call_finish(const ToolResult& result) {
     return;
   }
 
-  // Close the open span by emitting a span-update event referencing the same id.
+  // Close the open span by emitting a span-update event referencing the same
+  // id.
   JsonValue& open = events_[it->second];
   std::string span_id = open["body"]["id"].get<std::string>();
 
@@ -354,7 +366,8 @@ void Trace::record_tool_call_finish(const ToolResult& result) {
 
 void Trace::finish_generation(const GenerateResult& result) {
   std::lock_guard<std::mutex> lock(mu_);
-  if (!active_generation_ || active_generation_->finalized) return;
+  if (!active_generation_ || active_generation_->finalized)
+    return;
   auto& gen = *active_generation_;
   gen.finalized = true;
 
@@ -404,8 +417,10 @@ void Trace::finish_generation(const GenerateResult& result) {
 
   JsonValue meta = JsonValue::object();
   meta["finish_reason"] = result.finishReasonToString();
-  if (!result.steps.empty()) meta["steps"] = result.steps.size();
-  if (!result.warnings.empty()) meta["warnings"] = result.warnings;
+  if (!result.steps.empty())
+    meta["steps"] = result.steps.size();
+  if (!result.warnings.empty())
+    meta["warnings"] = result.warnings;
   body["metadata"] = std::move(meta);
 
   if (!result.is_success() && result.error) {
@@ -447,12 +462,18 @@ JsonValue Trace::build_trace_event() const {
   body["environment"] = tracer_.config().environment;
   if (!tracer_.config().release.empty())
     body["release"] = tracer_.config().release;
-  if (input_) body["input"] = *input_;
-  if (output_) body["output"] = *output_;
-  if (user_id_) body["userId"] = *user_id_;
-  if (session_id_) body["sessionId"] = *session_id_;
-  if (metadata_) body["metadata"] = *metadata_;
-  if (!tags_.empty()) body["tags"] = tags_;
+  if (input_)
+    body["input"] = *input_;
+  if (output_)
+    body["output"] = *output_;
+  if (user_id_)
+    body["userId"] = *user_id_;
+  if (session_id_)
+    body["sessionId"] = *session_id_;
+  if (metadata_)
+    body["metadata"] = *metadata_;
+  if (!tags_.empty())
+    body["tags"] = tags_;
 
   JsonValue event;
   event["id"] = new_uuid();
@@ -463,13 +484,15 @@ JsonValue Trace::build_trace_event() const {
 }
 
 bool Trace::end() {
-  if (ended_.exchange(true)) return true;
+  if (ended_.exchange(true))
+    return true;
 
   JsonValue batch = JsonValue::array();
   {
     std::lock_guard<std::mutex> lock(mu_);
     batch.push_back(build_trace_event());
-    for (auto& ev : events_) batch.push_back(std::move(ev));
+    for (auto& ev : events_)
+      batch.push_back(std::move(ev));
     events_.clear();
   }
 
@@ -510,13 +533,11 @@ std::string Trace::new_uuid() {
   b = (b & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
 
   char buf[37];
-  std::snprintf(buf, sizeof(buf),
-                "%08x-%04x-%04x-%04x-%012llx",
-                static_cast<unsigned>(a >> 32),
-                static_cast<unsigned>((a >> 16) & 0xFFFF),
-                static_cast<unsigned>(a & 0xFFFF),
-                static_cast<unsigned>(b >> 48),
-                static_cast<unsigned long long>(b & 0xFFFFFFFFFFFFULL));
+  std::snprintf(
+      buf, sizeof(buf), "%08x-%04x-%04x-%04x-%012llx",
+      static_cast<unsigned>(a >> 32), static_cast<unsigned>((a >> 16) & 0xFFFF),
+      static_cast<unsigned>(a & 0xFFFF), static_cast<unsigned>(b >> 48),
+      static_cast<unsigned long long>(b & 0xFFFFFFFFFFFFULL));
   return std::string(buf);
 }
 

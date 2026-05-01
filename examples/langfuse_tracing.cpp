@@ -37,14 +37,16 @@ ai::JsonValue lookup_user(const ai::JsonValue& args,
   };
   auto id = args.value("user_id", std::string{});
   auto it = users.find(id);
-  if (it != users.end()) return it->second;
+  if (it != users.end())
+    return it->second;
   return ai::JsonValue{{"error", "user not found"}};
 }
 
 ai::JsonValue get_weather(const ai::JsonValue& args,
                           const ai::ToolExecutionContext&) {
   auto loc = args.value("location", std::string{"unknown"});
-  return ai::JsonValue{{"location", loc}, {"temperature_c", 21}, {"sky", "clear"}};
+  return ai::JsonValue{
+      {"location", loc}, {"temperature_c", 21}, {"sky", "clear"}};
 }
 
 }  // namespace
@@ -58,8 +60,10 @@ int main() {
   }
 
   const char* host = std::getenv("LANGFUSE_HOST");
-  if (!host || !*host) host = std::getenv("LANGFUSE_BASE_URL");
-  if (!host || !*host) host = "https://cloud.langfuse.com";
+  if (!host || !*host)
+    host = std::getenv("LANGFUSE_BASE_URL");
+  if (!host || !*host)
+    host = "https://cloud.langfuse.com";
 
   ai::langfuse::Tracer tracer({
       .host = host,
@@ -97,8 +101,7 @@ int main() {
 
   auto trace = tracer.start_trace("langfuse_tracing_example");
   trace->set_input(options.prompt);
-  trace->set_metadata({{"example", "langfuse_tracing"},
-                       {"sdk", "ai-sdk-cpp"}});
+  trace->set_metadata({{"example", "langfuse_tracing"}, {"sdk", "ai-sdk-cpp"}});
 
   auto result = ai::langfuse::generate_text(client, std::move(options), *trace);
 
