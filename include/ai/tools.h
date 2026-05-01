@@ -84,12 +84,6 @@ class MultiStepCoordinator {
           generate_func);
 
  private:
-  /// Create the next generation options based on previous step
-  static GenerateOptions create_next_step_options(
-      const GenerateOptions& base_options,
-      const GenerateResult& previous_result,
-      const std::vector<ToolResult>& tool_results);
-
   /// Convert tool results to messages for the next step
   static Messages tool_results_to_messages(
       const std::vector<ToolCall>& tool_calls,

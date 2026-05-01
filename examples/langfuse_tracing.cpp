@@ -24,9 +24,9 @@
 
 namespace {
 
-const char* env_or(const char* name, const char* fallback) {
+const char* getenv_nonempty(const char* name) {
   const char* v = std::getenv(name);
-  return (v && *v) ? v : fallback;
+  return (v && *v) ? v : nullptr;
 }
 
 ai::JsonValue lookup_user(const ai::JsonValue& args,

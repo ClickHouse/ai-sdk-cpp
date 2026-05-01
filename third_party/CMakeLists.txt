@@ -20,6 +20,9 @@ add_subdirectory(nlohmann_json-cmake)
 # Add concurrentqueue
 add_subdirectory(concurrentqueue-cmake)
 
+# Add stduuid (header-only)
+add_subdirectory(stduuid-cmake)
+
 # Add googletest (only if BUILD_TESTS is ON)
 if(BUILD_TESTS)
     add_subdirectory(googletest-cmake)
