@@ -181,7 +181,7 @@ int main() {
                "recommendations, and send her an email\n\n";
 
   ai::GenerateOptions options1;
-  options1.model = ai::openai::models::kGpt4o;
+  options1.model = ai::openai::models::kGpt54;
   options1.prompt = R"(
     Please help me with this task:
     1. Look up the user 'alice' to get her information
@@ -234,7 +234,7 @@ int main() {
       << "Task: Look up user 'bob' and create a personalized travel report\n\n";
 
   ai::GenerateOptions options2;
-  options2.model = ai::openai::models::kGpt4o;
+  options2.model = ai::openai::models::kGpt54;
   options2.prompt = R"(
     Create a personalized travel report for user 'bob':
     1. Look up Bob's profile to get his location

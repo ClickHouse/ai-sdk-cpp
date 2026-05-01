@@ -88,13 +88,13 @@ int main() {
 
   // Test OpenAI models
   results1.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt4o, simple_question));
+      test_provider("OpenAI", ai::openai::models::kGpt54, simple_question));
   results1.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt4oMini, simple_question));
+      test_provider("OpenAI", ai::openai::models::kGpt54Mini, simple_question));
 
   // Test Anthropic models
   results1.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaudeSonnet45, simple_question));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet46, simple_question));
   results1.push_back(test_provider(
       "Anthropic", ai::anthropic::models::kClaudeHaiku45, simple_question));
 
@@ -116,9 +116,9 @@ int main() {
 
   // Test with different providers for creativity
   results2.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt4o, creative_prompt));
+      test_provider("OpenAI", ai::openai::models::kGpt54, creative_prompt));
   results2.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaudeSonnet45, creative_prompt));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet46, creative_prompt));
 
   for (const auto& result : results2) {
     print_result(result);
@@ -135,9 +135,9 @@ int main() {
   std::vector<ProviderResult> results3;
 
   results3.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt4o, technical_prompt));
+      test_provider("OpenAI", ai::openai::models::kGpt54, technical_prompt));
   results3.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaudeSonnet45, technical_prompt));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet46, technical_prompt));
 
   for (const auto& result : results3) {
     print_result(result);
@@ -248,8 +248,8 @@ int main() {
   std::cout << "  - Token usage affects cost - consider model efficiency\n";
   std::cout << "  - The AI SDK provides a unified interface across providers\n";
   std::cout << "\nTip: Choose models based on your specific use case:\n";
-  std::cout << "  - Fast responses: GPT-4o-mini, Claude-3-5-haiku\n";
-  std::cout << "  - High quality: GPT-4o, Claude-3-5-sonnet\n";
+  std::cout << "  - Fast responses: GPT-5.4-mini, Claude-haiku-4.5\n";
+  std::cout << "  - High quality: GPT-5.5, Claude-sonnet-4.6\n";
   std::cout << "  - Creative tasks: Models with higher temperature settings\n";
 
   return 0;

@@ -32,7 +32,7 @@ int main() {
     auto client = ai::openai::create_client();
     
     auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
+        .model = ai::openai::models::kGpt54, // this can also be a string like "gpt-5.4"
         .system = "You are a friendly assistant!",
         .prompt = "Why is the sky blue?"
     });
@@ -56,7 +56,7 @@ int main() {
     // Ensure ANTHROPIC_API_KEY environment variable is set
     auto client = ai::anthropic::create_client();
     auto result = client.generate_text({
-        .model = ai::anthropic::models::kClaudeSonnet45,
+        .model = ai::anthropic::models::kClaudeSonnet46,
         .system = "You are a helpful assistant.",
         .prompt = "Explain quantum computing in simple terms."
     });
@@ -80,7 +80,7 @@ int main() {
     auto client = ai::openai::create_client();
     
     auto stream = client.stream_text({
-        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
+        .model = ai::openai::models::kGpt54, // this can also be a string like "gpt-5.4"
         .system = "You are a helpful assistant.",
         .prompt = "Write a short story about a robot."
     });
@@ -113,7 +113,7 @@ int main() {
     };
     
     auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
+        .model = ai::openai::models::kGpt54, // this can also be a string like "gpt-5.4"
         .messages = messages
     });
     
@@ -161,7 +161,7 @@ int main() {
     };
     
     auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o,
+        .model = ai::openai::models::kGpt54,
         .prompt = "What's the weather like in San Francisco?",
         .tools = tools,
         .max_steps = 3  // Enable multi-step tool calling
@@ -217,7 +217,7 @@ int main() {
     
     // Multiple async tools will execute in parallel
     auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o,
+        .model = ai::openai::models::kGpt54,
         .prompt = "Fetch data from the user and product APIs",
         .tools = tools
     });
@@ -252,7 +252,7 @@ int main() {
     // - Network errors
     // - HTTP 408, 409, 429 (rate limits), and 5xx errors
     auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o,
+        .model = ai::openai::models::kGpt54,
         .prompt = "Hello, world!"
     });
     
@@ -286,7 +286,7 @@ int main() {
     
     // Use any model available on OpenRouter
     auto result = client.generate_text({
-        .model = "anthropic/claude-3.5-sonnet",  // or "meta-llama/llama-3.1-8b-instruct", etc.
+        .model = "anthropic/claude-sonnet-4-6",  // or "meta-llama/llama-3.1-8b-instruct", etc.
         .system = "You are a helpful assistant.",
         .prompt = "What are the benefits of using OpenRouter?"
     });

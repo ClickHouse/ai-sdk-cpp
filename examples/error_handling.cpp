@@ -37,7 +37,7 @@ void demonstrate_api_errors() {
   // Test with empty prompt
   std::cout << "Testing with empty prompt:\n";
   ai::GenerateOptions options2;
-  options2.model = ai::openai::models::kGpt4o;
+  options2.model = ai::openai::models::kGpt54;
   options2.prompt = "";
   auto result2 = client.generate_text(options2);
 
@@ -81,7 +81,7 @@ void demonstrate_validation() {
 
   // Test valid options
   ai::GenerateOptions valid_options;
-  valid_options.model = ai::openai::models::kGpt4o;
+  valid_options.model = ai::openai::models::kGpt54;
   valid_options.prompt = "Hello";
 
   if (valid_options.is_valid()) {
@@ -181,8 +181,8 @@ void demonstrate_recovery_patterns() {
 
   std::vector<std::string> fallback_models = {
       "primary-model-v3",          // This will fail
-      ai::openai::models::kGpt4o,  // This should work (if API key is available)
-      ai::openai::models::kGpt4oMini  // Faster fallback
+      ai::openai::models::kGpt54,  // This should work (if API key is available)
+      ai::openai::models::kGpt54Mini  // Faster fallback
   };
 
   std::string prompt = "What is machine learning?";

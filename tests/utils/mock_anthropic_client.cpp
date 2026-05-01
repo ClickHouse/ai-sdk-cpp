@@ -132,8 +132,8 @@ std::string ControllableAnthropicClient::provider_name() const {
 }
 
 std::vector<std::string> ControllableAnthropicClient::supported_models() const {
-  return {"claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251001",
-          "claude-opus-4-1-20250805", "claude-sonnet-4-20250514"};
+  return {"claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001",
+          "claude-sonnet-4-5-20250929", "claude-opus-4-1-20250805"};
 }
 
 bool ControllableAnthropicClient::supports_model(

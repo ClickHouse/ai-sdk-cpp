@@ -33,7 +33,7 @@ int main() {
   auto default_client = ai::openai::create_client();
 
   ai::GenerateOptions options;
-  options.model = ai::openai::models::kGpt4oMini;
+  options.model = ai::openai::models::kGpt54Mini;
   options.prompt = "Say 'Hello with default retry config!'";
 
   auto result1 = default_client.generate_text(options);
@@ -138,7 +138,7 @@ int main() {
   options.prompt =
       "Generate a list of 5 creative project names for a batch processing "
       "system.";
-  options.model = ai::openai::models::kGpt4o;
+  options.model = ai::openai::models::kGpt54;
 
   std::cout << "Processing batch request (this might take a while if retries "
                "occur)...\n";
