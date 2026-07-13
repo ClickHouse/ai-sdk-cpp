@@ -121,11 +121,15 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
         break;
       }
 
-      // Create next step options with tool results (including errors)
+      // Create next step options with tool results (including errors).
+      // Base them on current_options, which carries the accumulated conversation:
+      // building on initial_options would drop the tool exchanges of all earlier
+      // steps, and without them the model re-requests the same tool calls (e.g.
+      // the same schemas) over and over until max_steps is exhausted.
       ai::logger::log_debug("Creating next step options with {} tool results",
                             tool_results.size());
       current_options =
-          create_next_step_options(initial_options, step_result, tool_results);
+          create_next_step_options(current_options, step_result, tool_results);
     } else {
       // No tool calls to execute, we're done
       break;
