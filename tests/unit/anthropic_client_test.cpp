@@ -79,6 +79,17 @@ TEST_F(AnthropicClientTest, ConstructorWithHttpUrl) {
   // EXPECT_FALSE(client.get_use_ssl());
 }
 
+TEST_F(AnthropicClientTest, ConstructorWithCustomRetryConfig) {
+  retry::RetryConfig retry_config;
+  retry_config.max_retries = 5;
+
+  ai::anthropic::AnthropicClient client(
+      "sk-ant-test", "https://api.anthropic.com", retry_config);
+
+  EXPECT_TRUE(client.is_valid());
+  EXPECT_EQ(client.get_base_url(), "https://api.anthropic.com");
+}
+
 // Model Support Tests
 TEST_F(AnthropicClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();

@@ -47,6 +47,14 @@ Client create_client(const std::string& api_key, const std::string& base_url) {
       get_api_key_or_default(api_key), get_base_url_or_default(base_url)));
 }
 
+Client create_client(const std::string& api_key,
+                     const std::string& base_url,
+                     const retry::RetryConfig& retry_config) {
+  return Client(std::make_unique<AnthropicClient>(
+      get_api_key_or_default(api_key), get_base_url_or_default(base_url),
+      retry_config));
+}
+
 std::optional<Client> try_create_client() {
   auto api_key = utils::non_empty_env("ANTHROPIC_API_KEY");
   if (!api_key) {
