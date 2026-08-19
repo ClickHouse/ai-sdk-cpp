@@ -87,6 +87,7 @@ target_sources(ai-sdk-cpp-core
         # HTTP and base provider infrastructure
         src/http/http_request_handler.cpp
         src/providers/base_provider_client.cpp
+        src/providers/http_sse_stream.cpp
         
         # Tool calling implementations
         src/tools/tool_executor.cpp
