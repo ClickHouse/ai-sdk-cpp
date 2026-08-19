@@ -140,6 +140,7 @@ GenerateResult BaseProviderClient::generate_text_single_step(
 }
 
 StreamResult BaseProviderClient::stream_text(const StreamOptions& options) {
+  (void)options;
   // This needs to be implemented with provider-specific stream implementations
   // For now, return an error
   ai::logger::log_error("Streaming not yet implemented in BaseProviderClient");
