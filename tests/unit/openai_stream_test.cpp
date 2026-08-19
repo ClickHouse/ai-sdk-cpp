@@ -1,3 +1,5 @@
+#include "providers/openai/openai_stream.h"
+
 #include "../utils/mock_openai_client.h"
 #include "../utils/test_fixtures.h"
 #include "ai/types/stream_event.h"
@@ -14,9 +16,9 @@ class OpenAIStreamTest : public OpenAITestFixture {};
 
 // StreamOptions Tests
 TEST_F(OpenAIStreamTest, StreamOptionsBasicConstructor) {
-  StreamOptions options(GenerateOptions("gpt-4o", "Hello, world!"));
+  StreamOptions options(GenerateOptions("test-model", "Hello, world!"));
 
-  EXPECT_EQ(options.model, "gpt-4o");
+  EXPECT_EQ(options.model, "test-model");
   EXPECT_EQ(options.prompt, "Hello, world!");
   EXPECT_TRUE(options.system.empty());
   EXPECT_TRUE(options.messages.empty());
@@ -24,30 +26,30 @@ TEST_F(OpenAIStreamTest, StreamOptionsBasicConstructor) {
 
 TEST_F(OpenAIStreamTest, StreamOptionsWithSystemPrompt) {
   StreamOptions options(
-      GenerateOptions("gpt-4o", "System prompt", "User prompt"));
+      GenerateOptions("test-model", "System prompt", "User prompt"));
 
-  EXPECT_EQ(options.model, "gpt-4o");
+  EXPECT_EQ(options.model, "test-model");
   EXPECT_EQ(options.system, "System prompt");
   EXPECT_EQ(options.prompt, "User prompt");
 }
 
 TEST_F(OpenAIStreamTest, StreamOptionsWithMessages) {
   Messages messages = createSampleConversation();
-  StreamOptions options(GenerateOptions("gpt-4o", std::move(messages)));
+  StreamOptions options(GenerateOptions("test-model", std::move(messages)));
 
-  EXPECT_EQ(options.model, "gpt-4o");
+  EXPECT_EQ(options.model, "test-model");
   EXPECT_FALSE(options.messages.empty());
   EXPECT_TRUE(options.has_messages());
 }
 
 TEST_F(OpenAIStreamTest, StreamOptionsValidation) {
-  StreamOptions valid_options(GenerateOptions("gpt-4o", "Valid prompt"));
+  StreamOptions valid_options(GenerateOptions("test-model", "Valid prompt"));
   EXPECT_TRUE(valid_options.is_valid());
 
   StreamOptions invalid_model(GenerateOptions("", "Valid prompt"));
   EXPECT_FALSE(invalid_model.is_valid());
 
-  StreamOptions invalid_prompt(GenerateOptions("gpt-4o", ""));
+  StreamOptions invalid_prompt(GenerateOptions("test-model", ""));
   EXPECT_FALSE(invalid_prompt.is_valid());
 }
 
@@ -88,6 +90,43 @@ TEST_F(StreamEventTest, ParseErrorEvent) {
 
   EXPECT_THAT(error_data, testing::HasSubstr("error"));
   EXPECT_THAT(error_data, testing::HasSubstr("Stream error"));
+}
+
+TEST_F(StreamEventTest, ParsesFragmentedToolCall) {
+  openai::OpenAIStreamImpl stream;
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_123","type":"function","function":{"name":"get_weather","arguments":"{\"loc"}}]}}]})");
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"ation\":\"Chicago\"}"}}]},"finish_reason":"tool_calls"}]})");
+  stream.process_sse_line_for_testing("data: [DONE]");
+
+  auto tool_event = stream.get_next_event();
+  ASSERT_TRUE(tool_event.is_tool_call());
+  ASSERT_TRUE(tool_event.tool_call.has_value());
+  EXPECT_EQ(tool_event.tool_call->id, "call_123");
+  EXPECT_EQ(tool_event.tool_call->tool_name, "get_weather");
+  EXPECT_EQ(tool_event.tool_call->arguments["location"], "Chicago");
+
+  auto finish_event = stream.get_next_event();
+  ASSERT_TRUE(finish_event.is_finish());
+  ASSERT_TRUE(finish_event.finish_reason.has_value());
+  EXPECT_EQ(*finish_event.finish_reason, kFinishReasonToolCalls);
+  EXPECT_FALSE(finish_event.usage.has_value());
+}
+
+TEST_F(StreamEventTest, EmitsOneFinishWithTerminalUsage) {
+  openai::OpenAIStreamImpl stream;
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{},"finish_reason":"stop"}]})");
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":3,"total_tokens":7}})");
+  stream.process_sse_line_for_testing("data: [DONE]");
+
+  ASSERT_EQ(stream.queued_event_count_for_testing(), 1);
+  auto finish_event = stream.get_next_event();
+  ASSERT_TRUE(finish_event.is_finish());
+  ASSERT_TRUE(finish_event.usage.has_value());
+  EXPECT_EQ(finish_event.usage->total_tokens, 7);
 }
 
 // Mock Stream Implementation Tests
@@ -180,7 +219,7 @@ class StreamErrorTest : public OpenAITestFixture {};
 
 TEST_F(StreamErrorTest, HandleStreamConnectionError) {
   ControllableOpenAIClient client(kTestApiKey);
-  StreamOptions options(GenerateOptions("gpt-4o", "Test prompt"));
+  StreamOptions options(GenerateOptions("test-model", "Test prompt"));
 
   client.setShouldFail(true);
 
@@ -193,7 +232,7 @@ TEST_F(StreamErrorTest, HandleStreamConnectionError) {
 
 TEST_F(StreamErrorTest, HandleStreamTimeout) {
   ControllableOpenAIClient client(kTestApiKey);
-  StreamOptions options(GenerateOptions("gpt-4o", "Test prompt"));
+  StreamOptions options(GenerateOptions("test-model", "Test prompt"));
 
   client.setShouldTimeout(true);
 
@@ -273,13 +312,13 @@ TEST_F(StreamIntegrationTest, StreamWithClientConfiguration) {
   // Verify client supports streaming
   EXPECT_TRUE(client.is_valid());
 
-  StreamOptions options(GenerateOptions("gpt-4o", "Stream test"));
+  StreamOptions options(GenerateOptions("test-model", "Stream test"));
   auto result = client.stream_text(options);
 
   EXPECT_EQ(client.getCallCount(), 1);
 
   auto last_options = client.getLastStreamOptions();
-  EXPECT_EQ(last_options.model, "gpt-4o");
+  EXPECT_EQ(last_options.model, "test-model");
   EXPECT_EQ(last_options.prompt, "Stream test");
 }
 

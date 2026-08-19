@@ -58,6 +58,9 @@ StreamResult OpenAIClient::stream_text(const StreamOptions& options) {
   // Build request with stream: true
   auto request_json = request_builder_->build_request_json(options);
   request_json["stream"] = true;
+  // Request the terminal usage chunk; without this OpenAI omits usage from
+  // streaming responses and the finish event would never carry token counts.
+  request_json["stream_options"] = {{"include_usage", true}};
   ai::logger::log_debug("Stream request JSON built with stream=true");
 
   // Create headers
