@@ -251,6 +251,9 @@ int main() {
 }
 ```
 
+The same retry-config overload is available from
+`ai::anthropic::create_client` for Anthropic requests.
+
 #### Using OpenAI-Compatible APIs (OpenRouter, etc.)
 
 The OpenAI client can be used with any OpenAI-compatible API by specifying a custom base URL. This allows you to use alternative providers like OpenRouter, which offers access to multiple models through a unified API.

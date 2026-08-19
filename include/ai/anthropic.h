@@ -5,6 +5,7 @@
     "Anthropic component not available. Link with ai::anthropic or ai::sdk to use Anthropic functionality."
 #endif
 
+#include "retry/retry_policy.h"
 #include "types/client.h"
 
 #include <optional>
@@ -56,6 +57,15 @@ Client create_client(const std::string& api_key);
 /// @param base_url Custom base URL (for Anthropic-compatible APIs)
 /// @return Configured Anthropic client
 Client create_client(const std::string& api_key, const std::string& base_url);
+
+/// Create an Anthropic client with custom configuration and retry settings
+/// @param api_key Anthropic API key
+/// @param base_url Custom base URL (for Anthropic-compatible APIs)
+/// @param retry_config Custom retry configuration
+/// @return Configured Anthropic client
+Client create_client(const std::string& api_key,
+                     const std::string& base_url,
+                     const retry::RetryConfig& retry_config);
 
 /// Try to create an Anthropic client using environment variables
 /// Reads API key from ANTHROPIC_API_KEY environment variable
