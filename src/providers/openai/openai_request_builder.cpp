@@ -4,6 +4,8 @@
 #include "ai/openai.h"
 #include "utils/message_utils.h"
 
+#include <optional>
+
 namespace ai {
 namespace openai {
 
@@ -97,16 +99,32 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   }
 
   // Add optional parameters
-  if (options.temperature) {
-    request["temperature"] = *options.temperature;
-  }
+  // The GPT-5 family is reasoning-first on Chat Completions: it rejects
+  // sampling controls ("'temperature' does not support 0.0 with this model.
+  // Only the default (1) value is supported."). Keep accepting the
+  // provider-neutral options while omitting them for those model IDs,
+  // mirroring the Anthropic builder.
+  const bool is_gpt5_family = options.model.starts_with("gpt-5");
+  const bool rejects_sampling_parameters = is_gpt5_family;
+  const auto add_sampling_parameter = [&](const char* key,
+                                          const std::optional<double>& value) {
+    if (!value) {
+      return;
+    }
+    if (rejects_sampling_parameters) {
+      ai::logger::log_warn(
+          "Ignoring {} for {} because the model does not support "
+          "sampling parameters",
+          key, options.model);
+    } else {
+      request[key] = *value;
+    }
+  };
+  add_sampling_parameter("temperature", options.temperature);
+  add_sampling_parameter("top_p", options.top_p);
 
   if (options.max_tokens) {
     request["max_completion_tokens"] = *options.max_tokens;
-  }
-
-  if (options.top_p) {
-    request["top_p"] = *options.top_p;
   }
 
   if (options.frequency_penalty) {
@@ -121,12 +139,18 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
     request["seed"] = *options.seed;
   }
 
-  // GPT-5.6 defaults to reasoning in Chat Completions. That mode does not
-  // support function tools and can consume the full completion budget without
-  // producing user-visible text. The unified SDK currently exposes Chat
-  // Completions semantics, so explicitly request non-reasoning output.
+  // The GPT-5 family defaults to reasoning in Chat Completions. That mode
+  // can consume the full completion budget on hidden reasoning without
+  // producing user-visible text (acute with a small max_tokens), and on
+  // GPT-5.6 it does not support function tools. The unified SDK currently
+  // exposes Chat Completions semantics, so explicitly request non-reasoning
+  // output for the whole family.
   if (options.model.starts_with(models::kGpt56)) {
     request["reasoning_effort"] = "none";
+  } else if (is_gpt5_family) {
+    // Earlier GPT-5 models reject "none" ("Supported values are: 'minimal',
+    // 'low', 'medium', and 'high'."); "minimal" is their floor.
+    request["reasoning_effort"] = "minimal";
   }
 
   // Add tools if specified

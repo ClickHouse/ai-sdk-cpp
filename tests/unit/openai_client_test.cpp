@@ -150,13 +150,49 @@ TEST_F(OpenAIClientTest, ValidateOptionsValidation) {
   EXPECT_TRUE(valid_options.is_valid());
 }
 
-TEST_F(OpenAIClientTest, Gpt56UsesChatCompletionsCompatibleReasoning) {
+TEST_F(OpenAIClientTest, Gpt5FamilyUsesChatCompletionsCompatibleReasoning) {
   openai::OpenAIRequestBuilder builder;
-  GenerateOptions options(openai::models::kGpt56Luna, "Use a tool");
+
+  GenerateOptions gpt56_options(openai::models::kGpt56Luna, "Use a tool");
+  EXPECT_EQ(builder.build_request_json(gpt56_options)["reasoning_effort"],
+            "none");
+
+  // Earlier GPT-5 models reject "none"; they get the "minimal" floor.
+  for (const auto* model :
+       {openai::models::kGpt5Mini, openai::models::kGpt55}) {
+    GenerateOptions options(model, "Use a tool");
+    EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"],
+              "minimal")
+        << model;
+  }
+}
+
+TEST_F(OpenAIClientTest, Gpt5FamilyOmitsUnsupportedSamplingParameters) {
+  openai::OpenAIRequestBuilder builder;
+  for (const auto* model :
+       {openai::models::kGpt56, openai::models::kGpt56Terra,
+        openai::models::kGpt55, openai::models::kGpt5Mini}) {
+    GenerateOptions options(model, "Hello");
+    options.temperature = 0.0;
+    options.top_p = 0.8;
+
+    const auto request = builder.build_request_json(options);
+
+    EXPECT_FALSE(request.contains("temperature")) << model;
+    EXPECT_FALSE(request.contains("top_p")) << model;
+  }
+}
+
+TEST_F(OpenAIClientTest, NonReasoningModelsKeepSamplingParameters) {
+  openai::OpenAIRequestBuilder builder;
+  GenerateOptions options(openai::models::kGpt41, "Hello");
+  options.temperature = 0.2;
+  options.top_p = 0.9;
 
   const auto request = builder.build_request_json(options);
 
-  EXPECT_EQ(request["reasoning_effort"], "none");
+  EXPECT_EQ(request["temperature"], 0.2);
+  EXPECT_EQ(request["top_p"], 0.9);
 }
 
 // Stream Tests (Basic validation)
