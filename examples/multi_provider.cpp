@@ -88,13 +88,13 @@ int main() {
 
   // Test OpenAI models
   results1.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt54, simple_question));
-  results1.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt54Mini, simple_question));
+      test_provider("OpenAI", ai::openai::models::kGpt56, simple_question));
+  results1.push_back(test_provider("OpenAI", ai::openai::models::kGpt56Terra,
+                                   simple_question));
 
   // Test Anthropic models
   results1.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaudeSonnet46, simple_question));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet5, simple_question));
   results1.push_back(test_provider(
       "Anthropic", ai::anthropic::models::kClaudeHaiku45, simple_question));
 
@@ -116,9 +116,9 @@ int main() {
 
   // Test with different providers for creativity
   results2.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt54, creative_prompt));
+      test_provider("OpenAI", ai::openai::models::kGpt56, creative_prompt));
   results2.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaudeSonnet46, creative_prompt));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet5, creative_prompt));
 
   for (const auto& result : results2) {
     print_result(result);
@@ -135,9 +135,9 @@ int main() {
   std::vector<ProviderResult> results3;
 
   results3.push_back(
-      test_provider("OpenAI", ai::openai::models::kGpt54, technical_prompt));
+      test_provider("OpenAI", ai::openai::models::kGpt56, technical_prompt));
   results3.push_back(test_provider(
-      "Anthropic", ai::anthropic::models::kClaudeSonnet46, technical_prompt));
+      "Anthropic", ai::anthropic::models::kClaudeSonnet5, technical_prompt));
 
   for (const auto& result : results3) {
     print_result(result);

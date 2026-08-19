@@ -32,11 +32,11 @@ int main() {
     std::cout << "Testing text generation with OpenRouter...\n\n";
 
     // Using a model that's available on OpenRouter
-    // Common models: "openai/gpt-5.4", "anthropic/claude-sonnet-4-6",
+    // Common models: "openai/gpt-5.6-sol", "anthropic/claude-sonnet-5",
     // "meta-llama/llama-3.1-8b-instruct" See https://openrouter.ai/models for
     // available models
     ai::GenerateOptions options(
-        "anthropic/claude-sonnet-4-6", "You are a helpful assistant.",
+        "anthropic/claude-sonnet-5", "You are a helpful assistant.",
         "What are the benefits of using OpenRouter for AI applications? Give a "
         "brief answer.");
 
@@ -55,7 +55,7 @@ int main() {
     // Test streaming with OpenRouter
     std::cout << "\n\nTesting streaming with OpenRouter...\n";
 
-    ai::GenerateOptions stream_opts("anthropic/claude-sonnet-4-6",
+    ai::GenerateOptions stream_opts("anthropic/claude-sonnet-5",
                                     "You are a creative writer.",
                                     "Write a haiku about API compatibility.");
     ai::StreamOptions stream_options(stream_opts);

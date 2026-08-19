@@ -22,7 +22,8 @@ AnthropicClient::AnthropicClient(const std::string& api_key,
               .embeddings_endpoint_path = "/v1/embeddings",
               .auth_header_name = "x-api-key",
               .auth_header_prefix = "",
-              .extra_headers = {{"anthropic-version", "2023-06-01"}}},
+              .extra_headers = {{"anthropic-version", "2023-06-01"}},
+              .retry_config = std::nullopt},
           std::make_unique<AnthropicRequestBuilder>(),
           std::make_unique<AnthropicResponseParser>()) {
   ai::logger::log_debug("Anthropic client initialized with base_url: {}",
@@ -63,14 +64,14 @@ std::vector<std::string> AnthropicClient::supported_models() const {
   // snapshot variants (e.g. "claude-sonnet-4-5-20250929") are accepted by the
   // Anthropic API; list both so identifiers in `ai::anthropic::models::*`
   // resolve via `supports_model()`.
-  return {"claude-opus-4-7", "claude-sonnet-4-6", "claude-opus-4-6",
-          "claude-haiku-4-5", "claude-haiku-4-5-20251001", "claude-opus-4-5",
-          "claude-opus-4-5-20251101", "claude-sonnet-4-5",
-          "claude-sonnet-4-5-20250929", "claude-opus-4-1",
-          "claude-opus-4-1-20250805",
-          // Deprecated, retire 2026-06-15:
-          "claude-sonnet-4-0", "claude-sonnet-4-20250514", "claude-opus-4-0",
-          "claude-opus-4-20250514"};
+  return {models::kClaudeFable5,           models::kClaudeOpus5,
+          models::kClaudeOpus48,           models::kClaudeSonnet5,
+          models::kClaudeOpus47,           models::kClaudeSonnet46,
+          models::kClaudeOpus46,           models::kClaudeHaiku45,
+          models::kClaudeHaiku45Snapshot,  models::kClaudeOpus45,
+          models::kClaudeOpus45Snapshot,   models::kClaudeSonnet45,
+          models::kClaudeSonnet45Snapshot, models::kClaudeOpus41,
+          models::kClaudeOpus41Snapshot};
 }
 
 bool AnthropicClient::supports_model(const std::string& model_name) const {

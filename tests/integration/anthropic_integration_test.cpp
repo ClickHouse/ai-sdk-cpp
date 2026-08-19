@@ -23,7 +23,7 @@ class AnthropicIntegrationTest : public AITestFixture {
     // Check if we should run real API tests
     const char* api_key = std::getenv("ANTHROPIC_API_KEY");
 
-    if (api_key != nullptr) {
+    if (api_key && *api_key != '\0') {
       use_real_api_ = true;
       client_ = ai::anthropic::create_client(api_key);
     } else {
@@ -278,7 +278,7 @@ TEST_F(AnthropicIntegrationTest, LargePromptHandling) {
   auto large_prompt =
       TestDataGenerator::createLargePrompt(2000);  // ~2KB prompt
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet45, large_prompt);
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5, large_prompt);
   auto result = client_->generate_text(options);
 
   TestAssertions::assertSuccess(result);
@@ -299,7 +299,7 @@ TEST_F(AnthropicIntegrationTest, CustomBaseUrl) {
   auto custom_client =
       ai::anthropic::create_client(api_key, "https://api.anthropic.com");
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet45,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
                           "Test custom base URL");
   auto result = custom_client.generate_text(options);
 
@@ -313,7 +313,7 @@ TEST_F(AnthropicIntegrationTest, EmptyPrompt) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet45, "");
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5, "");
 
   // Empty prompt should be caught by validation
   EXPECT_FALSE(options.is_valid());
@@ -328,7 +328,7 @@ TEST_F(AnthropicIntegrationTest, VeryLongResponse) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet45,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
                           "Write a detailed explanation of quantum physics");
   options.max_tokens = 500;  // Reasonable limit for testing
 
@@ -349,8 +349,7 @@ TEST_F(AnthropicIntegrationTest, NetworkTimeout) {
 
   // Note: This test documents timeout behavior but cannot reliably trigger it
   // with the real API under normal conditions
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet45,
-                          "Simple test");
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5, "Simple test");
   auto result = client_->generate_text(options);
 
   // Under normal conditions, this should succeed
@@ -375,7 +374,7 @@ TEST_F(AnthropicIntegrationTest, NetworkFailure) {
   auto failing_client = ai::anthropic::create_client(
       api_key, "http://localhost:59999");  // Very unlikely port to be in use
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet45,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
                           "Test network failure");
   auto result = failing_client.generate_text(options);
 
@@ -410,7 +409,7 @@ TEST_F(AnthropicEnvironmentConfigTest, ConfigurationFromEnvironment) {
   const char* api_key = std::getenv("ANTHROPIC_API_KEY");
   const char* base_url = std::getenv("ANTHROPIC_BASE_URL");
 
-  if (api_key) {
+  if (api_key && *api_key != '\0') {
     auto client = base_url ? ai::anthropic::create_client(api_key, base_url)
                            : ai::anthropic::create_client(api_key);
     EXPECT_TRUE(client.is_valid());
@@ -426,7 +425,7 @@ TEST_F(AnthropicIntegrationTest, MaxTokensRequired) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet45,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
                           "Tell me about artificial intelligence");
   // Anthropic requires max_tokens to be set
   options.max_tokens = 100;
@@ -445,7 +444,7 @@ TEST_F(AnthropicIntegrationTest, SystemMessageHandling) {
 
   // Anthropic has specific handling for system messages
   GenerateOptions options(
-      ai::anthropic::models::kClaudeSonnet45,
+      ai::anthropic::models::kClaudeSonnet5,
       "You are Claude, an AI assistant created by Anthropic.",
       "What is your name?");
   options.max_tokens = 50;
