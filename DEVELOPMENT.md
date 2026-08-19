@@ -325,18 +325,18 @@ With **debug** level enabled:
 ```
 [2024-01-01 12:00:00.123] [debug] Initializing OpenAI client with base_url: https://api.openai.com
 [2024-01-01 12:00:00.124] [debug] OpenAI client configured - host: api.openai.com, use_ssl: true
-[2024-01-01 12:00:00.125] [debug] Starting text generation - model: gpt-4o, prompt length: 42
-[2024-01-01 12:00:00.126] [debug] Request JSON built: {"model":"gpt-4o","messages":[...]}
+[2024-01-01 12:00:00.125] [debug] Starting text generation - model: gpt-5.6, prompt length: 42
+[2024-01-01 12:00:00.126] [debug] Request JSON built: {"model":"gpt-5.6","messages":[...]}
 [2024-01-01 12:00:00.127] [debug] Creating SSL client for host: api.openai.com
 [2024-01-01 12:00:01.234] [debug] Received response - status: 200, body length: 1234
-[2024-01-01 12:00:01.235] [info] Text generation successful - model: gpt-4o, response_id: chatcmpl-abc123
+[2024-01-01 12:00:01.235] [info] Text generation successful - model: gpt-5.6, response_id: chatcmpl-abc123
 ```
 
 With **info** level enabled:
 
 ```
-[2024-01-01 12:00:01.235] [info] Text generation successful - model: gpt-4o, response_id: chatcmpl-abc123
-[2024-01-01 12:00:02.456] [info] Text streaming started - model: gpt-4o-mini
+[2024-01-01 12:00:01.235] [info] Text generation successful - model: gpt-5.6, response_id: chatcmpl-abc123
+[2024-01-01 12:00:02.456] [info] Text streaming started - model: gpt-5.6-luna
 [2024-01-01 12:00:03.789] [info] Stream completed - tokens used: 150 prompt, 350 completion, 500 total
 ```
 

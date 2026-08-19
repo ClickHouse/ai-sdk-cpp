@@ -91,7 +91,7 @@ int main() {
       ai::create_object_schema({{"location", "string"}}), get_weather);
 
   ai::GenerateOptions options;
-  options.model = ai::openai::models::kGpt4oMini;
+  options.model = ai::openai::models::kGpt56Luna;
   options.system =
       "You are a concise assistant. Use the available tools when helpful.";
   options.prompt = "Look up alice and tell me the weather where she lives.";

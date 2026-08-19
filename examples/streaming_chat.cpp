@@ -30,7 +30,7 @@ int main() {
 
   auto client = ai::openai::create_client();
   ai::GenerateOptions gen_options1;
-  gen_options1.model = ai::openai::models::kGpt54;
+  gen_options1.model = ai::openai::models::kGpt56;
   gen_options1.prompt =
       "Write a short story about a robot learning "
       "to paint. Keep it under 200 words.";
@@ -77,7 +77,7 @@ int main() {
   };
 
   ai::GenerateOptions gen_options2;
-  gen_options2.model = ai::openai::models::kGpt54Mini;
+  gen_options2.model = ai::openai::models::kGpt56Terra;
   gen_options2.prompt =
       "Explain quantum computing in simple terms that a "
       "high school student could understand.";
@@ -102,7 +102,7 @@ int main() {
 
   std::cout << "Response: ";
   ai::GenerateOptions gen_options3;
-  gen_options3.model = ai::openai::models::kGpt54;
+  gen_options3.model = ai::openai::models::kGpt56;
   gen_options3.messages = conversation;
   ai::StreamOptions options3(std::move(gen_options3));
   auto stream3 = client.stream_text(options3);
@@ -139,7 +139,7 @@ next_example:
   std::cout << "Prompt: Write 3 unusual ice cream flavors.\n\n";
 
   ai::GenerateOptions gen_options4;
-  gen_options4.model = ai::openai::models::kGpt54;
+  gen_options4.model = ai::openai::models::kGpt56;
   gen_options4.prompt =
       "Invent 3 unusual but delicious ice cream flavors with creative names.";
   gen_options4.temperature = 1.2;  // High creativity

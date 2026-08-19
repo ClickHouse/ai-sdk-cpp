@@ -22,7 +22,8 @@ OpenAIClient::OpenAIClient(const std::string& api_key,
               .embeddings_endpoint_path = "/v1/embeddings",
               .auth_header_name = "Authorization",
               .auth_header_prefix = "Bearer ",
-              .extra_headers = {}},
+              .extra_headers = {},
+              .retry_config = std::nullopt},
           std::make_unique<OpenAIRequestBuilder>(),
           std::make_unique<OpenAIResponseParser>()) {
   ai::logger::log_debug("OpenAI client initialized with base_url: {}",
@@ -80,13 +81,12 @@ std::string OpenAIClient::provider_name() const {
 
 std::vector<std::string> OpenAIClient::supported_models() const {
   return {// Current GPT-5 series
-          models::kGpt54, models::kGpt54Pro, models::kGpt54Mini,
-          models::kGpt54Nano, models::kGpt5Mini, models::kGpt5Nano,
+          models::kGpt56, models::kGpt56Sol, models::kGpt56Terra,
+          models::kGpt56Luna, models::kGpt55, models::kGpt54, models::kGpt54Pro,
+          models::kGpt54Mini, models::kGpt54Nano, models::kGpt5Mini,
+          models::kGpt5Nano,
           // Current GPT-4.1 series
-          models::kGpt41, models::kGpt41Mini,
-          // Legacy / deprecated (still functional via API)
-          models::kGpt4o, models::kGpt4oMini, models::kGpt4Turbo, models::kGpt4,
-          models::kGpt35Turbo};
+          models::kGpt41, models::kGpt41Mini};
 }
 
 bool OpenAIClient::supports_model(const std::string& model_name) const {

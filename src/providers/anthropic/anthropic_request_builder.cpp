@@ -1,7 +1,12 @@
 #include "anthropic_request_builder.h"
 
+#include "ai/anthropic.h"
 #include "ai/logger.h"
 #include "utils/message_utils.h"
+
+#include <algorithm>
+#include <array>
+#include <optional>
 
 namespace ai {
 namespace anthropic {
@@ -92,13 +97,32 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   }
 
   // Add optional parameters
-  if (options.temperature) {
-    request["temperature"] = *options.temperature;
-  }
-
-  if (options.top_p) {
-    request["top_p"] = *options.top_p;
-  }
+  // Recent Anthropic models reject sampling controls. Keep accepting the
+  // provider-neutral options while omitting them for those model IDs.
+  constexpr std::array<const char*, 5> kSamplingRejectingModelPrefixes = {
+      models::kClaudeOpus5, models::kClaudeOpus48, models::kClaudeOpus47,
+      models::kClaudeFable5, models::kClaudeSonnet5};
+  const bool rejects_sampling_parameters = std::any_of(
+      kSamplingRejectingModelPrefixes.begin(),
+      kSamplingRejectingModelPrefixes.end(), [&options](const char* prefix) {
+        return options.model.starts_with(prefix);
+      });
+  const auto add_sampling_parameter = [&](const char* key,
+                                          const std::optional<double>& value) {
+    if (!value) {
+      return;
+    }
+    if (rejects_sampling_parameters) {
+      ai::logger::log_warn(
+          "Ignoring {} for {} because the model does not support "
+          "sampling parameters",
+          key, options.model);
+    } else {
+      request[key] = *value;
+    }
+  };
+  add_sampling_parameter("temperature", options.temperature);
+  add_sampling_parameter("top_p", options.top_p);
 
   // Anthropic uses top_k instead of top_p for some control
   if (options.seed) {

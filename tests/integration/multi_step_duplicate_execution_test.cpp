@@ -29,19 +29,19 @@ class MultiStepDuplicateExecutionTest
 
     if (provider == "openai") {
       const char* api_key = std::getenv("OPENAI_API_KEY");
-      if (api_key) {
+      if (api_key && *api_key != '\0') {
         use_real_api_ = true;
         client_ = ai::openai::create_client(api_key);
-        model_ = ai::openai::models::kGpt4oMini;
+        model_ = ai::openai::models::kGpt56Luna;
       } else {
         use_real_api_ = false;
       }
     } else if (provider == "anthropic") {
       const char* api_key = std::getenv("ANTHROPIC_API_KEY");
-      if (api_key) {
+      if (api_key && *api_key != '\0') {
         use_real_api_ = true;
         client_ = ai::anthropic::create_client(api_key);
-        model_ = ai::anthropic::models::kClaudeSonnet45;
+        model_ = ai::anthropic::models::kClaudeSonnet5;
       } else {
         use_real_api_ = false;
       }

@@ -2,11 +2,13 @@
 #include <gtest/gtest.h>
 
 // Include the Anthropic client headers
+#include "ai/anthropic.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 
 // Include the real Anthropic client implementation for testing
 #include "providers/anthropic/anthropic_client.h"
+#include "providers/anthropic/anthropic_request_builder.h"
 
 // Test utilities
 #include "../utils/test_fixtures.h"
@@ -81,16 +83,20 @@ TEST_F(AnthropicClientTest, ConstructorWithHttpUrl) {
 TEST_F(AnthropicClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();
 
-  EXPECT_THAT(models, testing::Contains("claude-opus-4-7"));
-  EXPECT_THAT(models, testing::Contains("claude-sonnet-4-6"));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeFable5));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeOpus5));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeOpus48));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeSonnet5));
   EXPECT_THAT(models, testing::Contains("claude-haiku-4-5-20251001"));
   EXPECT_THAT(models, testing::Contains("claude-sonnet-4-5-20250929"));
   EXPECT_FALSE(models.empty());
 }
 
 TEST_F(AnthropicClientTest, SupportsValidModel) {
-  EXPECT_TRUE(client_->supports_model("claude-opus-4-7"));
-  EXPECT_TRUE(client_->supports_model("claude-sonnet-4-6"));
+  EXPECT_TRUE(client_->supports_model(anthropic::models::kClaudeFable5));
+  EXPECT_TRUE(client_->supports_model(anthropic::models::kClaudeOpus5));
+  EXPECT_TRUE(client_->supports_model(anthropic::models::kClaudeOpus48));
+  EXPECT_TRUE(client_->supports_model(anthropic::models::kClaudeSonnet5));
   EXPECT_TRUE(client_->supports_model("claude-haiku-4-5-20251001"));
 }
 
@@ -148,6 +154,22 @@ TEST_F(AnthropicClientTest, ValidateOptionsValidation) {
   // Test with valid Anthropic options
   auto valid_options = createBasicAnthropicOptions();
   EXPECT_TRUE(valid_options.is_valid());
+}
+
+TEST_F(AnthropicClientTest, RecentModelsOmitUnsupportedSamplingParameters) {
+  anthropic::AnthropicRequestBuilder builder;
+  for (const auto* model :
+       {anthropic::models::kClaudeOpus48, anthropic::models::kClaudeOpus47,
+        anthropic::models::kClaudeFable5, anthropic::models::kClaudeSonnet5}) {
+    GenerateOptions options(model, "Hello");
+    options.temperature = 0.7;
+    options.top_p = 0.8;
+
+    const auto request = builder.build_request_json(options);
+
+    EXPECT_FALSE(request.contains("temperature")) << model;
+    EXPECT_FALSE(request.contains("top_p")) << model;
+  }
 }
 
 // Stream Tests (Basic validation)

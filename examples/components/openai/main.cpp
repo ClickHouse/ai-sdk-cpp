@@ -26,7 +26,7 @@ int main() {
   // Test core functionality
   std::cout << "Testing core functionality...\n";
   ai::GenerateOptions options;
-  options.model = "gpt-5.4";
+  options.model = ai::openai::models::kGpt56;
   options.prompt = "Hello world";
   std::cout << "✓ Core types work fine\n\n";
 
@@ -36,8 +36,8 @@ int main() {
   try {
     auto client = ai::openai::create_client();
     std::cout << "✓ OpenAI client created successfully\n";
-    std::cout << "✓ Available models: " << ai::openai::models::kGpt54 << ", "
-              << ai::openai::models::kGpt54Mini << "\n";
+    std::cout << "✓ Available models: " << ai::openai::models::kGpt56 << ", "
+              << ai::openai::models::kGpt56Terra << "\n";
   } catch (const std::exception& e) {
     std::cout << "✗ OpenAI client failed: " << e.what() << "\n";
   }

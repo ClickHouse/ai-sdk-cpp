@@ -37,7 +37,7 @@ void demonstrate_api_errors() {
   // Test with empty prompt
   std::cout << "Testing with empty prompt:\n";
   ai::GenerateOptions options2;
-  options2.model = ai::openai::models::kGpt54;
+  options2.model = ai::openai::models::kGpt56;
   options2.prompt = "";
   auto result2 = client.generate_text(options2);
 
@@ -81,7 +81,7 @@ void demonstrate_validation() {
 
   // Test valid options
   ai::GenerateOptions valid_options;
-  valid_options.model = ai::openai::models::kGpt54;
+  valid_options.model = ai::openai::models::kGpt56;
   valid_options.prompt = "Hello";
 
   if (valid_options.is_valid()) {
@@ -181,8 +181,8 @@ void demonstrate_recovery_patterns() {
 
   std::vector<std::string> fallback_models = {
       "primary-model-v3",          // This will fail
-      ai::openai::models::kGpt54,  // This should work (if API key is available)
-      ai::openai::models::kGpt54Mini  // Faster fallback
+      ai::openai::models::kGpt56,  // This should work (if API key is available)
+      ai::openai::models::kGpt56Terra  // Faster fallback
   };
 
   std::string prompt = "What is machine learning?";
@@ -289,14 +289,14 @@ void demonstrate_logging() {
 
   std::cout << "\n2. Include context information:\n";
   std::cout << "   ERROR: Text generation failed\n";
-  std::cout << "   Context: model=gpt-4o, prompt_length=156, user_id=12345\n";
+  std::cout << "   Context: model=gpt-5.6, prompt_length=156, user_id=12345\n";
   std::cout << "   Details: " << result.error_message() << "\n";
 
   std::cout << "\n3. Use structured logging:\n";
   std::cout << "   "
                "{\"level\":\"error\",\"component\":\"ai-sdk\",\"operation\":"
                "\"generate_text\",";
-  std::cout << "\"model\":\"gpt-4o\",\"error\":\"invalid_model\"}\n";
+  std::cout << "\"model\":\"gpt-5.6\",\"error\":\"invalid_model\"}\n";
 
   std::cout << "\n4. Log performance metrics:\n";
   std::cout << "   INFO: Text generation completed in 1250ms, 45 tokens used\n";

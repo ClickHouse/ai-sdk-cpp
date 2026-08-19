@@ -1,5 +1,6 @@
 #include "mock_anthropic_client.h"
 
+#include "ai/anthropic.h"
 #include "ai/types/enums.h"
 #include "ai/types/stream_result.h"
 
@@ -132,8 +133,15 @@ std::string ControllableAnthropicClient::provider_name() const {
 }
 
 std::vector<std::string> ControllableAnthropicClient::supported_models() const {
-  return {"claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001",
-          "claude-sonnet-4-5-20250929", "claude-opus-4-1-20250805"};
+  return {anthropic::models::kClaudeFable5,
+          anthropic::models::kClaudeOpus5,
+          anthropic::models::kClaudeOpus48,
+          anthropic::models::kClaudeSonnet5,
+          anthropic::models::kClaudeOpus47,
+          anthropic::models::kClaudeSonnet46,
+          anthropic::models::kClaudeHaiku45Snapshot,
+          anthropic::models::kClaudeSonnet45Snapshot,
+          anthropic::models::kClaudeOpus41Snapshot};
 }
 
 bool ControllableAnthropicClient::supports_model(

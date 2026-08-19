@@ -89,7 +89,7 @@ int main() {
   std::cout << "Question: What's the weather like in San Francisco?\n\n";
 
   ai::GenerateOptions options1;
-  options1.model = ai::openai::models::kGpt54;
+  options1.model = ai::openai::models::kGpt56;
   options1.prompt = "What's the weather like in San Francisco?";
   options1.tools = tools;
   options1.max_tokens = 200;
@@ -126,7 +126,7 @@ int main() {
                "weather like and what attractions should I visit?\n\n";
 
   ai::GenerateOptions options2;
-  options2.model = ai::openai::models::kGpt54;
+  options2.model = ai::openai::models::kGpt56;
   options2.prompt =
       "I'm planning a trip to San Francisco. What's the weather like and what "
       "attractions should I visit?";
@@ -157,7 +157,7 @@ int main() {
       << "Question: Tell me about the weather (forced to use weather tool)\n\n";
 
   ai::GenerateOptions options3;
-  options3.model = ai::openai::models::kGpt54;
+  options3.model = ai::openai::models::kGpt56;
   options3.prompt = "Tell me about the weather in New York";
   options3.tools = tools;
   options3.tool_choice =
@@ -179,7 +179,7 @@ int main() {
   std::cout << "Question: What's the weather like? (tools disabled)\n\n";
 
   ai::GenerateOptions options4;
-  options4.model = ai::openai::models::kGpt54;
+  options4.model = ai::openai::models::kGpt56;
   options4.prompt = "What's the weather like in Boston?";
   options4.tools = tools;
   options4.tool_choice = ai::ToolChoice::none();  // Disable tools

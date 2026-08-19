@@ -98,7 +98,7 @@ class ResponseBuilder {
  public:
   static std::string buildSuccessResponse(
       const std::string& content = "Test response",
-      const std::string& model = "gpt-4o",
+      const std::string& model = "test-model",
       int prompt_tokens = 10,
       int completion_tokens = 20);
 
