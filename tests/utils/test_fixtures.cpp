@@ -170,17 +170,17 @@ std::vector<GenerateOptions> TestDataGenerator::generateOptionsVariations() {
   std::vector<GenerateOptions> variations;
 
   // Basic prompt
-  variations.emplace_back("gpt-4o", "Simple test");
+  variations.emplace_back("test-model", "Simple test");
 
   // With system prompt
-  variations.emplace_back("gpt-4o", "You are helpful", "User question");
+  variations.emplace_back("test-model", "You are helpful", "User question");
 
   // With messages
   Messages msgs = {Message::user("Hello")};
-  variations.emplace_back("gpt-4o", std::move(msgs));
+  variations.emplace_back("test-model", std::move(msgs));
 
   // With all parameters
-  GenerateOptions full("gpt-4o", "Test prompt");
+  GenerateOptions full("test-model", "Test prompt");
   full.temperature = 0.5;
   full.max_tokens = 50;
   full.top_p = 0.8;
@@ -205,7 +205,7 @@ nlohmann::json TestDataGenerator::createFullValidResponse() {
       {"id", "chatcmpl-full123"},
       {"object", "chat.completion"},
       {"created", 1234567890},
-      {"model", "gpt-4o"},
+      {"model", "test-model"},
       {"system_fingerprint", "fp_full123"},
       {"choices",
        nlohmann::json::array(
@@ -253,15 +253,18 @@ std::vector<std::string> TestDataGenerator::createStreamingEvents() {
   return {
       "data: "
       "{\"id\":\"chatcmpl-stream1\",\"object\":\"chat.completion.chunk\","
-      "\"created\":1234567890,\"model\":\"gpt-4o\",\"choices\":[{\"index\":0,"
+      "\"created\":1234567890,\"model\":\"test-model\",\"choices\":[{\"index\":"
+      "0,"
       "\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n",
       "data: "
       "{\"id\":\"chatcmpl-stream1\",\"object\":\"chat.completion.chunk\","
-      "\"created\":1234567890,\"model\":\"gpt-4o\",\"choices\":[{\"index\":0,"
+      "\"created\":1234567890,\"model\":\"test-model\",\"choices\":[{\"index\":"
+      "0,"
       "\"delta\":{\"content\":\" world\"},\"finish_reason\":null}]}\n\n",
       "data: "
       "{\"id\":\"chatcmpl-stream1\",\"object\":\"chat.completion.chunk\","
-      "\"created\":1234567890,\"model\":\"gpt-4o\",\"choices\":[{\"index\":0,"
+      "\"created\":1234567890,\"model\":\"test-model\",\"choices\":[{\"index\":"
+      "0,"
       "\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}]}\n\n",
       "data: [DONE]\n\n"};
 }
@@ -292,12 +295,12 @@ std::vector<std::string> TestDataGenerator::createAnthropicStreamingEvents() {
 }
 
 GenerateOptions TestDataGenerator::createEdgeCaseOptions() {
-  GenerateOptions options("gpt-4o", "");  // Empty prompt
-  options.temperature = 2.0;              // Maximum temperature
-  options.max_tokens = 1;                 // Minimum tokens
-  options.top_p = 1.0;                    // Maximum top_p
-  options.frequency_penalty = 2.0;        // Maximum penalty
-  options.presence_penalty = -2.0;        // Minimum penalty
+  GenerateOptions options("test-model", "");  // Empty prompt
+  options.temperature = 2.0;                  // Maximum temperature
+  options.max_tokens = 1;                     // Minimum tokens
+  options.top_p = 1.0;                        // Maximum top_p
+  options.frequency_penalty = 2.0;            // Maximum penalty
+  options.presence_penalty = -2.0;            // Minimum penalty
   return options;
 }
 

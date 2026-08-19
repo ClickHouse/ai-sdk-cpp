@@ -34,7 +34,7 @@ def find_cpp_files() -> List[Path]:
     for ext in extensions:
         for file in project_dir.rglob(f"*{ext}"):
             # Skip files in excluded directories
-            if any(excluded in file.parts for excluded in exclude_dirs):
+            if any(part in exclude_dirs or part.startswith("build-") for part in file.parts):
                 continue
             files.append(file)
     
@@ -105,4 +105,4 @@ def main(check: bool):
 
 
 if __name__ == "__main__":
-    main() 
+    main()

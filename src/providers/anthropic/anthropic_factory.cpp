@@ -19,7 +19,7 @@ std::string get_api_key_or_default(const std::string& api_key) {
   }
 
   const char* env_api_key = std::getenv("ANTHROPIC_API_KEY");
-  if (!env_api_key) {
+  if (!env_api_key || *env_api_key == '\0') {
     throw ConfigurationError(
         "API key not provided and ANTHROPIC_API_KEY environment variable not "
         "set");
@@ -47,9 +47,17 @@ Client create_client(const std::string& api_key, const std::string& base_url) {
       get_api_key_or_default(api_key), get_base_url_or_default(base_url)));
 }
 
+Client create_client(const std::string& api_key,
+                     const std::string& base_url,
+                     const retry::RetryConfig& retry_config) {
+  return Client(std::make_unique<AnthropicClient>(
+      get_api_key_or_default(api_key), get_base_url_or_default(base_url),
+      retry_config));
+}
+
 std::optional<Client> try_create_client() {
   const char* api_key = std::getenv("ANTHROPIC_API_KEY");
-  if (!api_key) {
+  if (!api_key || *api_key == '\0') {
     return std::nullopt;
   }
   return Client(std::make_unique<AnthropicClient>(api_key, kDefaultBaseUrl));

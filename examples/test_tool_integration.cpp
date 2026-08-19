@@ -42,7 +42,7 @@ void test_openai_tools() {
                         {{"input", "string"}}, simple_test_tool)}};
 
   ai::GenerateOptions options;
-  options.model = ai::openai::models::kGpt54;
+  options.model = ai::openai::models::kGpt56;
   options.prompt = "Please use the test_tool with input 'hello world'";
   options.tools = tools;
   options.tool_choice =
@@ -86,7 +86,7 @@ void test_anthropic_tools() {
                         {{"input", "string"}}, simple_test_tool)}};
 
   ai::GenerateOptions options;
-  options.model = ai::anthropic::models::kClaudeSonnet46;
+  options.model = ai::anthropic::models::kClaudeSonnet5;
   options.prompt = "Please use the test_tool with input 'hello anthropic'";
   options.tools = tools;
   options.tool_choice =
@@ -158,7 +158,7 @@ void test_multi_step() {
            })}};
 
   ai::GenerateOptions options;
-  options.model = ai::openai::models::kGpt54;
+  options.model = ai::openai::models::kGpt56;
   options.prompt = "Get a number and then multiply it by 2. Show me the steps.";
   options.tools = tools;
   options.max_steps = 5;  // Enable multi-step

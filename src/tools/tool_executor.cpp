@@ -232,6 +232,7 @@ Tool create_simple_tool(const std::string& name,
                         const std::string& description,
                         const std::map<std::string, std::string>& parameters,
                         ToolExecuteFunction execute_func) {
+  (void)name;  // The ToolSet key is the canonical tool name.
   JsonValue schema = create_object_schema(parameters);
   return create_tool(description, schema, std::move(execute_func));
 }
@@ -241,6 +242,7 @@ Tool create_simple_async_tool(
     const std::string& description,
     const std::map<std::string, std::string>& parameters,
     AsyncToolExecuteFunction execute_func) {
+  (void)name;  // The ToolSet key is the canonical tool name.
   JsonValue schema = create_object_schema(parameters);
   return create_async_tool(description, schema, std::move(execute_func));
 }

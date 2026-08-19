@@ -37,6 +37,9 @@ void OpenAIStreamImpl::start_stream(const std::string& url,
   should_stop_ = false;
   is_complete_ = false;
   finish_event_pushed_ = false;
+  pending_tool_calls_.clear();
+  pending_finish_reason_ = kFinishReasonStop;
+  pending_usage_.reset();
 
   ai::logger::log_info("Launching stream thread for OpenAI API");
 
@@ -95,26 +98,24 @@ void OpenAIStreamImpl::stop_stream() {
 void OpenAIStreamImpl::run_stream(const std::string& url,
                                   const httplib::Headers& headers,
                                   const nlohmann::json& request_body) {
-  // Extract host and path from URL
+  // Extract origin and path from URL. Using httplib::Client with the scheme
+  // preserved supports both HTTPS provider endpoints and HTTP test/gateway
+  // endpoints.
   std::string_view url_view(url);
-
-  // Skip protocol
-  if (auto pos = url_view.find("://"); pos != std::string_view::npos) {
-    url_view.remove_prefix(pos + 3);
-  }
-
-  // Split host and path
-  auto slash_pos = url_view.find('/');
-  std::string host(url_view.substr(0, slash_pos));
+  const auto scheme_pos = url_view.find("://");
+  const auto authority_start =
+      scheme_pos == std::string_view::npos ? 0 : scheme_pos + 3;
+  auto slash_pos = url_view.find('/', authority_start);
+  std::string origin(url_view.substr(0, slash_pos));
   std::string path = (slash_pos != std::string_view::npos)
                          ? std::string(url_view.substr(slash_pos))
                          : "/v1/chat/completions";
 
   ai::logger::log_debug(
-      "Stream thread started - connecting to {} with path: {}", host, path);
+      "Stream thread started - connecting to {} with path: {}", origin, path);
 
   try {
-    httplib::SSLClient client(host);
+    httplib::Client client(origin);
     client.enable_server_certificate_verification(true);
     client.set_connection_timeout(kConnectionTimeout);
     client.set_read_timeout(kReadTimeout);
@@ -191,6 +192,7 @@ void OpenAIStreamImpl::run_stream(const std::string& url,
     push_event(create_error_event(e.what()));
   }
 
+  push_finish_event_if_needed();
   mark_complete();
   ai::logger::log_debug("Stream thread exiting");
 }
@@ -204,6 +206,9 @@ void OpenAIStreamImpl::parse_sse_line(const std::string& line) {
 
     if (data == "[DONE]") {
       ai::logger::log_debug("Received [DONE] signal, stream ending");
+      if (!pending_tool_calls_.empty()) {
+        flush_tool_calls();
+      }
       push_finish_event_if_needed();
       mark_complete();
       return;
@@ -221,29 +226,51 @@ void OpenAIStreamImpl::parse_sse_line(const std::string& line) {
                                 content.length());
           push_event(StreamEvent(content));
         }
+
+        if (delta.contains("tool_calls") && delta["tool_calls"].is_array()) {
+          for (const auto& fragment : delta["tool_calls"]) {
+            const auto index = fragment.value("index", std::size_t{0});
+            auto& pending = pending_tool_calls_[index];
+
+            if (fragment.contains("id") && fragment["id"].is_string()) {
+              pending.id = fragment["id"].get<std::string>();
+            }
+            if (fragment.contains("function") &&
+                fragment["function"].is_object()) {
+              const auto& function = fragment["function"];
+              if (function.contains("name") && function["name"].is_string()) {
+                pending.name = function["name"].get<std::string>();
+              }
+              if (function.contains("arguments") &&
+                  function["arguments"].is_string()) {
+                pending.arguments += function["arguments"].get<std::string>();
+              }
+            }
+          }
+        }
       }
 
       // Check for finish_reason
       if (!choices.empty() && choices[0].contains("finish_reason") &&
           !choices[0]["finish_reason"].is_null()) {
         auto finish_reason_str = choices[0]["finish_reason"].get<std::string>();
-        auto finish_reason = parse_finish_reason(finish_reason_str);
+        pending_finish_reason_ = parse_finish_reason(finish_reason_str);
+
+        if (pending_finish_reason_ == kFinishReasonToolCalls) {
+          flush_tool_calls();
+        }
 
         ai::logger::log_debug("Stream finished with reason: {}",
                               finish_reason_str);
+      }
 
-        finish_event_pushed_ = true;
-
-        if (json.contains("usage")) {
-          auto usage = parse_usage(json["usage"]);
-          ai::logger::log_info(
-              "Stream completed - tokens used: {} prompt, {} completion, {} "
-              "total",
-              usage.prompt_tokens, usage.completion_tokens, usage.total_tokens);
-          push_event(StreamEvent(kStreamEventTypeFinish, usage, finish_reason));
-        } else {
-          push_event(StreamEvent(kStreamEventTypeFinish));
-        }
+      if (json.contains("usage") && !json["usage"].is_null()) {
+        pending_usage_ = parse_usage(json["usage"]);
+        ai::logger::log_info(
+            "Stream completed - tokens used: {} prompt, {} completion, {} "
+            "total",
+            pending_usage_->prompt_tokens, pending_usage_->completion_tokens,
+            pending_usage_->total_tokens);
       }
     } catch (const std::exception& e) {
       ai::logger::log_error("Failed to parse SSE line: {} - Line content: {}",
@@ -262,10 +289,34 @@ void OpenAIStreamImpl::push_finish_event_if_needed() {
   bool expected = false;
   if (finish_event_pushed_.compare_exchange_strong(expected, true)) {
     ai::logger::log_debug("Pushing finish event to queue");
-    event_queue_.enqueue(StreamEvent(kStreamEventTypeFinish));
+    if (pending_usage_) {
+      event_queue_.enqueue(StreamEvent(kStreamEventTypeFinish, *pending_usage_,
+                                       pending_finish_reason_));
+    } else {
+      event_queue_.enqueue(
+          StreamEvent(kStreamEventTypeFinish, pending_finish_reason_));
+    }
   } else {
     ai::logger::log_debug("Finish event already pushed, skipping");
   }
+}
+
+void OpenAIStreamImpl::flush_tool_calls() {
+  for (const auto& [index, pending] : pending_tool_calls_) {
+    (void)index;
+    try {
+      auto arguments = pending.arguments.empty()
+                           ? nlohmann::json::object()
+                           : nlohmann::json::parse(pending.arguments);
+      push_event(StreamEvent(
+          ToolCall(pending.id, pending.name, std::move(arguments))));
+    } catch (const nlohmann::json::exception& e) {
+      push_event(
+          create_error_event("Failed to parse streamed tool-call arguments: " +
+                             std::string(e.what())));
+    }
+  }
+  pending_tool_calls_.clear();
 }
 
 void OpenAIStreamImpl::mark_complete() {
@@ -285,6 +336,8 @@ FinishReason OpenAIStreamImpl::parse_finish_reason(
     return kFinishReasonLength;
   } else if (reason_str == "content_filter") {
     return kFinishReasonContentFilter;
+  } else if (reason_str == "tool_calls") {
+    return kFinishReasonToolCalls;
   }
   return kFinishReasonStop;
 }

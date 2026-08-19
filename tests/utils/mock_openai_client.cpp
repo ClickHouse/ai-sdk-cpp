@@ -1,5 +1,6 @@
 #include "mock_openai_client.h"
 
+#include "ai/openai.h"
 #include "ai/types/enums.h"
 #include "ai/types/stream_result.h"
 
@@ -112,7 +113,10 @@ std::string ControllableOpenAIClient::provider_name() const {
 }
 
 std::vector<std::string> ControllableOpenAIClient::supported_models() const {
-  return {"gpt-5.4", "gpt-5-mini", "gpt-4.1"};
+  return {openai::models::kGpt56,      openai::models::kGpt56Sol,
+          openai::models::kGpt56Terra, openai::models::kGpt56Luna,
+          openai::models::kGpt55,      openai::models::kGpt54,
+          openai::models::kGpt5Mini,   openai::models::kGpt41};
 }
 
 bool ControllableOpenAIClient::supports_model(
@@ -215,7 +219,7 @@ std::vector<std::string> ResponseBuilder::buildStreamingResponse(
         {"id", "chatcmpl-stream123"},
         {"object", "chat.completion.chunk"},
         {"created", 1234567890},
-        {"model", "gpt-4o"},
+        {"model", "test-model"},
         {"choices",
          nlohmann::json::array({{{"index", 0},
                                  {"delta", {{"content", word + " "}}},
@@ -228,7 +232,7 @@ std::vector<std::string> ResponseBuilder::buildStreamingResponse(
       {"id", "chatcmpl-stream123"},
       {"object", "chat.completion.chunk"},
       {"created", 1234567890},
-      {"model", "gpt-4o"},
+      {"model", "test-model"},
       {"choices",
        nlohmann::json::array(
            {{{"index", 0}, {"delta", {}}, {"finish_reason", "stop"}}})}};

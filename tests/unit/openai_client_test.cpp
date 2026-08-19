@@ -2,11 +2,13 @@
 #include <gtest/gtest.h>
 
 // Include the OpenAI client headers
+#include "ai/openai.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 
 // Include the real OpenAI client implementation for testing
 #include "providers/openai/openai_client.h"
+#include "providers/openai/openai_request_builder.h"
 
 // Test utilities
 #include "../utils/test_fixtures.h"
@@ -79,14 +81,17 @@ TEST_F(OpenAIClientTest, ConstructorWithHttpUrl) {
 TEST_F(OpenAIClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();
 
-  EXPECT_THAT(models, testing::Contains("gpt-5.4"));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Sol));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Terra));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Luna));
   EXPECT_THAT(models, testing::Contains("gpt-5-mini"));
   EXPECT_THAT(models, testing::Contains("gpt-4.1"));
   EXPECT_FALSE(models.empty());
 }
 
 TEST_F(OpenAIClientTest, SupportsValidModel) {
-  EXPECT_TRUE(client_->supports_model("gpt-5.4"));
+  EXPECT_TRUE(client_->supports_model(openai::models::kGpt56));
   EXPECT_TRUE(client_->supports_model("gpt-4.1"));
 }
 
@@ -143,6 +148,15 @@ TEST_F(OpenAIClientTest, ValidateOptionsValidation) {
   // Test with valid options
   auto valid_options = createBasicOptions();
   EXPECT_TRUE(valid_options.is_valid());
+}
+
+TEST_F(OpenAIClientTest, Gpt56UsesChatCompletionsCompatibleReasoning) {
+  openai::OpenAIRequestBuilder builder;
+  GenerateOptions options(openai::models::kGpt56Luna, "Use a tool");
+
+  const auto request = builder.build_request_json(options);
+
+  EXPECT_EQ(request["reasoning_effort"], "none");
 }
 
 // Stream Tests (Basic validation)

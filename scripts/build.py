@@ -30,7 +30,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import click
 from rich.console import Console
@@ -41,7 +41,7 @@ from rich.table import Table
 console = Console()
 
 
-def run_command(cmd: list[str], cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
+def run_command(cmd: List[str], cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
     """Run a command and handle errors with rich output."""
     console.print(f"[dim]Running:[/dim] [cyan]{' '.join(cmd)}[/cyan]")
     
@@ -202,24 +202,28 @@ def main(mode: str, tests: bool, clean: bool, verbose: bool, export_compile_comm
     console.print()
     
     # Display build results
+    example_suffix = "_debug" if mode.lower() == "debug" else ""
+    tests_result = ""
+    if tests:
+        tests_result = f"""
+[bold]To run tests:[/bold]
+  [cyan]cd {build_dir} && ctest --output-on-failure[/cyan]
+"""
+
     results_panel = Panel.fit(
         f"""[bold green]Build Results[/bold green]
 
 [bold]Built targets:[/bold]
-  📚 Library: {build_dir}/libai-sdk-cpp.a (or .lib on Windows)
+  📚 Libraries: {build_dir}/libai-sdk-cpp-*.a (or .lib on Windows)
   🎯 Examples: {build_dir}/examples/
 {f"  🧪 Tests: {build_dir}/tests/" if tests else ""}
 
 [bold]To run examples (after setting API keys):[/bold]
   [cyan]export OPENAI_API_KEY=your_openai_key[/cyan]
   [cyan]export ANTHROPIC_API_KEY=your_anthropic_key[/cyan]
-  [cyan]{build_dir}/examples/basic_chat[/cyan]
-  [cyan]{build_dir}/examples/streaming_chat[/cyan]
-
-{"""[bold]To run tests:[/bold]
-  [cyan]cd build && ctest[/cyan]
-  [cyan]cd build && ctest --verbose[/cyan]
-  [cyan]cd build && ctest -R "test_types"[/cyan] (run specific test)""" if tests else ""}""",
+  [cyan]{build_dir}/examples/basic_chat{example_suffix}[/cyan]
+  [cyan]{build_dir}/examples/streaming_chat{example_suffix}[/cyan]
+{tests_result}""",
         title="🎉 Success",
         border_style="green"
     )

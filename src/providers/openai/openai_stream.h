@@ -5,7 +5,9 @@
 #include <atomic>
 #include <concurrentqueue.h>
 #include <httplib.h>
+#include <map>
 #include <mutex>
+#include <optional>
 #include <thread>
 
 #include <nlohmann/json.hpp>
@@ -32,13 +34,29 @@ class OpenAIStreamImpl : public internal::StreamResultImpl {
   bool has_more_events() const override;
   void stop_stream() override;
 
+#ifdef AI_SDK_TESTING
+  void process_sse_line_for_testing(const std::string& line) {
+    parse_sse_line(line);
+  }
+  std::size_t queued_event_count_for_testing() const {
+    return event_queue_.size_approx();
+  }
+#endif
+
  private:
+  struct PendingToolCall {
+    std::string id;
+    std::string name;
+    std::string arguments;
+  };
+
   void run_stream(const std::string& url,
                   const httplib::Headers& headers,
                   const nlohmann::json& request_body);
   void parse_sse_line(const std::string& line);
   void push_event(StreamEvent event);
   void push_finish_event_if_needed();
+  void flush_tool_calls();
   void mark_complete();
 
   // Helper functions
@@ -52,6 +70,9 @@ class OpenAIStreamImpl : public internal::StreamResultImpl {
   std::atomic<bool> is_complete_{false};
   std::atomic<bool> should_stop_{false};
   std::atomic<bool> finish_event_pushed_{false};
+  std::map<std::size_t, PendingToolCall> pending_tool_calls_;
+  FinishReason pending_finish_reason_{kFinishReasonStop};
+  std::optional<Usage> pending_usage_;
 };
 
 }  // namespace openai

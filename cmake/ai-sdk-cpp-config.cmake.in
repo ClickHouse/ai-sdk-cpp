@@ -2,6 +2,11 @@
 
 # AI SDK C++ Package Configuration
 
+include(CMakeFindDependencyMacro)
+find_dependency(OpenSSL REQUIRED)
+find_dependency(Threads REQUIRED)
+find_dependency(ZLIB REQUIRED)
+
 set(AI_SDK_VERSION "@PROJECT_VERSION@")
 
 # Find PUBLIC dependencies only
@@ -11,14 +16,16 @@ find_dependency(nlohmann_json CONFIG REQUIRED)
 include("${CMAKE_CURRENT_LIST_DIR}/ai-sdk-cpp-targets.cmake")
 
 # Available components
-set(AI_SDK_AVAILABLE_COMPONENTS core openai anthropic)
+set(AI_SDK_AVAILABLE_COMPONENTS core openai anthropic langfuse)
 
 # Check requested components
 set(AI_SDK_REQUESTED_COMPONENTS ${ai-sdk-cpp_FIND_COMPONENTS})
 
 # If no components requested, use all available
+set(AI_SDK_USE_UMBRELLA_TARGET FALSE)
 if(NOT AI_SDK_REQUESTED_COMPONENTS)
     set(AI_SDK_REQUESTED_COMPONENTS ${AI_SDK_AVAILABLE_COMPONENTS})
+    set(AI_SDK_USE_UMBRELLA_TARGET TRUE)
 endif()
 
 # Check that all requested components are available
@@ -54,10 +61,8 @@ foreach(component ${AI_SDK_REQUESTED_COMPONENTS})
     list(APPEND AI_SDK_LIBRARIES ai::${component})
 endforeach()
 
-# Always add main library if no specific components requested
-if("core" IN_LIST AI_SDK_REQUESTED_COMPONENTS AND 
-   "openai" IN_LIST AI_SDK_REQUESTED_COMPONENTS AND 
-   "anthropic" IN_LIST AI_SDK_REQUESTED_COMPONENTS)
+# Add the umbrella library only when no specific components were requested.
+if(AI_SDK_USE_UMBRELLA_TARGET)
     list(APPEND AI_SDK_LIBRARIES ai::sdk)
 endif()
 
@@ -66,4 +71,4 @@ if(NOT TARGET ai::core)
     message(FATAL_ERROR "ai::core target not found. Make sure ai-sdk-cpp was properly installed.")
 endif()
 
-message(STATUS "Found AI SDK C++: ${CMAKE_CURRENT_LIST_DIR} (found version \"${AI_SDK_VERSION}\")") 
+message(STATUS "Found AI SDK C++: ${CMAKE_CURRENT_LIST_DIR} (found version \"${AI_SDK_VERSION}\")")

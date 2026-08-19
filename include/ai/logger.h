@@ -107,8 +107,9 @@ class ConsoleLogger final : public Logger {
 
 namespace detail {
 
-inline std::shared_ptr<Logger>& logger_instance() {
-  static std::shared_ptr<Logger> instance = std::make_shared<ConsoleLogger>();
+inline std::atomic<std::shared_ptr<Logger>>& logger_instance() {
+  static std::atomic<std::shared_ptr<Logger>> instance(
+      std::make_shared<ConsoleLogger>());
   return instance;
 }
 
@@ -116,12 +117,13 @@ inline std::shared_ptr<Logger>& logger_instance() {
 
 inline void install_logger(std::shared_ptr<Logger> logger) {
   if (logger) {
-    std::atomic_store(&detail::logger_instance(), std::move(logger));
+    detail::logger_instance().store(std::move(logger));
   }
 }
 
 inline Logger& logger() {
-  auto ptr = std::atomic_load(&detail::logger_instance());
+  thread_local std::shared_ptr<Logger> ptr;
+  ptr = detail::logger_instance().load();
   return *ptr;
 }
 

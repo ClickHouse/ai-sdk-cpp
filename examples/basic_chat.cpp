@@ -29,7 +29,7 @@ int main() {
 
   auto client1 = ai::openai::create_client();
   ai::GenerateOptions options1;
-  options1.model = ai::openai::models::kGpt54;
+  options1.model = ai::openai::models::kGpt56;
   options1.prompt =
       "What is the capital of France? Please provide a brief answer.";
 
@@ -50,7 +50,7 @@ int main() {
   std::cout << "Question: Explain what a prime number is.\n\n";
 
   ai::GenerateOptions options2;
-  options2.model = ai::openai::models::kGpt54;
+  options2.model = ai::openai::models::kGpt56;
   options2.system =
       "You are a helpful math tutor who explains concepts clearly.";
   options2.prompt =
@@ -80,7 +80,7 @@ int main() {
           "Which one should I use for frequent insertions in the middle?")};
 
   ai::GenerateOptions options3;
-  options3.model = ai::openai::models::kGpt54;
+  options3.model = ai::openai::models::kGpt56;
   options3.messages = conversation;
 
   auto result3 = client1.generate_text(options3);
@@ -98,7 +98,7 @@ int main() {
 
   auto client4 = ai::anthropic::create_client();
   ai::GenerateOptions options4;
-  options4.model = ai::anthropic::models::kClaudeSonnet46;
+  options4.model = ai::anthropic::models::kClaudeSonnet5;
   options4.prompt =
       "Write a haiku about programming. Just the haiku, nothing else.";
 
@@ -115,7 +115,7 @@ int main() {
   std::cout << "5. Using GenerateOptions for fine control:\n";
 
   ai::GenerateOptions options;
-  options.model = ai::openai::models::kGpt54;
+  options.model = ai::openai::models::kGpt56;
   options.prompt = "List 3 benefits of using C++ for systems programming.";
   options.max_tokens = 150;
   options.temperature = 0.7;

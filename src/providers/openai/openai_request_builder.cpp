@@ -1,6 +1,7 @@
 #include "openai_request_builder.h"
 
 #include "ai/logger.h"
+#include "ai/openai.h"
 #include "utils/message_utils.h"
 
 namespace ai {
@@ -118,6 +119,14 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
 
   if (options.seed) {
     request["seed"] = *options.seed;
+  }
+
+  // GPT-5.6 defaults to reasoning in Chat Completions. That mode does not
+  // support function tools and can consume the full completion budget without
+  // producing user-visible text. The unified SDK currently exposes Chat
+  // Completions semantics, so explicitly request non-reasoning output.
+  if (options.model.starts_with(models::kGpt56)) {
+    request["reasoning_effort"] = "none";
   }
 
   // Add tools if specified

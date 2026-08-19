@@ -42,11 +42,10 @@
 /// // Ensure OPENAI_API_KEY environment variable is set
 /// auto client = ai::openai::create_client();
 ///
-/// auto result = client.generate_text({
-///     .model = ai::openai::models::kGpt54,
-///     .system = "You are a friendly assistant!",
-///     .prompt = "Why is the sky blue?"
-/// });
+/// ai::GenerateOptions options(ai::openai::models::kGpt56,
+///                             "Why is the sky blue?");
+/// options.system = "You are a friendly assistant!";
+/// auto result = client.generate_text(options);
 ///
 /// if (result) {
 ///     std::cout << result->text << std::endl;
@@ -57,15 +56,14 @@
 /// ```cpp
 /// auto client = ai::openai::create_client();
 ///
-/// auto stream = client.stream_text({
-///     .model = ai::openai::models::kGpt54,
-///     .system = "You are a helpful assistant.",
-///     .prompt = "Write a short story about a robot."
-/// });
+/// ai::GenerateOptions options(ai::openai::models::kGpt56,
+///                             "Write a short story about a robot.");
+/// options.system = "You are a helpful assistant.";
+/// auto stream = client.stream_text(ai::StreamOptions(options));
 ///
-/// for (const auto& chunk : stream) {
-///     if (chunk.text) {
-///         std::cout << chunk.text.value() << std::flush;
+/// for (const auto& event : stream) {
+///     if (event.is_text_delta()) {
+///         std::cout << event.text_delta << std::flush;
 ///     }
 /// }
 /// ```
@@ -73,11 +71,10 @@
 /// Anthropic Integration:
 /// ```cpp
 /// auto client = ai::anthropic::create_client();
-/// auto result = client.generate_text({
-///     .model = ai::anthropic::models::kClaudeSonnet46,
-///     .system = "You are a helpful assistant.",
-///     .prompt = "Explain quantum computing in simple terms."
-/// });
+/// ai::GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+///                             "Explain quantum computing in simple terms.");
+/// options.system = "You are a helpful assistant.";
+/// auto result = client.generate_text(options);
 ///
 /// if (result) {
 ///     std::cout << result->text << std::endl;

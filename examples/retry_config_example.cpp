@@ -33,7 +33,7 @@ int main() {
   auto default_client = ai::openai::create_client();
 
   ai::GenerateOptions options;
-  options.model = ai::openai::models::kGpt54Mini;
+  options.model = ai::openai::models::kGpt56Terra;
   options.prompt = "Say 'Hello with default retry config!'";
 
   auto result1 = default_client.generate_text(options);
@@ -56,7 +56,7 @@ int main() {
 
   // Get API key from environment
   const char* api_key = std::getenv("OPENAI_API_KEY");
-  if (!api_key) {
+  if (!api_key || *api_key == '\0') {
     std::cerr << "Error: OPENAI_API_KEY environment variable not set\n";
     return 1;
   }
@@ -138,7 +138,7 @@ int main() {
   options.prompt =
       "Generate a list of 5 creative project names for a batch processing "
       "system.";
-  options.model = ai::openai::models::kGpt54;
+  options.model = ai::openai::models::kGpt56;
 
   std::cout << "Processing batch request (this might take a while if retries "
                "occur)...\n";

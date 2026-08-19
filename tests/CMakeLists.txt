@@ -60,7 +60,7 @@ target_compile_definitions(ai_tests PRIVATE
     $<$<CONFIG:Debug>:AI_SDK_DEBUG_TESTS=1>
     # httplib configuration (must match main library)
     CPPHTTPLIB_OPENSSL_SUPPORT=1
-    CPPHTTPLIB_BROTLI_SUPPORT=1
+    CPPHTTPLIB_ZLIB_SUPPORT=1
     CPPHTTPLIB_THREAD_POOL_COUNT=8
 )
 

@@ -1,5 +1,6 @@
 #include "anthropic_request_builder.h"
 
+#include "ai/anthropic.h"
 #include "ai/logger.h"
 #include "utils/message_utils.h"
 
@@ -92,11 +93,29 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   }
 
   // Add optional parameters
-  if (options.temperature) {
+  // Recent Anthropic models reject sampling controls. Keep accepting the
+  // provider-neutral options while omitting them for those model IDs.
+  const bool rejects_sampling_parameters =
+      options.model.starts_with(models::kClaudeOpus5) ||
+      options.model.starts_with(models::kClaudeOpus48) ||
+      options.model.starts_with(models::kClaudeOpus47) ||
+      options.model.starts_with(models::kClaudeFable5) ||
+      options.model.starts_with(models::kClaudeSonnet5);
+  if (options.temperature && rejects_sampling_parameters) {
+    ai::logger::log_warn(
+        "Ignoring temperature for {} because the model does "
+        "not support sampling parameters",
+        options.model);
+  } else if (options.temperature) {
     request["temperature"] = *options.temperature;
   }
 
-  if (options.top_p) {
+  if (options.top_p && rejects_sampling_parameters) {
+    ai::logger::log_warn(
+        "Ignoring top_p for {} because the model does not "
+        "support sampling parameters",
+        options.model);
+  } else if (options.top_p) {
     request["top_p"] = *options.top_p;
   }
 
