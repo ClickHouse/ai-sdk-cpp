@@ -14,25 +14,18 @@ namespace anthropic {
 
 AnthropicClient::AnthropicClient(const std::string& api_key,
                                  const std::string& base_url)
-    : BaseProviderClient(
-          providers::ProviderConfig{
-              .api_key = api_key,
-              .base_url = base_url,
-              .completions_endpoint_path = "/v1/messages",
-              .embeddings_endpoint_path = "/v1/embeddings",
-              .auth_header_name = "x-api-key",
-              .auth_header_prefix = "",
-              .extra_headers = {{"anthropic-version", "2023-06-01"}},
-              .retry_config = std::nullopt},
-          std::make_unique<AnthropicRequestBuilder>(),
-          std::make_unique<AnthropicResponseParser>()) {
-  ai::logger::log_debug("Anthropic client initialized with base_url: {}",
-                        base_url);
-}
+    : AnthropicClient(api_key, base_url, std::optional<retry::RetryConfig>{}) {}
 
 AnthropicClient::AnthropicClient(const std::string& api_key,
                                  const std::string& base_url,
                                  const retry::RetryConfig& retry_config)
+    : AnthropicClient(api_key,
+                      base_url,
+                      std::optional<retry::RetryConfig>(retry_config)) {}
+
+AnthropicClient::AnthropicClient(const std::string& api_key,
+                                 const std::string& base_url,
+                                 std::optional<retry::RetryConfig> retry_config)
     : BaseProviderClient(
           providers::ProviderConfig{
               .api_key = api_key,
@@ -45,9 +38,9 @@ AnthropicClient::AnthropicClient(const std::string& api_key,
               .retry_config = retry_config},
           std::make_unique<AnthropicRequestBuilder>(),
           std::make_unique<AnthropicResponseParser>()) {
-  ai::logger::log_debug(
-      "Anthropic client initialized with base_url: {} and custom retry config",
-      base_url);
+  ai::logger::log_debug("Anthropic client initialized with base_url: {}{}",
+                        base_url,
+                        config_.retry_config ? " and custom retry config" : "");
 }
 
 StreamResult AnthropicClient::stream_text(const StreamOptions& options) {

@@ -2,8 +2,8 @@
 
 #include "ai/errors.h"
 #include "openai_client.h"
+#include "utils/env_utils.h"
 
-#include <cstdlib>
 #include <memory>
 #include <optional>
 
@@ -18,12 +18,12 @@ std::string get_api_key_or_default(const std::string& api_key) {
     return api_key;
   }
 
-  const char* env_api_key = std::getenv("OPENAI_API_KEY");
-  if (!env_api_key || *env_api_key == '\0') {
+  auto env_api_key = utils::non_empty_env("OPENAI_API_KEY");
+  if (!env_api_key) {
     throw ConfigurationError(
         "API key not provided and OPENAI_API_KEY environment variable not set");
   }
-  return env_api_key;
+  return *std::move(env_api_key);
 }
 
 std::string get_base_url_or_default(const std::string& base_url) {
@@ -55,11 +55,11 @@ Client create_client(const std::string& api_key,
 }
 
 std::optional<Client> try_create_client() {
-  const char* api_key = std::getenv("OPENAI_API_KEY");
-  if (!api_key || *api_key == '\0') {
+  auto api_key = utils::non_empty_env("OPENAI_API_KEY");
+  if (!api_key) {
     return std::nullopt;
   }
-  return Client(std::make_unique<OpenAIClient>(api_key, kDefaultBaseUrl));
+  return Client(std::make_unique<OpenAIClient>(*api_key, kDefaultBaseUrl));
 }
 
 }  // namespace openai

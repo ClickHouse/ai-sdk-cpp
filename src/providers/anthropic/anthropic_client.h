@@ -4,6 +4,7 @@
 #include "ai/types/stream_options.h"
 #include "providers/base_provider_client.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,6 +32,11 @@ class AnthropicClient : public providers::BaseProviderClient {
   // Member access for testing
   const std::string& get_api_key() const { return config_.api_key; }
   const std::string& get_base_url() const { return config_.base_url; }
+
+ private:
+  AnthropicClient(const std::string& api_key,
+                  const std::string& base_url,
+                  std::optional<retry::RetryConfig> retry_config);
 };
 
 }  // namespace anthropic
