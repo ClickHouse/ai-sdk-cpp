@@ -5,6 +5,7 @@ set(ZLIB_BUILD_EXAMPLES OFF CACHE INTERNAL "Disable zlib examples")
 add_subdirectory(
     ${AI_SDK_THIRD_PARTY_DIR}/zlib 
     ${CMAKE_CURRENT_BINARY_DIR}/zlib
+    EXCLUDE_FROM_ALL
 )
 
 # Create ZLIB::ZLIB alias if it doesn't exist

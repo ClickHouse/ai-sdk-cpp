@@ -6,4 +6,5 @@ set(gtest_force_shared_crt ON CACHE INTERNAL "Use shared CRT on Windows")
 add_subdirectory(
     ${AI_SDK_THIRD_PARTY_DIR}/googletest
     ${CMAKE_CURRENT_BINARY_DIR}/googletest
+    EXCLUDE_FROM_ALL
 )
