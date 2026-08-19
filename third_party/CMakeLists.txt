@@ -8,9 +8,6 @@ set(AI_SDK_THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Third party d
 # Add zlib (needed by httplib)
 add_subdirectory(zlib-cmake)
 
-# Add brotli (needed by httplib)
-add_subdirectory(brotli-cmake)
-
 # Add httplib
 add_subdirectory(httplib-cmake)
 

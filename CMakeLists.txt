@@ -37,7 +37,7 @@ endfunction()
 # Common compile definitions for HTTP support
 set(HTTPLIB_COMPILE_DEFS
     CPPHTTPLIB_OPENSSL_SUPPORT=1
-    CPPHTTPLIB_BROTLI_SUPPORT=1
+    CPPHTTPLIB_ZLIB_SUPPORT=1
     CPPHTTPLIB_THREAD_POOL_COUNT=8
 )
 
@@ -47,6 +47,13 @@ add_library(ai-sdk-cpp-openai)
 add_library(ai-sdk-cpp-anthropic)
 add_library(ai-sdk-cpp-langfuse)
 add_library(ai-sdk-cpp INTERFACE)
+
+# Keep installed target names consistent with the build-tree aliases.
+set_target_properties(ai-sdk-cpp-core PROPERTIES EXPORT_NAME core)
+set_target_properties(ai-sdk-cpp-openai PROPERTIES EXPORT_NAME openai)
+set_target_properties(ai-sdk-cpp-anthropic PROPERTIES EXPORT_NAME anthropic)
+set_target_properties(ai-sdk-cpp-langfuse PROPERTIES EXPORT_NAME langfuse)
+set_target_properties(ai-sdk-cpp PROPERTIES EXPORT_NAME sdk)
 
 # Set library aliases
 add_library(ai::sdk ALIAS ai-sdk-cpp)
@@ -121,6 +128,10 @@ target_link_libraries(ai-sdk-cpp-core
         $<BUILD_INTERFACE:OpenSSL::SSL>
         $<BUILD_INTERFACE:OpenSSL::Crypto>
         $<BUILD_INTERFACE:concurrentqueue>
+        $<INSTALL_INTERFACE:OpenSSL::SSL>
+        $<INSTALL_INTERFACE:OpenSSL::Crypto>
+        $<INSTALL_INTERFACE:ZLIB::ZLIB>
+        $<INSTALL_INTERFACE:Threads::Threads>
 )
 
 # Provider components link to core and share common dependencies
@@ -132,6 +143,10 @@ foreach(provider openai anthropic)
         PRIVATE
             $<BUILD_INTERFACE:httplib::httplib>
             $<BUILD_INTERFACE:concurrentqueue>
+            $<INSTALL_INTERFACE:OpenSSL::SSL>
+            $<INSTALL_INTERFACE:OpenSSL::Crypto>
+            $<INSTALL_INTERFACE:ZLIB::ZLIB>
+            $<INSTALL_INTERFACE:Threads::Threads>
     )
 
     # Set component availability and HTTP definitions
@@ -155,6 +170,10 @@ target_link_libraries(ai-sdk-cpp-langfuse
         $<BUILD_INTERFACE:OpenSSL::SSL>
         $<BUILD_INTERFACE:OpenSSL::Crypto>
         $<BUILD_INTERFACE:stduuid::stduuid>
+        $<INSTALL_INTERFACE:OpenSSL::SSL>
+        $<INSTALL_INTERFACE:OpenSSL::Crypto>
+        $<INSTALL_INTERFACE:ZLIB::ZLIB>
+        $<INSTALL_INTERFACE:Threads::Threads>
 )
 target_compile_definitions(ai-sdk-cpp-langfuse
     PUBLIC
@@ -268,6 +287,7 @@ configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ai-sdk-cpp-config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/ai-sdk-cpp-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ai-sdk-cpp
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR
 )
 
 write_basic_package_version_file(
