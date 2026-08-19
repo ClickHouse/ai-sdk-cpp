@@ -7,6 +7,7 @@ add_executable(ai_tests
     unit/openai_stream_test.cpp
     unit/anthropic_stream_test.cpp
     unit/openai_embeddings_test.cpp
+    unit/multi_step_coordinator_test.cpp
 
     # Integration tests
     integration/openai_integration_test.cpp

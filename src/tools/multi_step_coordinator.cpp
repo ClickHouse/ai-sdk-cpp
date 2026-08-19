@@ -5,6 +5,18 @@
 #include <ai/types/enums.h>
 #include <ai/types/tool.h>
 
+namespace {
+// Terminal steps never reach the tool-call feedback path below, so their
+// assistant reply has to be appended here for response_messages to satisfy
+// its contract of holding the complete conversation continuation.
+void append_terminal_assistant_reply(const ai::GenerateResult& step_result,
+                                     ai::Messages& response_messages) {
+  if (!step_result.text.empty()) {
+    response_messages.push_back(ai::Message::assistant(step_result.text));
+  }
+}
+}  // namespace
+
 namespace ai {
 
 GenerateResult MultiStepCoordinator::execute_multi_step(
@@ -101,6 +113,7 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
         step_result.finish_reason == kFinishReasonLength ||
         step_result.finish_reason == kFinishReasonContentFilter ||
         step_result.finish_reason == kFinishReasonError) {
+      append_terminal_assistant_reply(step_result, response_messages);
       break;
     }
 
@@ -138,6 +151,7 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
     } else {
       // No tool calls and a non-terminal finish reason: nothing to feed back,
       // so we're done.
+      append_terminal_assistant_reply(step_result, response_messages);
       break;
     }
   }
