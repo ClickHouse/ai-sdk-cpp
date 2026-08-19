@@ -107,21 +107,55 @@ class ConsoleLogger final : public Logger {
 
 namespace detail {
 
+#if defined(__cpp_lib_atomic_shared_ptr)
+
+inline std::atomic<std::shared_ptr<Logger>>& logger_instance() {
+  static std::atomic<std::shared_ptr<Logger>> instance(
+      std::make_shared<ConsoleLogger>());
+  return instance;
+}
+
+inline std::shared_ptr<Logger> load_logger() {
+  return logger_instance().load();
+}
+
+inline void store_logger(std::shared_ptr<Logger> logger) {
+  logger_instance().store(std::move(logger));
+}
+
+#else
+// Fall back to the atomic shared_ptr free functions on standard libraries
+// that have not implemented std::atomic<std::shared_ptr> (notably libc++).
+
 inline std::shared_ptr<Logger>& logger_instance() {
   static std::shared_ptr<Logger> instance = std::make_shared<ConsoleLogger>();
   return instance;
 }
 
+inline std::shared_ptr<Logger> load_logger() {
+  return std::atomic_load(&logger_instance());
+}
+
+inline void store_logger(std::shared_ptr<Logger> logger) {
+  std::atomic_store(&logger_instance(), std::move(logger));
+}
+
+#endif
+
 }  // namespace detail
 
 inline void install_logger(std::shared_ptr<Logger> logger) {
   if (logger) {
-    std::atomic_store(&detail::logger_instance(), std::move(logger));
+    detail::store_logger(std::move(logger));
   }
 }
 
+/// Returns the currently installed logger. The reference stays valid until
+/// the next logger()/log_* call on the same thread; do not cache it across
+/// calls that may log.
 inline Logger& logger() {
-  auto ptr = std::atomic_load(&detail::logger_instance());
+  thread_local std::shared_ptr<Logger> ptr;
+  ptr = detail::load_logger();
   return *ptr;
 }
 
