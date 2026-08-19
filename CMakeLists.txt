@@ -17,7 +17,7 @@ option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
-# Add third party directory with submodules
+# Add third party directory (vendored and CMake-fetched dependencies)
 add_subdirectory(third_party)
 
 # Find system OpenSSL

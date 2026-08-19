@@ -17,7 +17,7 @@ Examples:
     uv run scripts/build.py --mode debug --tests --clean --export-compile-commands
 
 This script handles:
-- CMake configuration with git submodule dependencies
+- CMake configuration with vendored and CMake-fetched dependencies
 - Building in Debug or Release mode
 - Optional test building
 - Clean builds
@@ -133,7 +133,7 @@ def main(mode: str, tests: bool, clean: bool, verbose: bool, export_compile_comm
     # Create build directory
     build_dir.mkdir(exist_ok=True)
     
-    console.print("[green]✓[/green] Dependencies configured via git submodules")
+    console.print("[green]✓[/green] Dependencies vendored in-tree or fetched by CMake")
     console.print()
     
     # Configure CMake

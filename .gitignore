@@ -160,3 +160,7 @@ config.json
 .envrc
 .cache/
 .claude/
+# Former submodule checkouts (dependencies are now fetched by CMake)
+/third_party/zlib/
+/third_party/googletest/
+/third_party/clickhouse-cpp/

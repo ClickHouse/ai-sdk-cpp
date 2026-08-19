@@ -1,13 +1,22 @@
 # ClickHouse C++ Client CMake wrapper
-# This wrapper provides a consistent interface for the ClickHouse C++ client library
+# Fetches clickhouse-cpp, pinned to the revision this repository previously
+# tracked as a git submodule.
 
 # Only build ClickHouse client for tests
 if(NOT BUILD_TESTS)
     return()
 endif()
 
-# Add ClickHouse client as subdirectory
-add_subdirectory(../clickhouse-cpp clickhouse-cpp EXCLUDE_FROM_ALL)
+include(FetchContent)
+
+FetchContent_Declare(clickhouse-cpp
+    URL https://github.com/ClickHouse/clickhouse-cpp/archive/cae657a672ff09b715d7127b13eb25d63bea01d4.tar.gz
+)
+FetchContent_GetProperties(clickhouse-cpp)
+if(NOT clickhouse-cpp_POPULATED)
+    FetchContent_Populate(clickhouse-cpp)
+    add_subdirectory(${clickhouse-cpp_SOURCE_DIR} ${clickhouse-cpp_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 # Create an interface target that properly exposes ClickHouse client
 add_library(clickhouse-cpp-client INTERFACE)
