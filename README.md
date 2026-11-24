@@ -332,6 +332,7 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - [Basic Tool Calling](examples/tool_calling_basic.cpp)
 - [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
 - [Async Tool Execution](examples/tool_calling_async.cpp)
+- [Search Team Documents with Loom](examples/loom_document_search.md)
 - [OpenRouter Integration](examples/openrouter_example.cpp) - Using OpenAI-compatible APIs
 
 

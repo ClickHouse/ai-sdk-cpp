@@ -49,6 +49,8 @@ add_ai_example(tool_calling_basic tool_calling_basic.cpp)
 add_ai_example(tool_calling_multistep tool_calling_multistep.cpp)
 add_ai_example(tool_calling_async tool_calling_async.cpp)
 add_ai_example(test_tool_integration test_tool_integration.cpp)
+add_ai_example(loom_document_search loom_document_search.cpp)
+target_link_libraries(loom_document_search PRIVATE httplib::httplib)
 
 # Embeddings example
 add_ai_example(embeddings_example embeddings_example.cpp)
