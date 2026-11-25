@@ -5,9 +5,51 @@
 #include "utils/message_utils.h"
 
 #include <optional>
+#include <string>
+#include <string_view>
 
 namespace ai {
 namespace openai {
+
+namespace {
+
+// The lowest `reasoning_effort` a GPT-5 family model accepts on Chat
+// Completions, or nullopt when the parameter must be left out: the model is
+// not in the family, or it is a variant whose accepted values are fixed or
+// not known. An unsupported value fails the request with HTTP 400, so the
+// field is only sent where the value is known to be accepted.
+std::optional<std::string_view> lowest_reasoning_effort(
+    std::string_view model) {
+  if (!model.starts_with("gpt-5")) {
+    return std::nullopt;
+  }
+
+  // The pro variants only take the higher efforts (and are served by the
+  // Responses API only), the chat variants are the non-reasoning ChatGPT
+  // snapshots, and the codex variants have value sets of their own.
+  for (const std::string_view variant : {"-pro", "-chat", "-codex"}) {
+    if (model.find(variant) != std::string_view::npos) {
+      return std::nullopt;
+    }
+  }
+
+  // GPT-5.1 and later ("gpt-5.1", "gpt-5.4-mini", "gpt-5.6-sol", ...) accept
+  // "none", which replaced "minimal": they reject "minimal".
+  if (model.starts_with("gpt-5.")) {
+    return "none";
+  }
+
+  // The original GPT-5 models ("gpt-5", "gpt-5-mini", "gpt-5-nano" and their
+  // dated snapshots) reject "none" ("Supported values are: 'minimal', 'low',
+  // 'medium', and 'high'."); "minimal" is their floor.
+  if (model == "gpt-5" || model.starts_with("gpt-5-")) {
+    return "minimal";
+  }
+
+  return std::nullopt;
+}
+
+}  // namespace
 
 nlohmann::json OpenAIRequestBuilder::build_request_json(
     const GenerateOptions& options) {
@@ -139,18 +181,15 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
     request["seed"] = *options.seed;
   }
 
-  // The GPT-5 family defaults to reasoning in Chat Completions. That mode
-  // can consume the full completion budget on hidden reasoning without
+  // Much of the GPT-5 family defaults to reasoning in Chat Completions. That
+  // mode can consume the full completion budget on hidden reasoning without
   // producing user-visible text (acute with a small max_tokens), and on
   // GPT-5.6 it does not support function tools. The unified SDK currently
-  // exposes Chat Completions semantics, so explicitly request non-reasoning
-  // output for the whole family.
-  if (options.model.starts_with(models::kGpt56)) {
-    request["reasoning_effort"] = "none";
-  } else if (is_gpt5_family) {
-    // Earlier GPT-5 models reject "none" ("Supported values are: 'minimal',
-    // 'low', 'medium', and 'high'."); "minimal" is their floor.
-    request["reasoning_effort"] = "minimal";
+  // exposes Chat Completions semantics, so explicitly request the lowest
+  // reasoning effort the model accepts. The accepted values differ between
+  // the generations of the family, see `lowest_reasoning_effort`.
+  if (const auto effort = lowest_reasoning_effort(options.model)) {
+    request["reasoning_effort"] = std::string(*effort);
   }
 
   // Add tools if specified
