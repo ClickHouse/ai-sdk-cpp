@@ -473,18 +473,19 @@ data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text
   ASSERT_TRUE(text.is_text_delta());
   EXPECT_EQ(text.text_delta, "Answer");
   EXPECT_EQ(stream.queued_event_count_for_testing(), 0);
+}
 
-  TEST_F(AnthropicStreamEventTest, MapsRefusalToContentFilter) {
-    anthropic::AnthropicStreamImpl stream;
-    stream.process_sse_chunk_for_testing(
-        "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":"
-        "\"refusal\"}}\n\n"
-        "data: {\"type\":\"message_stop\"}\n\n");
+TEST_F(AnthropicStreamEventTest, MapsRefusalToContentFilter) {
+  anthropic::AnthropicStreamImpl stream;
+  stream.process_sse_chunk_for_testing(
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":"
+      "\"refusal\"}}\n\n"
+      "data: {\"type\":\"message_stop\"}\n\n");
 
-    auto finish_event = stream.get_next_event();
-    ASSERT_TRUE(finish_event.is_finish());
-    EXPECT_EQ(finish_event.finish_reason, kFinishReasonContentFilter);
-  }
+  auto finish_event = stream.get_next_event();
+  ASSERT_TRUE(finish_event.is_finish());
+  EXPECT_EQ(finish_event.finish_reason, kFinishReasonContentFilter);
+}
 
 }  // namespace test
 }  // namespace ai
