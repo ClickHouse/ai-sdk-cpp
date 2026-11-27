@@ -2,11 +2,13 @@
 #include <gtest/gtest.h>
 
 // Include the OpenAI client headers
+#include "ai/openai.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 
 // Include the real OpenAI client implementation for testing
 #include "providers/openai/openai_client.h"
+#include "providers/openai/openai_request_builder.h"
 
 // Test utilities
 #include "../utils/test_fixtures.h"
@@ -79,22 +81,23 @@ TEST_F(OpenAIClientTest, ConstructorWithHttpUrl) {
 TEST_F(OpenAIClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();
 
-  EXPECT_THAT(models, testing::Contains("gpt-4o"));
-  EXPECT_THAT(models, testing::Contains("gpt-4o-mini"));
-  EXPECT_THAT(models, testing::Contains("gpt-4"));
-  EXPECT_THAT(models, testing::Contains("gpt-3.5-turbo"));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Sol));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Terra));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Luna));
+  EXPECT_THAT(models, testing::Contains("gpt-5-mini"));
+  EXPECT_THAT(models, testing::Contains("gpt-4.1"));
   EXPECT_FALSE(models.empty());
 }
 
 TEST_F(OpenAIClientTest, SupportsValidModel) {
-  EXPECT_TRUE(client_->supports_model("gpt-4o"));
-  EXPECT_TRUE(client_->supports_model("gpt-4"));
-  EXPECT_TRUE(client_->supports_model("gpt-3.5-turbo"));
+  EXPECT_TRUE(client_->supports_model(openai::models::kGpt56));
+  EXPECT_TRUE(client_->supports_model("gpt-4.1"));
 }
 
 TEST_F(OpenAIClientTest, DoesNotSupportInvalidModel) {
   EXPECT_FALSE(client_->supports_model("invalid-model"));
-  EXPECT_FALSE(client_->supports_model("claude-3"));
+  EXPECT_FALSE(client_->supports_model("claude-sonnet-4-6"));
   EXPECT_FALSE(client_->supports_model(""));
 }
 
@@ -145,6 +148,75 @@ TEST_F(OpenAIClientTest, ValidateOptionsValidation) {
   // Test with valid options
   auto valid_options = createBasicOptions();
   EXPECT_TRUE(valid_options.is_valid());
+}
+
+TEST_F(OpenAIClientTest, Gpt5FamilyUsesChatCompletionsCompatibleReasoning) {
+  openai::OpenAIRequestBuilder builder;
+
+  // GPT-5.1 and later accept "none" and reject "minimal".
+  for (const auto* model :
+       {openai::models::kGpt56, openai::models::kGpt56Luna,
+        openai::models::kGpt55, openai::models::kGpt54,
+        openai::models::kGpt54Mini, openai::models::kGpt54Nano, "gpt-5.2",
+        "gpt-5.1"}) {
+    GenerateOptions options(model, "Use a tool");
+    EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"], "none")
+        << model;
+  }
+
+  // The original GPT-5 models reject "none"; they get the "minimal" floor.
+  for (const auto* model : {"gpt-5", "gpt-5-2025-08-07",
+                            openai::models::kGpt5Mini,
+                            openai::models::kGpt5Nano}) {
+    GenerateOptions options(model, "Use a tool");
+    EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"],
+              "minimal")
+        << model;
+  }
+}
+
+TEST_F(OpenAIClientTest, ReasoningEffortIsOmittedWhereItsValuesAreNotKnown) {
+  openai::OpenAIRequestBuilder builder;
+
+  // An unsupported value fails the request, so the variants with a fixed or
+  // unknown set of values, and the models outside of the family, get none.
+  for (const auto* model :
+       {openai::models::kGpt54Pro, "gpt-5-pro", "gpt-5-chat-latest",
+        "gpt-5.1-chat-latest", "gpt-5-codex", "gpt-5.1-codex",
+        openai::models::kGpt41, "gpt-4o"}) {
+    GenerateOptions options(model, "Use a tool");
+    EXPECT_FALSE(
+        builder.build_request_json(options).contains("reasoning_effort"))
+        << model;
+  }
+}
+
+TEST_F(OpenAIClientTest, Gpt5FamilyOmitsUnsupportedSamplingParameters) {
+  openai::OpenAIRequestBuilder builder;
+  for (const auto* model :
+       {openai::models::kGpt56, openai::models::kGpt56Terra,
+        openai::models::kGpt55, openai::models::kGpt5Mini}) {
+    GenerateOptions options(model, "Hello");
+    options.temperature = 0.0;
+    options.top_p = 0.8;
+
+    const auto request = builder.build_request_json(options);
+
+    EXPECT_FALSE(request.contains("temperature")) << model;
+    EXPECT_FALSE(request.contains("top_p")) << model;
+  }
+}
+
+TEST_F(OpenAIClientTest, NonReasoningModelsKeepSamplingParameters) {
+  openai::OpenAIRequestBuilder builder;
+  GenerateOptions options(openai::models::kGpt41, "Hello");
+  options.temperature = 0.2;
+  options.top_p = 0.9;
+
+  const auto request = builder.build_request_json(options);
+
+  EXPECT_EQ(request["temperature"], 0.2);
+  EXPECT_EQ(request["top_p"], 0.9);
 }
 
 // Stream Tests (Basic validation)

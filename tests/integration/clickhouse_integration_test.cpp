@@ -190,6 +190,27 @@ class ClickHouseTools {
 class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
  protected:
   void SetUp() override {
+    // Skip before connecting to ClickHouse when this provider is not
+    // configured. This keeps local/offline test runs from failing on an
+    // external service they cannot use anyway.
+    provider_type_ = GetParam();
+    if (provider_type_ == "openai") {
+      const char* api_key = std::getenv("OPENAI_API_KEY");
+      if (!api_key || *api_key == '\0') {
+        return;
+      }
+      client_ = std::make_shared<Client>(openai::create_client());
+      model_ = openai::models::kDefaultModel;
+    } else if (provider_type_ == "anthropic") {
+      const char* api_key = std::getenv("ANTHROPIC_API_KEY");
+      if (!api_key || *api_key == '\0') {
+        return;
+      }
+      client_ = std::make_shared<Client>(anthropic::create_client());
+      model_ = anthropic::models::kDefaultModel;
+    }
+    use_real_api_ = true;
+
     // Generate random suffix for table names to allow parallel test execution
     table_suffix_ = generateRandomSuffix();
     // Use unique database name for each test to allow parallel execution
@@ -215,27 +236,6 @@ class ClickHouseIntegrationTest : public ::testing::TestWithParam<std::string> {
         {"list_tables_in_database",
          tools_helper_->createListTablesInDatabaseTool()},
         {"get_schema_for_table", tools_helper_->createGetSchemaForTableTool()}};
-
-    // Initialize AI client based on provider
-    provider_type_ = GetParam();
-    if (provider_type_ == "openai") {
-      const char* api_key = std::getenv("OPENAI_API_KEY");
-      if (!api_key) {
-        use_real_api_ = false;
-        return;
-      }
-      client_ = std::make_shared<Client>(openai::create_client());
-      model_ = openai::models::kGpt4o;
-    } else if (provider_type_ == "anthropic") {
-      const char* api_key = std::getenv("ANTHROPIC_API_KEY");
-      if (!api_key) {
-        use_real_api_ = false;
-        return;
-      }
-      client_ = std::make_shared<Client>(anthropic::create_client());
-      model_ = anthropic::models::kClaudeSonnet4;
-    }
-    use_real_api_ = true;
   }
 
   void TearDown() override {

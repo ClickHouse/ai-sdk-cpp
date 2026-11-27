@@ -34,7 +34,10 @@ def find_cpp_files() -> List[Path]:
     for ext in extensions:
         for file in project_dir.rglob(f"*{ext}"):
             # Skip files in excluded directories
-            if any(excluded in file.parts for excluded in exclude_dirs):
+            # Only directory components are checked for the "build-" prefix so
+            # source files like "build-info.cpp" are not skipped.
+            if any(part in exclude_dirs for part in file.parts) or any(
+                    part.startswith("build-") for part in file.parts[:-1]):
                 continue
             files.append(file)
     
@@ -105,4 +108,4 @@ def main(check: bool):
 
 
 if __name__ == "__main__":
-    main() 
+    main()

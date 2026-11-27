@@ -4,7 +4,6 @@
 # dependencies = [
 #     "click>=8.1.0",
 #     "rich>=13.0.0",
-#     "asyncio",
 # ]
 # ///
 """Run clang-tidy on all C++ source files in parallel.
@@ -82,7 +81,10 @@ def find_cpp_files() -> List[Path]:
     for ext in extensions:
         for file in project_dir.rglob(f"*{ext}"):
             # Skip files in excluded directories
-            if any(excluded in file.parts for excluded in exclude_dirs):
+            # Only directory components are checked for the "build-" prefix so
+            # source files like "build-info.cpp" are not skipped.
+            if any(part in exclude_dirs for part in file.parts) or any(
+                    part.startswith("build-") for part in file.parts[:-1]):
                 continue
             files.append(file)
     
@@ -100,7 +102,7 @@ async def lint_file(
     async with semaphore:
         cmd = [
             "clang-tidy",
-            f"-p={compile_commands}",
+            f"-p={compile_commands.parent}",
             *extra_args,
         ]
         
@@ -221,4 +223,4 @@ def main(fix: bool, jobs: int):
 
 
 if __name__ == "__main__":
-    main() 
+    main()

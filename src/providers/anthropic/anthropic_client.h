@@ -1,8 +1,10 @@
 #pragma once
 
+#include "ai/retry/retry_policy.h"
 #include "ai/types/stream_options.h"
 #include "providers/base_provider_client.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +17,10 @@ class AnthropicClient : public providers::BaseProviderClient {
       const std::string& api_key,
       const std::string& base_url = "https://api.anthropic.com");
 
+  AnthropicClient(const std::string& api_key,
+                  const std::string& base_url,
+                  const retry::RetryConfig& retry_config);
+
   // Override only what's specific to Anthropic
   StreamResult stream_text(const StreamOptions& options) override;
   std::string provider_name() const override;
@@ -26,6 +32,11 @@ class AnthropicClient : public providers::BaseProviderClient {
   // Member access for testing
   const std::string& get_api_key() const { return config_.api_key; }
   const std::string& get_base_url() const { return config_.base_url; }
+
+ private:
+  AnthropicClient(const std::string& api_key,
+                  const std::string& base_url,
+                  std::optional<retry::RetryConfig> retry_config);
 };
 
 }  // namespace anthropic

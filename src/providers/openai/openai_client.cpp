@@ -22,7 +22,8 @@ OpenAIClient::OpenAIClient(const std::string& api_key,
               .embeddings_endpoint_path = "/v1/embeddings",
               .auth_header_name = "Authorization",
               .auth_header_prefix = "Bearer ",
-              .extra_headers = {}},
+              .extra_headers = {},
+              .retry_config = std::nullopt},
           std::make_unique<OpenAIRequestBuilder>(),
           std::make_unique<OpenAIResponseParser>()) {
   ai::logger::log_debug("OpenAI client initialized with base_url: {}",
@@ -57,6 +58,9 @@ StreamResult OpenAIClient::stream_text(const StreamOptions& options) {
   // Build request with stream: true
   auto request_json = request_builder_->build_request_json(options);
   request_json["stream"] = true;
+  // Request the terminal usage chunk; without this OpenAI omits usage from
+  // streaming responses and the finish event would never carry token counts.
+  request_json["stream_options"] = {{"include_usage", true}};
   ai::logger::log_debug("Stream request JSON built with stream=true");
 
   // Create headers
@@ -79,9 +83,13 @@ std::string OpenAIClient::provider_name() const {
 }
 
 std::vector<std::string> OpenAIClient::supported_models() const {
-  return {models::kGpt4o,       models::kGpt4oMini,   models::kGpt4Turbo,
-          models::kGpt35Turbo,  models::kGpt4,        "gpt-4-0125-preview",
-          "gpt-4-1106-preview", "gpt-3.5-turbo-0125", "gpt-3.5-turbo-1106"};
+  return {// Current GPT-5 series
+          models::kGpt56, models::kGpt56Sol, models::kGpt56Terra,
+          models::kGpt56Luna, models::kGpt55, models::kGpt54, models::kGpt54Pro,
+          models::kGpt54Mini, models::kGpt54Nano, models::kGpt5Mini,
+          models::kGpt5Nano,
+          // Current GPT-4.1 series
+          models::kGpt41, models::kGpt41Mini};
 }
 
 bool OpenAIClient::supports_model(const std::string& model_name) const {

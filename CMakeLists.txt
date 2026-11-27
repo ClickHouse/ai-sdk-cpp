@@ -18,7 +18,7 @@ option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(AI_SDK_ENABLE_BEDROCK "Enable Amazon Bedrock provider (requires AWS SDK)" OFF)
 
-# Add third party directory with submodules
+# Add third party directory (vendored and CMake-fetched dependencies)
 add_subdirectory(third_party)
 
 # Find system OpenSSL
@@ -38,7 +38,7 @@ endfunction()
 # Common compile definitions for HTTP support
 set(HTTPLIB_COMPILE_DEFS
     CPPHTTPLIB_OPENSSL_SUPPORT=1
-    CPPHTTPLIB_BROTLI_SUPPORT=1
+    CPPHTTPLIB_ZLIB_SUPPORT=1
     CPPHTTPLIB_THREAD_POOL_COUNT=8
 )
 
@@ -46,18 +46,28 @@ set(HTTPLIB_COMPILE_DEFS
 add_library(ai-sdk-cpp-core)
 add_library(ai-sdk-cpp-openai)
 add_library(ai-sdk-cpp-anthropic)
+add_library(ai-sdk-cpp-langfuse)
 add_library(ai-sdk-cpp INTERFACE)
+
+# Keep installed target names consistent with the build-tree aliases.
+set_target_properties(ai-sdk-cpp-core PROPERTIES EXPORT_NAME core)
+set_target_properties(ai-sdk-cpp-openai PROPERTIES EXPORT_NAME openai)
+set_target_properties(ai-sdk-cpp-anthropic PROPERTIES EXPORT_NAME anthropic)
+set_target_properties(ai-sdk-cpp-langfuse PROPERTIES EXPORT_NAME langfuse)
+set_target_properties(ai-sdk-cpp PROPERTIES EXPORT_NAME sdk)
 
 # Set library aliases
 add_library(ai::sdk ALIAS ai-sdk-cpp)
 add_library(ai::core ALIAS ai-sdk-cpp-core)
 add_library(ai::openai ALIAS ai-sdk-cpp-openai)
 add_library(ai::anthropic ALIAS ai-sdk-cpp-anthropic)
+add_library(ai::langfuse ALIAS ai-sdk-cpp-langfuse)
 
 # Configure all component libraries
 configure_ai_component(ai-sdk-cpp-core)
 configure_ai_component(ai-sdk-cpp-openai)
 configure_ai_component(ai-sdk-cpp-anthropic)
+configure_ai_component(ai-sdk-cpp-langfuse)
 
 # Bedrock provider (optional, requires AWS SDK)
 if(AI_SDK_ENABLE_BEDROCK)
@@ -87,6 +97,7 @@ target_sources(ai-sdk-cpp-core
         # HTTP and base provider infrastructure
         src/http/http_request_handler.cpp
         src/providers/base_provider_client.cpp
+        src/providers/http_sse_stream.cpp
         
         # Tool calling implementations
         src/tools/tool_executor.cpp
@@ -112,6 +123,12 @@ set(ANTHROPIC_SOURCES
 
 target_sources(ai-sdk-cpp-openai PRIVATE ${OPENAI_SOURCES})
 target_sources(ai-sdk-cpp-anthropic PRIVATE ${ANTHROPIC_SOURCES})
+
+# Langfuse tracing component
+target_sources(ai-sdk-cpp-langfuse
+    PRIVATE
+        src/langfuse/tracer.cpp
+)
 
 # Bedrock provider sources (conditional)
 if(AI_SDK_ENABLE_BEDROCK)
@@ -142,6 +159,10 @@ target_link_libraries(ai-sdk-cpp-core
         $<BUILD_INTERFACE:OpenSSL::SSL>
         $<BUILD_INTERFACE:OpenSSL::Crypto>
         $<BUILD_INTERFACE:concurrentqueue>
+        $<INSTALL_INTERFACE:OpenSSL::SSL>
+        $<INSTALL_INTERFACE:OpenSSL::Crypto>
+        $<INSTALL_INTERFACE:ZLIB::ZLIB>
+        $<INSTALL_INTERFACE:Threads::Threads>
 )
 
 # Provider components link to core and share common dependencies
@@ -153,8 +174,12 @@ foreach(provider openai anthropic)
         PRIVATE
             $<BUILD_INTERFACE:httplib::httplib>
             $<BUILD_INTERFACE:concurrentqueue>
+            $<INSTALL_INTERFACE:OpenSSL::SSL>
+            $<INSTALL_INTERFACE:OpenSSL::Crypto>
+            $<INSTALL_INTERFACE:ZLIB::ZLIB>
+            $<INSTALL_INTERFACE:Threads::Threads>
     )
-    
+
     # Set component availability and HTTP definitions
     string(TOUPPER ${provider} PROVIDER_UPPER)
     target_compile_definitions(ai-sdk-cpp-${provider}
@@ -164,6 +189,29 @@ foreach(provider openai anthropic)
             ${HTTPLIB_COMPILE_DEFS}
     )
 endforeach()
+
+# Langfuse tracing component links to core and uses httplib + OpenSSL +
+# stduuid (header-only, vendored under third_party/stduuid-header-only).
+target_link_libraries(ai-sdk-cpp-langfuse
+    PUBLIC
+        ai::core
+        nlohmann_json::nlohmann_json
+    PRIVATE
+        $<BUILD_INTERFACE:httplib::httplib>
+        $<BUILD_INTERFACE:OpenSSL::SSL>
+        $<BUILD_INTERFACE:OpenSSL::Crypto>
+        $<BUILD_INTERFACE:stduuid::stduuid>
+        $<INSTALL_INTERFACE:OpenSSL::SSL>
+        $<INSTALL_INTERFACE:OpenSSL::Crypto>
+        $<INSTALL_INTERFACE:ZLIB::ZLIB>
+        $<INSTALL_INTERFACE:Threads::Threads>
+)
+target_compile_definitions(ai-sdk-cpp-langfuse
+    PUBLIC
+        AI_SDK_HAS_LANGFUSE=1
+    PRIVATE
+        ${HTTPLIB_COMPILE_DEFS}
+)
 
 # Bedrock provider dependencies (uses AWS SDK instead of httplib)
 if(AI_SDK_ENABLE_BEDROCK)
@@ -194,6 +242,7 @@ target_link_libraries(ai-sdk-cpp
         ai::core
         ai::openai
         ai::anthropic
+        ai::langfuse
 )
 
 # Conditionally link Bedrock to main library
@@ -209,6 +258,7 @@ target_compile_definitions(ai-sdk-cpp
     INTERFACE
         AI_SDK_HAS_OPENAI=1
         AI_SDK_HAS_ANTHROPIC=1
+        AI_SDK_HAS_LANGFUSE=1
 )
 
 # Add Bedrock availability definition when enabled
@@ -220,6 +270,13 @@ if(AI_SDK_ENABLE_BEDROCK)
 endif()
 
 # List of all concrete component targets
+set(COMPONENT_TARGETS
+    ai-sdk-cpp-core
+    ai-sdk-cpp-openai
+    ai-sdk-cpp-anthropic
+    ai-sdk-cpp-langfuse
+)
+
 set(COMPONENT_TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic)
 if(AI_SDK_ENABLE_BEDROCK)
     list(APPEND COMPONENT_TARGETS ai-sdk-cpp-bedrock)
@@ -299,6 +356,7 @@ configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ai-sdk-cpp-config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/ai-sdk-cpp-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ai-sdk-cpp
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR
 )
 
 write_basic_package_version_file(

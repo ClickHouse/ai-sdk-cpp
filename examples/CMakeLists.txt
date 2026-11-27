@@ -50,9 +50,14 @@ add_ai_example(tool_calling_basic tool_calling_basic.cpp)
 add_ai_example(tool_calling_multistep tool_calling_multistep.cpp)
 add_ai_example(tool_calling_async tool_calling_async.cpp)
 add_ai_example(test_tool_integration test_tool_integration.cpp)
+add_ai_example(loom_document_search loom_document_search.cpp)
+target_link_libraries(loom_document_search PRIVATE httplib::httplib)
 
 # Embeddings example
 add_ai_example(embeddings_example embeddings_example.cpp)
+
+# Langfuse tracing example
+add_ai_example(langfuse_tracing langfuse_tracing.cpp)
 
 # Component-specific examples
 add_subdirectory(components/openai)
@@ -61,16 +66,22 @@ add_subdirectory(components/bedrock)
 add_subdirectory(components/all)
 
 # Message to show how to run examples
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(EXAMPLE_DISPLAY_SUFFIX "_debug")
+else()
+    set(EXAMPLE_DISPLAY_SUFFIX "")
+endif()
+
 message(STATUS "Examples will be built in: ${CMAKE_BINARY_DIR}/examples/")
 message(STATUS "To run examples:")
 message(STATUS "  Set environment variables: OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY")
-message(STATUS "  Run: ./examples/basic_chat")
-message(STATUS "       ./examples/streaming_chat")
-message(STATUS "       ./examples/multi_provider")
-message(STATUS "       ./examples/error_handling")
-message(STATUS "       ./examples/test_openai")
-message(STATUS "       ./examples/test_anthropic")
-message(STATUS "       ./examples/openrouter_example")
+message(STATUS "  Run: ./examples/basic_chat${EXAMPLE_DISPLAY_SUFFIX}")
+message(STATUS "       ./examples/streaming_chat${EXAMPLE_DISPLAY_SUFFIX}")
+message(STATUS "       ./examples/multi_provider${EXAMPLE_DISPLAY_SUFFIX}")
+message(STATUS "       ./examples/error_handling${EXAMPLE_DISPLAY_SUFFIX}")
+message(STATUS "       ./examples/test_openai${EXAMPLE_DISPLAY_SUFFIX}")
+message(STATUS "       ./examples/test_anthropic${EXAMPLE_DISPLAY_SUFFIX}")
+message(STATUS "       ./examples/openrouter_example${EXAMPLE_DISPLAY_SUFFIX}")
 message(STATUS "")
 message(STATUS "Component-specific examples:")
 message(STATUS "  ./examples/components/openai/openai_component_demo     (OpenAI + Core only)")

@@ -14,6 +14,18 @@ namespace anthropic {
 
 AnthropicClient::AnthropicClient(const std::string& api_key,
                                  const std::string& base_url)
+    : AnthropicClient(api_key, base_url, std::optional<retry::RetryConfig>{}) {}
+
+AnthropicClient::AnthropicClient(const std::string& api_key,
+                                 const std::string& base_url,
+                                 const retry::RetryConfig& retry_config)
+    : AnthropicClient(api_key,
+                      base_url,
+                      std::optional<retry::RetryConfig>(retry_config)) {}
+
+AnthropicClient::AnthropicClient(const std::string& api_key,
+                                 const std::string& base_url,
+                                 std::optional<retry::RetryConfig> retry_config)
     : BaseProviderClient(
           providers::ProviderConfig{
               .api_key = api_key,
@@ -22,11 +34,13 @@ AnthropicClient::AnthropicClient(const std::string& api_key,
               .embeddings_endpoint_path = "/v1/embeddings",
               .auth_header_name = "x-api-key",
               .auth_header_prefix = "",
-              .extra_headers = {{"anthropic-version", "2023-06-01"}}},
+              .extra_headers = {{"anthropic-version", "2023-06-01"}},
+              .retry_config = retry_config},
           std::make_unique<AnthropicRequestBuilder>(),
           std::make_unique<AnthropicResponseParser>()) {
-  ai::logger::log_debug("Anthropic client initialized with base_url: {}",
-                        base_url);
+  ai::logger::log_debug("Anthropic client initialized with base_url: {}{}",
+                        base_url,
+                        config_.retry_config ? " and custom retry config" : "");
 }
 
 StreamResult AnthropicClient::stream_text(const StreamOptions& options) {
@@ -59,14 +73,18 @@ std::string AnthropicClient::provider_name() const {
 }
 
 std::vector<std::string> AnthropicClient::supported_models() const {
-  return {"claude-sonnet-4-5-20250929",  // Latest Sonnet 4.5
-          "claude-haiku-4-5-20251001",   // Latest Haiku 4.5
-          "claude-opus-4-1-20250805",    // Latest Opus 4.1
-          "claude-sonnet-4-20250514",    // Sonnet 4.0
-          "claude-3-5-sonnet-20241022",  // Legacy 3.5 Sonnet
-          "claude-3-5-haiku-20241022",   // Legacy 3.5 Haiku
-          "claude-3-opus-20240229",     "claude-3-sonnet-20240229",
-          "claude-3-haiku-20240307"};
+  // Both the friendly aliases (e.g. "claude-sonnet-4-5") and their dated
+  // snapshot variants (e.g. "claude-sonnet-4-5-20250929") are accepted by the
+  // Anthropic API; list both so identifiers in `ai::anthropic::models::*`
+  // resolve via `supports_model()`.
+  return {models::kClaudeFable5,           models::kClaudeOpus5,
+          models::kClaudeOpus48,           models::kClaudeSonnet5,
+          models::kClaudeOpus47,           models::kClaudeSonnet46,
+          models::kClaudeOpus46,           models::kClaudeHaiku45,
+          models::kClaudeHaiku45Snapshot,  models::kClaudeOpus45,
+          models::kClaudeOpus45Snapshot,   models::kClaudeSonnet45,
+          models::kClaudeSonnet45Snapshot, models::kClaudeOpus41,
+          models::kClaudeOpus41Snapshot};
 }
 
 bool AnthropicClient::supports_model(const std::string& model_name) const {

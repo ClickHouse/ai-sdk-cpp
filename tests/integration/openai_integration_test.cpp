@@ -23,7 +23,7 @@ class OpenAIIntegrationTest : public AITestFixture {
     // Check if we should run real API tests
     const char* api_key = std::getenv("OPENAI_API_KEY");
 
-    if (api_key != nullptr) {
+    if (api_key && *api_key != '\0') {
       use_real_api_ = true;
       client_ = ai::openai::create_client(api_key);
     } else {
@@ -44,7 +44,7 @@ TEST_F(OpenAIIntegrationTest, BasicTextGeneration) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini,
+  GenerateOptions options(ai::openai::models::kGpt56Luna,
                           "Hello, how are you?");
   auto result = client_->generate_text(options);
 
@@ -63,7 +63,7 @@ TEST_F(OpenAIIntegrationTest, TextGenerationWithSystemPrompt) {
   }
 
   GenerateOptions options(
-      ai::openai::models::kGpt4oMini,
+      ai::openai::models::kGpt56Luna,
       "You are a helpful assistant that responds in French.",
       "Hello, how are you?");
 
@@ -85,7 +85,7 @@ TEST_F(OpenAIIntegrationTest, TextGenerationWithParameters) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini,
+  GenerateOptions options(ai::openai::models::kGpt56Luna,
                           "Write a very short story about a cat.");
   options.max_tokens = 50;
   options.temperature = 0.7;
@@ -112,7 +112,7 @@ TEST_F(OpenAIIntegrationTest, ConversationWithMessages) {
       Message::assistant("Hello! I can help you with weather information."),
       Message::user("What's the weather like today?")};
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini,
+  GenerateOptions options(ai::openai::models::kGpt56Luna,
                           std::move(conversation));
   auto result = client_->generate_text(options);
 
@@ -133,8 +133,8 @@ TEST_F(OpenAIIntegrationTest, DifferentModelSupport) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  std::vector<std::string> models_to_test = {ai::openai::models::kGpt4o,
-                                             ai::openai::models::kGpt4oMini};
+  std::vector<std::string> models_to_test = {ai::openai::models::kGpt56,
+                                             ai::openai::models::kGpt56Luna};
 
   for (const auto& model : models_to_test) {
     if (!client_->supports_model(model)) {
@@ -160,7 +160,7 @@ TEST_F(OpenAIIntegrationTest, InvalidApiKey) {
   // Test with invalid API key
   auto invalid_client = ai::openai::create_client("sk-invalid123");
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini, "Test prompt");
+  GenerateOptions options(ai::openai::models::kGpt56Luna, "Test prompt");
   auto result = invalid_client.generate_text(options);
 
   TestAssertions::assertError(result);
@@ -194,7 +194,7 @@ TEST_F(OpenAIIntegrationTest, RateLimitHandling) {
 
   // Note: This test may not trigger rate limiting in normal usage
   // It's here to document the expected behavior when rate limits are hit
-  GenerateOptions options(ai::openai::models::kGpt4oMini, "Test prompt");
+  GenerateOptions options(ai::openai::models::kGpt56Luna, "Test prompt");
   auto result = client_->generate_text(options);
 
   // If we hit rate limits, the error should be handled gracefully
@@ -215,7 +215,7 @@ TEST_F(OpenAIIntegrationTest, BasicStreaming) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  GenerateOptions gen_options(ai::openai::models::kGpt4oMini,
+  GenerateOptions gen_options(ai::openai::models::kGpt56Luna,
                               "Count from 1 to 3");
   StreamOptions options(gen_options);
   auto stream = client_->stream_text(options);
@@ -254,7 +254,7 @@ TEST_F(OpenAIIntegrationTest, ConcurrentRequests) {
 
   for (int i = 0; i < num_requests; ++i) {
     futures.push_back(std::async(std::launch::async, [this, i]() {
-      GenerateOptions options(ai::openai::models::kGpt4oMini,
+      GenerateOptions options(ai::openai::models::kGpt56Luna,
                               "Say hello " + std::to_string(i));
       return client_->generate_text(options);
     }));
@@ -277,7 +277,7 @@ TEST_F(OpenAIIntegrationTest, LargePromptHandling) {
   auto large_prompt =
       TestDataGenerator::createLargePrompt(2000);  // ~2KB prompt
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini, large_prompt);
+  GenerateOptions options(ai::openai::models::kGpt56Luna, large_prompt);
   auto result = client_->generate_text(options);
 
   TestAssertions::assertSuccess(result);
@@ -299,7 +299,7 @@ TEST_F(OpenAIIntegrationTest, CustomBaseUrl) {
   auto custom_client =
       ai::openai::create_client(api_key, "https://api.openai.com");
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini,
+  GenerateOptions options(ai::openai::models::kGpt56Luna,
                           "Test custom base URL");
   auto result = custom_client.generate_text(options);
 
@@ -313,7 +313,7 @@ TEST_F(OpenAIIntegrationTest, EmptyPrompt) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini, "");
+  GenerateOptions options(ai::openai::models::kGpt56Luna, "");
 
   // Empty prompt should be caught by validation
   EXPECT_FALSE(options.is_valid());
@@ -328,7 +328,7 @@ TEST_F(OpenAIIntegrationTest, VeryLongResponse) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini,
+  GenerateOptions options(ai::openai::models::kGpt56Luna,
                           "Write a detailed explanation of quantum physics");
   options.max_tokens = 500;  // Reasonable limit for testing
 
@@ -349,7 +349,7 @@ TEST_F(OpenAIIntegrationTest, NetworkTimeout) {
 
   // Note: This test documents timeout behavior but cannot reliably trigger it
   // with the real API under normal conditions
-  GenerateOptions options(ai::openai::models::kGpt4oMini, "Simple test");
+  GenerateOptions options(ai::openai::models::kGpt56Luna, "Simple test");
   auto result = client_->generate_text(options);
 
   // Under normal conditions, this should succeed
@@ -374,7 +374,7 @@ TEST_F(OpenAIIntegrationTest, NetworkFailure) {
   auto failing_client = ai::openai::create_client(
       api_key, "http://localhost:59999");  // Very unlikely port to be in use
 
-  GenerateOptions options(ai::openai::models::kGpt4oMini,
+  GenerateOptions options(ai::openai::models::kGpt56Luna,
                           "Test network failure");
   auto result = failing_client.generate_text(options);
 
@@ -408,7 +408,7 @@ TEST_F(EnvironmentConfigTest, ConfigurationFromEnvironment) {
   const char* api_key = std::getenv("OPENAI_API_KEY");
   const char* base_url = std::getenv("OPENAI_BASE_URL");
 
-  if (api_key) {
+  if (api_key && *api_key != '\0') {
     auto client = base_url ? ai::openai::create_client(api_key, base_url)
                            : ai::openai::create_client(api_key);
     EXPECT_TRUE(client.is_valid());
@@ -421,7 +421,7 @@ TEST_F(EnvironmentConfigTest, ConfigurationFromEnvironment) {
 TEST_F(EnvironmentConfigTest, DefaultClientCreation) {
   const char* api_key = std::getenv("OPENAI_API_KEY");
 
-  if (api_key) {
+  if (api_key && *api_key != '\0') {
     // Test creating client with default configuration (reads from environment)
     auto client = ai::openai::create_client();
     EXPECT_TRUE(client.is_valid());
@@ -429,8 +429,9 @@ TEST_F(EnvironmentConfigTest, DefaultClientCreation) {
 
     // Test that supported models include expected ones
     auto models = client.supported_models();
-    EXPECT_TRUE(client.supports_model(ai::openai::models::kGpt4oMini));
-    EXPECT_TRUE(client.supports_model(ai::openai::models::kGpt35Turbo));
+    EXPECT_TRUE(client.supports_model(ai::openai::models::kGpt56Luna));
+    EXPECT_TRUE(client.supports_model(ai::openai::models::kGpt41));
+    EXPECT_FALSE(client.supports_model("gpt-3.5-turbo"));
   } else {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }

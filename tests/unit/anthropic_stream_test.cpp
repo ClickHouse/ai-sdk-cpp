@@ -1,3 +1,5 @@
+#include "providers/anthropic/anthropic_stream.h"
+
 #include "../utils/mock_anthropic_client.h"
 #include "../utils/test_fixtures.h"
 #include "ai/types/stream_event.h"
@@ -96,6 +98,64 @@ TEST_F(AnthropicStreamEventTest, ParseErrorEvent) {
   EXPECT_THAT(error_data, testing::HasSubstr("error"));
   EXPECT_THAT(error_data, testing::HasSubstr("Stream error"));
   EXPECT_THAT(error_data, testing::HasSubstr("invalid_request_error"));
+}
+
+TEST_F(AnthropicStreamEventTest, ParsesFragmentedResponseWithUsage) {
+  anthropic::AnthropicStreamImpl stream;
+  stream.process_sse_chunk_for_testing(
+      "data: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_"
+      "tokens\":12}}}\n\n"
+      "data: {\"type\":\"content_block_delta\",\"delta\":{\"text\":\"Hel");
+  stream.process_sse_chunk_for_testing(
+      "lo\"}}\n\n"
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"max_"
+      "tokens\"},\"usage\":{\"output_tokens\":7}}\n\n"
+      "data: {\"type\":\"message_stop\"}\n\n");
+
+  auto text_event = stream.get_next_event();
+  ASSERT_TRUE(text_event.is_text_delta());
+  EXPECT_EQ(text_event.text_delta, "Hello");
+
+  auto finish_event = stream.get_next_event();
+  ASSERT_TRUE(finish_event.is_finish());
+  ASSERT_TRUE(finish_event.usage.has_value());
+  EXPECT_EQ(finish_event.usage->prompt_tokens, 12);
+  EXPECT_EQ(finish_event.usage->completion_tokens, 7);
+  EXPECT_EQ(finish_event.usage->total_tokens, 19);
+  EXPECT_EQ(finish_event.finish_reason, kFinishReasonLength);
+}
+
+TEST_F(AnthropicStreamEventTest, EmitsOnlyOneFinishEvent) {
+  anthropic::AnthropicStreamImpl stream;
+  stream.process_sse_chunk_for_testing(
+      "data: {\"type\":\"message_stop\"}\n\n"
+      "data: {\"type\":\"message_stop\"}\n\n");
+
+  EXPECT_EQ(stream.queued_event_count_for_testing(), 1);
+  EXPECT_TRUE(stream.get_next_event().is_finish());
+}
+
+TEST_F(AnthropicStreamEventTest, ParsesFragmentedToolCall) {
+  anthropic::AnthropicStreamImpl stream;
+  stream.process_sse_chunk_for_testing(
+      R"(data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"tool_123","name":"get_weather","input":{}}}
+
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"loc"}}
+
+)");
+  stream.process_sse_chunk_for_testing(
+      R"(data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"ation\":\"Chicago\"}"}}
+
+data: {"type":"content_block_stop","index":1}
+
+)");
+
+  auto event = stream.get_next_event();
+  ASSERT_TRUE(event.is_tool_call());
+  ASSERT_TRUE(event.tool_call.has_value());
+  EXPECT_EQ(event.tool_call->id, "tool_123");
+  EXPECT_EQ(event.tool_call->tool_name, "get_weather");
+  EXPECT_EQ(event.tool_call->arguments["location"], "Chicago");
 }
 
 // Mock Stream Implementation Tests

@@ -31,9 +31,6 @@
 /// #include <ai/core.h>
 ///
 /// // Use core types like ai::GenerateOptions, ai::Message, etc.
-/// ai::GenerateOptions options{
-///     .model = "some-model",
-///     .prompt = "Hello world"
-/// };
+/// ai::GenerateOptions options("some-model", "Hello world");
 /// ```
 namespace ai {}

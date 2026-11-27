@@ -27,9 +27,9 @@ TEST_F(GenerateOptionsTest, DefaultConstructor) {
 }
 
 TEST_F(GenerateOptionsTest, ConstructorWithModelAndPrompt) {
-  GenerateOptions options("gpt-4o", "Hello, world!");
+  GenerateOptions options("test-model", "Hello, world!");
 
-  EXPECT_EQ(options.model, "gpt-4o");
+  EXPECT_EQ(options.model, "test-model");
   EXPECT_EQ(options.prompt, "Hello, world!");
   EXPECT_TRUE(options.system.empty());
   EXPECT_TRUE(options.messages.empty());
@@ -37,9 +37,9 @@ TEST_F(GenerateOptionsTest, ConstructorWithModelAndPrompt) {
 }
 
 TEST_F(GenerateOptionsTest, ConstructorWithSystemPrompt) {
-  GenerateOptions options("gpt-4o", "You are helpful", "Hello!");
+  GenerateOptions options("test-model", "You are helpful", "Hello!");
 
-  EXPECT_EQ(options.model, "gpt-4o");
+  EXPECT_EQ(options.model, "test-model");
   EXPECT_EQ(options.system, "You are helpful");
   EXPECT_EQ(options.prompt, "Hello!");
   EXPECT_TRUE(options.is_valid());
@@ -47,9 +47,9 @@ TEST_F(GenerateOptionsTest, ConstructorWithSystemPrompt) {
 
 TEST_F(GenerateOptionsTest, ConstructorWithMessages) {
   Messages messages = {Message::user("Hello"), Message::assistant("Hi there!")};
-  GenerateOptions options("gpt-4o", std::move(messages));
+  GenerateOptions options("test-model", std::move(messages));
 
-  EXPECT_EQ(options.model, "gpt-4o");
+  EXPECT_EQ(options.model, "test-model");
   EXPECT_TRUE(options.prompt.empty());
   EXPECT_EQ(options.messages.size(), 2);
   EXPECT_TRUE(options.has_messages());
@@ -63,20 +63,20 @@ TEST_F(GenerateOptionsTest, ValidationEmptyModel) {
 }
 
 TEST_F(GenerateOptionsTest, ValidationEmptyPromptAndMessages) {
-  GenerateOptions options("gpt-4o", "");
+  GenerateOptions options("test-model", "");
 
   EXPECT_FALSE(options.is_valid());
 }
 
 TEST_F(GenerateOptionsTest, ValidationWithValidMessages) {
   Messages messages = {Message::user("Hello")};
-  GenerateOptions options("gpt-4o", std::move(messages));
+  GenerateOptions options("test-model", std::move(messages));
 
   EXPECT_TRUE(options.is_valid());
 }
 
 TEST_F(GenerateOptionsTest, OptionalParametersSet) {
-  GenerateOptions options("gpt-4o", "Test");
+  GenerateOptions options("test-model", "Test");
 
   options.temperature = 0.7;
   options.max_tokens = 100;
@@ -152,13 +152,13 @@ TEST_F(GenerateResultTest, MetadataFields) {
   GenerateResult result("Text", kFinishReasonStop, Usage{});
 
   result.id = "test-id-123";
-  result.model = "gpt-4o";
+  result.model = "test-model";
   result.created = 1234567890;
   result.system_fingerprint = "fp_123";
   result.provider_metadata = "{\"test\": true}";
 
   EXPECT_EQ(result.id.value(), "test-id-123");
-  EXPECT_EQ(result.model.value(), "gpt-4o");
+  EXPECT_EQ(result.model.value(), "test-model");
   EXPECT_EQ(result.created.value(), 1234567890);
   EXPECT_EQ(result.system_fingerprint.value(), "fp_123");
   EXPECT_EQ(result.provider_metadata.value(), "{\"test\": true}");
@@ -318,7 +318,7 @@ class TypesEdgeCaseTest : public AITestFixture,
 
 TEST_P(TypesEdgeCaseTest, GenerateOptionsWithVariousPrompts) {
   std::string prompt = GetParam();
-  GenerateOptions options("gpt-4o", prompt);
+  GenerateOptions options("test-model", prompt);
 
   if (prompt.empty()) {
     EXPECT_FALSE(options.is_valid());

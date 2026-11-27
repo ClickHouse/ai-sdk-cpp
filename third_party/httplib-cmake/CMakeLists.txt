@@ -32,9 +32,6 @@ target_link_libraries(httplib INTERFACE
     OpenSSL::SSL
     OpenSSL::Crypto
     ZLIB::ZLIB
-    Brotli::common
-    Brotli::decoder  
-    Brotli::encoder
     $<$<PLATFORM_ID:Windows>:ws2_32>
     $<$<PLATFORM_ID:Windows>:crypt32>
 )
@@ -43,7 +40,6 @@ target_link_libraries(httplib INTERFACE
 target_compile_definitions(httplib INTERFACE
     CPPHTTPLIB_OPENSSL_SUPPORT
     CPPHTTPLIB_ZLIB_SUPPORT
-    CPPHTTPLIB_BROTLI_SUPPORT
     CPPHTTPLIB_THREAD_POOL_COUNT=8
 )
 

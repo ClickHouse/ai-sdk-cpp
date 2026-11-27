@@ -17,6 +17,7 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps/
+tests/cmake_test_discovery_*.json
 
 # vcpkg
 vcpkg_installed/
@@ -160,6 +161,10 @@ config.json
 .envrc
 .cache/
 .claude/
+# Former submodule checkouts (dependencies are now fetched by CMake)
+/third_party/zlib/
+/third_party/googletest/
+/third_party/clickhouse-cpp/
 
 # Kiro specs
 .kiro/

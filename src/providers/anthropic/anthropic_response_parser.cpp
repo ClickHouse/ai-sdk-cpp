@@ -103,7 +103,7 @@ EmbeddingResult AnthropicResponseParser::parse_success_embedding_response(
 
   // Extract choices
   if (response.contains("data") && !response["data"].empty()) {
-    result.data = std::move(response["data"]);
+    result.data = response["data"];
   }
 
   // Extract usage

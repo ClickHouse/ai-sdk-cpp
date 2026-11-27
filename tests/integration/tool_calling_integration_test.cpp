@@ -134,19 +134,19 @@ class ToolCallingIntegrationTest
 
     if (provider == "openai") {
       const char* api_key = std::getenv("OPENAI_API_KEY");
-      if (api_key) {
+      if (api_key && *api_key != '\0') {
         use_real_api_ = true;
         client_ = ai::openai::create_client(api_key);
-        model_ = ai::openai::models::kGpt4oMini;
+        model_ = ai::openai::models::kGpt56Luna;
       } else {
         use_real_api_ = false;
       }
     } else if (provider == "anthropic") {
       const char* api_key = std::getenv("ANTHROPIC_API_KEY");
-      if (api_key) {
+      if (api_key && *api_key != '\0') {
         use_real_api_ = true;
         client_ = ai::anthropic::create_client(api_key);
-        model_ = ai::anthropic::models::kClaudeSonnet45;
+        model_ = ai::anthropic::models::kClaudeSonnet5;
       } else {
         use_real_api_ = false;
       }
@@ -385,6 +385,7 @@ TEST_P(ToolCallingIntegrationTest, ToolExecutionResults) {
   GenerateOptions options(
       model_, "What's 15 + 25? Please show me the exact calculation.");
   options.tools = tools_;
+  options.tool_choice = ToolChoice::specific("calculator");
   options.max_tokens = 300;
 
   auto result = client_->generate_text(options);
@@ -630,10 +631,10 @@ class OpenAISpecificToolTest : public ::testing::Test {
  protected:
   void SetUp() override {
     const char* api_key = std::getenv("OPENAI_API_KEY");
-    if (api_key) {
+    if (api_key && *api_key != '\0') {
       use_real_api_ = true;
       client_ = ai::openai::create_client(api_key);
-      model_ = ai::openai::models::kGpt4oMini;
+      model_ = ai::openai::models::kGpt56Luna;
     } else {
       use_real_api_ = false;
     }
@@ -669,10 +670,10 @@ class AnthropicSpecificToolTest : public ::testing::Test {
  protected:
   void SetUp() override {
     const char* api_key = std::getenv("ANTHROPIC_API_KEY");
-    if (api_key) {
+    if (api_key && *api_key != '\0') {
       use_real_api_ = true;
       client_ = ai::anthropic::create_client(api_key);
-      model_ = ai::anthropic::models::kClaudeSonnet45;
+      model_ = ai::anthropic::models::kClaudeSonnet5;
     } else {
       use_real_api_ = false;
     }

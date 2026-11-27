@@ -19,7 +19,7 @@ class AITestFixture : public ::testing::Test {
 
   // Common test data
   static constexpr const char* kTestApiKey = "sk-test123456789";
-  static constexpr const char* kTestModel = "gpt-4o";
+  static constexpr const char* kTestModel = "test-model";
   static constexpr const char* kTestPrompt = "Hello, world!";
   static constexpr const char* kTestBaseUrl = "https://api.openai.com";
 

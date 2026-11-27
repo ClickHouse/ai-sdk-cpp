@@ -24,18 +24,17 @@ The AI SDK CPP Core module provides a unified API to interact with model provide
 
 ```cpp
 #include <ai/openai.h>
-#include <ai/generate.h>
+#include <ai/core.h>
 #include <iostream>
 
 int main() {
     // Ensure OPENAI_API_KEY environment variable is set
     auto client = ai::openai::create_client();
     
-    auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
-        .system = "You are a friendly assistant!",
-        .prompt = "Why is the sky blue?"
-    });
+    ai::GenerateOptions options(ai::openai::models::kGpt56,
+                                "Why is the sky blue?");
+    options.system = "You are a friendly assistant!";
+    auto result = client.generate_text(options);
     
     if (result) {
         std::cout << result->text << std::endl;
@@ -49,17 +48,16 @@ int main() {
 
 ```cpp
 #include <ai/anthropic.h>
-#include <ai/generate.h>
+#include <ai/core.h>
 #include <iostream>
 
 int main() {
     // Ensure ANTHROPIC_API_KEY environment variable is set
     auto client = ai::anthropic::create_client();
-    auto result = client.generate_text({
-        .model = ai::anthropic::models::kClaudeSonnet45,
-        .system = "You are a helpful assistant.",
-        .prompt = "Explain quantum computing in simple terms."
-    });
+    ai::GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+                                "Explain quantum computing in simple terms.");
+    options.system = "You are a helpful assistant.";
+    auto result = client.generate_text(options);
 
     if (result) {
         std::cout << result->text << std::endl;
@@ -73,21 +71,20 @@ int main() {
 
 ```cpp
 #include <ai/openai.h>
-#include <ai/stream.h>
+#include <ai/core.h>
 #include <iostream>
 
 int main() {
     auto client = ai::openai::create_client();
     
-    auto stream = client.stream_text({
-        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
-        .system = "You are a helpful assistant.",
-        .prompt = "Write a short story about a robot."
-    });
+    ai::GenerateOptions generate_options(ai::openai::models::kGpt56,
+                                         "Write a short story about a robot.");
+    generate_options.system = "You are a helpful assistant.";
+    auto stream = client.stream_text(ai::StreamOptions(generate_options));
     
-    for (const auto& chunk : stream) {
-        if (chunk.text) {
-            std::cout << chunk.text.value() << std::flush;
+    for (const auto& event : stream) {
+        if (event.is_text_delta()) {
+            std::cout << event.text_delta << std::flush;
         }
     }
     
@@ -99,23 +96,21 @@ int main() {
 
 ```cpp
 #include <ai/openai.h>
-#include <ai/generate.h>
+#include <ai/core.h>
 #include <iostream>
 
 int main() {
     auto client = ai::openai::create_client();
     
     ai::Messages messages = {
-        {"system", "You are a helpful math tutor."},
-        {"user", "What is 2 + 2?"},
-        {"assistant", "2 + 2 equals 4."},
-        {"user", "Now what is 4 + 4?"}
+        ai::Message::system("You are a helpful math tutor."),
+        ai::Message::user("What is 2 + 2?"),
+        ai::Message::assistant("2 + 2 equals 4."),
+        ai::Message::user("Now what is 4 + 4?")
     };
     
-    auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o, // this can also be a string like "gpt-4o"
-        .messages = messages
-    });
+    auto result = client.generate_text(
+        ai::GenerateOptions(ai::openai::models::kGpt56, messages));
     
     if (result) {
         std::cout << result->text << std::endl;
@@ -131,7 +126,7 @@ The AI SDK CPP supports function calling, allowing models to interact with exter
 
 ```cpp
 #include <ai/openai.h>
-#include <ai/generate.h>
+#include <ai/core.h>
 #include <ai/tools.h>
 #include <iostream>
 
@@ -160,12 +155,11 @@ int main() {
         )}
     };
     
-    auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o,
-        .prompt = "What's the weather like in San Francisco?",
-        .tools = tools,
-        .max_steps = 3  // Enable multi-step tool calling
-    });
+    ai::GenerateOptions options(ai::openai::models::kGpt56,
+                                "What's the weather like in San Francisco?");
+    options.tools = tools;
+    options.max_steps = 3;
+    auto result = client.generate_text(options);
     
     if (result) {
         std::cout << result->text << std::endl;
@@ -216,11 +210,10 @@ int main() {
     };
     
     // Multiple async tools will execute in parallel
-    auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o,
-        .prompt = "Fetch data from the user and product APIs",
-        .tools = tools
-    });
+    ai::GenerateOptions options(ai::openai::models::kGpt56,
+                                "Fetch data from the user and product APIs");
+    options.tools = tools;
+    auto result = client.generate_text(options);
     
     return 0;
 }
@@ -251,14 +244,15 @@ int main() {
     // The client will automatically retry on transient failures:
     // - Network errors
     // - HTTP 408, 409, 429 (rate limits), and 5xx errors
-    auto result = client.generate_text({
-        .model = ai::openai::models::kGpt4o,
-        .prompt = "Hello, world!"
-    });
+    auto result = client.generate_text(
+        ai::GenerateOptions(ai::openai::models::kGpt56, "Hello, world!"));
     
     return 0;
 }
 ```
+
+The same retry-config overload is available from
+`ai::anthropic::create_client` for Anthropic requests.
 
 #### Using OpenAI-Compatible APIs (OpenRouter, etc.)
 
@@ -266,7 +260,7 @@ The OpenAI client can be used with any OpenAI-compatible API by specifying a cus
 
 ```cpp
 #include <ai/openai.h>
-#include <ai/generate.h>
+#include <ai/core.h>
 #include <iostream>
 #include <cstdlib>
 
@@ -285,11 +279,10 @@ int main() {
     );
     
     // Use any model available on OpenRouter
-    auto result = client.generate_text({
-        .model = "anthropic/claude-3.5-sonnet",  // or "meta-llama/llama-3.1-8b-instruct", etc.
-        .system = "You are a helpful assistant.",
-        .prompt = "What are the benefits of using OpenRouter?"
-    });
+    ai::GenerateOptions options("anthropic/claude-sonnet-5",
+                                "What are the benefits of using OpenRouter?");
+    options.system = "You are a helpful assistant.";
+    auto result = client.generate_text(options);
     
     if (result) {
         std::cout << result->text << std::endl;
@@ -455,6 +448,7 @@ cmake --build build
 - ✅ **Streaming**: Real-time streaming of generated content
 - ✅ **Multi-turn Conversations**: Support for conversation history
 - ✅ **Error Handling**: Comprehensive error handling with optional types
+- ✅ **Embeddings**: OpenAI text embedding support
 - ✅ **Amazon Bedrock**: AWS-native access to Claude, Titan, and Llama models
 
 ### Recently Added
@@ -467,7 +461,7 @@ cmake --build build
 ### Coming Soon
 
 - 🚧 **Additional Providers**: Google, Cohere, and other providers
-- 🚧 **Embeddings**: Text embedding support (Bedrock embeddings planned for V2)
+- 🚧 **Bedrock Embeddings**: Text embedding support for Bedrock
 - 🚧 **Image Generation**: Support for image generation models
 
 ## Examples
@@ -482,6 +476,7 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - [Basic Tool Calling](examples/tool_calling_basic.cpp)
 - [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
 - [Async Tool Execution](examples/tool_calling_async.cpp)
+- [Search Team Documents with Loom](examples/loom_document_search.md)
 - [OpenRouter Integration](examples/openrouter_example.cpp) - Using OpenAI-compatible APIs
 
 

@@ -2,168 +2,72 @@
 
 #include "ai/logger.h"
 
-#include <chrono>
-#include <sstream>
-#include <thread>
-
 namespace {
-constexpr auto kEventTimeout = static_cast<std::chrono::seconds>(30);
-constexpr auto kSleepInterval = std::chrono::milliseconds(1);
+// Null-tolerant JSON field accessors: gateways may deliver fields as JSON
+// null, which nlohmann's value() would throw on (discarding the whole event).
+int int_or_zero(const nlohmann::json& obj, const char* key) {
+  const auto it = obj.find(key);
+  return it != obj.end() && it->is_number() ? it->get<int>() : 0;
+}
+
+std::string string_or_empty(const nlohmann::json& obj, const char* key) {
+  const auto it = obj.find(key);
+  return it != obj.end() && it->is_string() ? it->get<std::string>()
+                                            : std::string{};
+}
+
+std::size_t index_or_zero(const nlohmann::json& obj) {
+  const auto it = obj.find("index");
+  return it != obj.end() && it->is_number_unsigned() ? it->get<std::size_t>()
+                                                     : std::size_t{0};
+}
 }  // namespace
 
 namespace ai {
 namespace anthropic {
 
 AnthropicStreamImpl::~AnthropicStreamImpl() {
+  // Join before this class's state is destroyed; the stream thread calls
+  // process_sse_line.
   stop_stream();
 }
 
-void AnthropicStreamImpl::start_stream(const std::string& url,
-                                       const httplib::Headers& headers,
-                                       const nlohmann::json& request_body) {
-  ai::logger::log_debug("Starting Anthropic stream to URL: {}", url);
-
-  // Start streaming in a separate thread
-  stream_thread_ = std::thread([this, url, headers, request_body]() {
-    try {
-      run_stream(url, headers, request_body);
-    } catch (const std::exception& e) {
-      ai::logger::log_error("Stream thread exception: {}", e.what());
-      StreamEvent error_event(kStreamEventTypeError,
-                              std::string("Stream error: ") + e.what());
-      push_event(error_event);
-      mark_complete();
-    }
-  });
+void AnthropicStreamImpl::reset_stream_state() {
+  event_data_.clear();
 }
 
-StreamEvent AnthropicStreamImpl::get_next_event() {
-  StreamEvent event("");
-  auto start_time = std::chrono::steady_clock::now();
-
-  while (!event_queue_.try_dequeue(event)) {
-    if (stream_complete_ && event_queue_.size_approx() == 0) {
-      // Stream is complete and queue is empty
-      ai::logger::log_debug(
-          "Stream complete and queue empty, returning empty event");
-      return StreamEvent("");
+void AnthropicStreamImpl::process_sse_line(std::string_view line) {
+  if (line.empty()) {
+    // Blank line terminates the SSE event
+    if (!event_data_.empty()) {
+      process_sse_event(event_data_);
+      event_data_.clear();
     }
-
-    // Check for timeout
-    if (std::chrono::steady_clock::now() - start_time > kEventTimeout) {
-      ai::logger::log_error(
-          "Timeout waiting for next stream event after {} seconds",
-          kEventTimeout.count());
-      return StreamEvent(kStreamEventTypeError,
-                         "Timeout waiting for next event");
+  } else if (line.starts_with("data:")) {
+    auto data = line.substr(5);
+    if (!data.empty() && data.front() == ' ') {
+      data.remove_prefix(1);
     }
-
-    std::this_thread::sleep_for(kSleepInterval);
-  }
-
-  ai::logger::log_debug("Dequeued event type: {}",
-                        static_cast<int>(event.type));
-  return event;
-}
-
-bool AnthropicStreamImpl::has_more_events() const {
-  return event_queue_.size_approx() > 0 || !stream_complete_;
-}
-
-void AnthropicStreamImpl::stop_stream() {
-  ai::logger::log_debug("Stopping Anthropic stream");
-  stop_requested_ = true;
-  if (stream_thread_.joinable()) {
-    stream_thread_.join();
+    if (!event_data_.empty()) {
+      event_data_ += '\n';
+    }
+    event_data_.append(data);
   }
 }
 
-void AnthropicStreamImpl::run_stream(const std::string& url,
-                                     const httplib::Headers& headers,
-                                     const nlohmann::json& request_body) {
-  ai::logger::log_debug("Performing stream request");
-
-  // Parse URL to extract host and path
-  std::string host, path;
-  bool use_ssl = true;
-
-  if (url.starts_with("https://")) {
-    host = url.substr(8);
-    use_ssl = true;
-  } else if (url.starts_with("http://")) {
-    host = url.substr(7);
-    use_ssl = false;
+void AnthropicStreamImpl::finalize_stream() {
+  // Dispatch an event whose terminating blank line never arrived.
+  if (!event_data_.empty()) {
+    process_sse_event(event_data_);
+    event_data_.clear();
   }
-
-  if (auto pos = host.find('/'); pos != std::string::npos) {
-    path = host.substr(pos);
-    host = host.substr(0, pos);
-  } else {
-    path = "/v1/messages";
-  }
-
-  ai::logger::log_debug("Stream host: {}, path: {}, SSL: {}", host, path,
-                        use_ssl);
-
-  try {
-    if (use_ssl) {
-      httplib::SSLClient client(host);
-      client.enable_server_certificate_verification(true);
-      client.set_connection_timeout(30, 0);
-      client.set_read_timeout(120, 0);
-
-      auto result =
-          client.Post(path, headers, request_body.dump(), "application/json");
-
-      if (result && result->status == 200) {
-        parse_sse_response(result->body);
-      } else {
-        handle_stream_error(result ? result->status : 0,
-                            result ? result->body : "Connection failed");
-      }
-    } else {
-      httplib::Client client(host);
-      client.set_connection_timeout(30, 0);
-      client.set_read_timeout(120, 0);
-
-      auto result =
-          client.Post(path, headers, request_body.dump(), "application/json");
-
-      if (result && result->status == 200) {
-        parse_sse_response(result->body);
-      } else {
-        handle_stream_error(result ? result->status : 0,
-                            result ? result->body : "Connection failed");
-      }
-    }
-  } catch (const std::exception& e) {
-    ai::logger::log_error("Stream request exception: {}", e.what());
-    handle_stream_error(0, std::string("Request failed: ") + e.what());
-  }
-
-  mark_complete();
 }
 
-void AnthropicStreamImpl::parse_sse_response(const std::string& response) {
-  ai::logger::log_debug("Processing SSE response, size: {}", response.size());
-
-  std::istringstream stream(response);
-  std::string line;
-  std::string event_data;
-
-  while (std::getline(stream, line) && !stop_requested_) {
-    if (line.empty()) {
-      // Empty line signals end of event
-      if (!event_data.empty()) {
-        process_sse_event(event_data);
-        event_data.clear();
-      }
-    } else if (line.starts_with("data: ")) {
-      event_data = line.substr(6);
-    }
+Usage& AnthropicStreamImpl::ensure_usage() {
+  if (!usage_) {
+    usage_ = Usage{};
   }
-
-  ai::logger::log_debug("SSE processing complete");
+  return *usage_;
 }
 
 void AnthropicStreamImpl::process_sse_event(const std::string& data) {
@@ -174,71 +78,90 @@ void AnthropicStreamImpl::process_sse_event(const std::string& data) {
 
   try {
     auto json_event = nlohmann::json::parse(data);
-    std::string event_type = json_event.value("type", "");
+    std::string event_type = string_or_empty(json_event, "type");
 
     ai::logger::log_debug("Processing SSE event type: {}", event_type);
 
     if (event_type == "message_start") {
-      // Start of message - could extract metadata here
+      if (json_event.contains("message") && json_event["message"].is_object()) {
+        const auto& message = json_event["message"];
+        if (message.contains("usage") && message["usage"].is_object()) {
+          auto& usage = ensure_usage();
+          usage.prompt_tokens = int_or_zero(message["usage"], "input_tokens");
+          usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+        }
+      }
       return;
     } else if (event_type == "content_block_start") {
-      // Start of content block
+      if (json_event.contains("content_block") &&
+          json_event["content_block"].is_object() &&
+          string_or_empty(json_event["content_block"], "type") == "tool_use") {
+        const auto index = index_or_zero(json_event);
+        const auto& block = json_event["content_block"];
+        auto& pending = pending_tool_calls_[index];
+        pending.id = string_or_empty(block, "id");
+        pending.name = string_or_empty(block, "name");
+        if (block.contains("input") && block["input"].is_object() &&
+            !block["input"].empty()) {
+          // Keep separately from the delta accumulator: appending deltas to
+          // an already complete JSON object would produce invalid JSON.
+          pending.initial_input = block["input"].dump();
+        }
+      }
       return;
     } else if (event_type == "content_block_delta") {
       // Text delta - this is what we want to stream
-      if (json_event.contains("delta") &&
-          json_event["delta"].contains("text")) {
+      if (json_event.contains("delta") && json_event["delta"].is_object() &&
+          json_event["delta"].contains("text") &&
+          json_event["delta"]["text"].is_string()) {
         std::string text = json_event["delta"]["text"];
 
-        StreamEvent event(text);
-        push_event(event);
+        push_event(StreamEvent(text));
 
         ai::logger::log_debug("Enqueued text delta: '{}'", text);
+      } else if (json_event.contains("delta") &&
+                 json_event["delta"].is_object() &&
+                 string_or_empty(json_event["delta"], "type") ==
+                     "input_json_delta") {
+        const auto index = index_or_zero(json_event);
+        pending_tool_calls_[index].arguments +=
+            string_or_empty(json_event["delta"], "partial_json");
       }
     } else if (event_type == "content_block_stop") {
-      // End of content block
+      flush_pending_tool_call(index_or_zero(json_event));
       return;
     } else if (event_type == "message_delta") {
-      // Message-level delta (could contain stop reason)
+      if (json_event.contains("delta") && json_event["delta"].is_object()) {
+        const auto stop_reason =
+            string_or_empty(json_event["delta"], "stop_reason");
+        if (stop_reason == "max_tokens") {
+          finish_reason_ = kFinishReasonLength;
+        } else if (stop_reason == "tool_use") {
+          finish_reason_ = kFinishReasonToolCalls;
+        } else if (!stop_reason.empty()) {
+          finish_reason_ = kFinishReasonStop;
+        }
+      }
+      if (json_event.contains("usage") && json_event["usage"].is_object()) {
+        auto& usage = ensure_usage();
+        usage.completion_tokens =
+            int_or_zero(json_event["usage"], "output_tokens");
+        usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+      }
       return;
     } else if (event_type == "message_stop") {
-      // End of message
-      StreamEvent event(kStreamEventTypeFinish, Usage{}, kFinishReasonStop);
-      push_event(event);
-
-      ai::logger::log_debug("Enqueued finish event");
+      // The stream is semantically finished; complete immediately so
+      // consumers are not left waiting for the connection to close.
+      mark_complete();
+    } else if (event_type == "error") {
+      const auto message = json_event.value("error", nlohmann::json::object())
+                               .value("message", "Anthropic stream error");
+      note_stream_error();
+      push_event(create_error_event(message));
     }
   } catch (const std::exception& e) {
     ai::logger::log_error("Failed to parse SSE event: {}", e.what());
   }
-}
-
-void AnthropicStreamImpl::push_event(const StreamEvent& event) {
-  event_queue_.enqueue(event);
-}
-
-void AnthropicStreamImpl::mark_complete() {
-  stream_complete_ = true;
-
-  // Push final finish event if not already done
-  StreamEvent finish_event(kStreamEventTypeFinish);
-  push_event(finish_event);
-}
-
-StreamEvent AnthropicStreamImpl::create_error_event(
-    const std::string& message) {
-  return StreamEvent(kStreamEventTypeError, message);
-}
-
-void AnthropicStreamImpl::handle_stream_error(int status_code,
-                                              const std::string& error_body) {
-  ai::logger::log_error("Stream error - status: {}, body: {}", status_code,
-                        error_body);
-
-  StreamEvent error_event(
-      kStreamEventTypeError,
-      "Stream error (" + std::to_string(status_code) + "): " + error_body);
-  push_event(error_event);
 }
 
 }  // namespace anthropic
