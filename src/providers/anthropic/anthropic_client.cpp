@@ -77,14 +77,16 @@ std::vector<std::string> AnthropicClient::supported_models() const {
   // snapshot variants (e.g. "claude-sonnet-4-5-20250929") are accepted by the
   // Anthropic API; list both so identifiers in `ai::anthropic::models::*`
   // resolve via `supports_model()`.
-  return {models::kClaudeFable5,           models::kClaudeOpus5,
-          models::kClaudeOpus48,           models::kClaudeSonnet5,
-          models::kClaudeOpus47,           models::kClaudeSonnet46,
-          models::kClaudeOpus46,           models::kClaudeHaiku45,
-          models::kClaudeHaiku45Snapshot,  models::kClaudeOpus45,
-          models::kClaudeOpus45Snapshot,   models::kClaudeSonnet45,
-          models::kClaudeSonnet45Snapshot, models::kClaudeOpus41,
-          models::kClaudeOpus41Snapshot};
+  return {models::kClaudeFable52,  models::kClaudeOpus55,
+          models::kClaudeSonnet55, models::kClaudeHaiku55,
+          models::kClaudeFable51,  models::kClaudeFable5,
+          models::kClaudeOpus5,    models::kClaudeOpus48,
+          models::kClaudeSonnet5,  models::kClaudeOpus47,
+          models::kClaudeSonnet46, models::kClaudeOpus46,
+          models::kClaudeHaiku45,  models::kClaudeHaiku45Snapshot,
+          models::kClaudeOpus45,   models::kClaudeOpus45Snapshot,
+          models::kClaudeSonnet45, models::kClaudeSonnet45Snapshot,
+          models::kClaudeOpus41,   models::kClaudeOpus41Snapshot};
 }
 
 bool AnthropicClient::supports_model(const std::string& model_name) const {

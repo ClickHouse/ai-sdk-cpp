@@ -146,6 +146,11 @@ FinishReason AnthropicResponseParser::parse_stop_reason(
   if (reason == "tool_use") {
     return kFinishReasonToolCalls;
   }
+  if (reason == "refusal") {
+    // Safety classifiers declined the request (HTTP 200, details in
+    // `stop_details`).
+    return kFinishReasonContentFilter;
+  }
   return kFinishReasonStop;
 }
 

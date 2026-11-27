@@ -81,6 +81,10 @@ TEST_F(OpenAIClientTest, ConstructorWithHttpUrl) {
 TEST_F(OpenAIClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();
 
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt62Astra));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt62Sol));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt61Terra));
+  EXPECT_THAT(models, testing::Contains(openai::models::kGpt6Luna));
   EXPECT_THAT(models, testing::Contains(openai::models::kGpt56));
   EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Sol));
   EXPECT_THAT(models, testing::Contains(openai::models::kGpt56Terra));
@@ -174,6 +178,28 @@ TEST_F(OpenAIClientTest, Gpt5FamilyUsesChatCompletionsCompatibleReasoning) {
   }
 }
 
+TEST_F(OpenAIClientTest, Gpt6FamilyUsesLowestAcceptedReasoningEffort) {
+  openai::OpenAIRequestBuilder builder;
+
+  // GPT-6.2 rejects "none"; "low" is accepted by every GPT-6 model.
+  for (const auto* model :
+       {openai::models::kGpt62Astra, openai::models::kGpt62Sol, "gpt-6-sol"}) {
+    GenerateOptions options(model, "Hello");
+    EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"], "low")
+        << model;
+  }
+
+  for (const auto* model :
+       {openai::models::kGpt61Terra, openai::models::kGpt6Luna}) {
+    GenerateOptions options(model, "Hello");
+    EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"], "none")
+        << model;
+  }
+
+  GenerateOptions cyber("gpt-6-cyber", "Hello");
+  EXPECT_FALSE(builder.build_request_json(cyber).contains("reasoning_effort"));
+}
+
 TEST_F(OpenAIClientTest, ReasoningEffortIsOmittedWhereItsValuesAreNotKnown) {
   openai::OpenAIRequestBuilder builder;
 
@@ -193,7 +219,8 @@ TEST_F(OpenAIClientTest, ReasoningEffortIsOmittedWhereItsValuesAreNotKnown) {
 TEST_F(OpenAIClientTest, Gpt5FamilyOmitsUnsupportedSamplingParameters) {
   openai::OpenAIRequestBuilder builder;
   for (const auto* model :
-       {openai::models::kGpt56, openai::models::kGpt56Terra,
+       {openai::models::kGpt62Sol, openai::models::kGpt6Luna,
+        openai::models::kGpt56, openai::models::kGpt56Terra,
         openai::models::kGpt55, openai::models::kGpt5Mini}) {
     GenerateOptions options(model, "Hello");
     options.temperature = 0.0;

@@ -146,6 +146,8 @@ void AnthropicStreamImpl::process_sse_event(const std::string& data) {
           finish_reason_ = kFinishReasonLength;
         } else if (stop_reason == "tool_use") {
           finish_reason_ = kFinishReasonToolCalls;
+        } else if (stop_reason == "refusal") {
+          finish_reason_ = kFinishReasonContentFilter;
         } else if (!stop_reason.empty()) {
           finish_reason_ = kFinishReasonStop;
         }
