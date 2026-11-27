@@ -341,6 +341,23 @@ std::string model_resource_name(const std::string& model) {
   return std::string(kModelsPrefix) + model;
 }
 
+void include_thought_summaries(nlohmann::json& request) {
+  const auto config = request.find("generationConfig");
+  if (config == request.end() || !config->is_object()) {
+    return;
+  }
+  const auto thinking = config->find("thinkingConfig");
+  if (thinking == config->end() || !thinking->is_object()) {
+    return;
+  }
+  if (const auto budget = thinking->find("thinkingBudget");
+      budget != thinking->end() && budget->is_number() &&
+      budget->get<int>() == 0) {
+    return;
+  }
+  (*thinking)["includeThoughts"] = true;
+}
+
 nlohmann::json GoogleRequestBuilder::build_request_json(
     const GenerateOptions& options) {
   ContentsBuilder builder;

@@ -1,5 +1,5 @@
 # Test executable for AI SDK C++
-add_executable(ai_tests
+set(AI_TEST_SOURCES
     # Unit tests
     unit/openai_client_test.cpp
     unit/anthropic_client_test.cpp
@@ -8,6 +8,7 @@ add_executable(ai_tests
     unit/anthropic_stream_test.cpp
     unit/openai_embeddings_test.cpp
     unit/multi_step_coordinator_test.cpp
+    unit/langfuse_tracer_test.cpp
     unit/openai_responses_test.cpp
     unit/google_client_test.cpp
     unit/google_stream_test.cpp
@@ -28,6 +29,21 @@ add_executable(ai_tests
     utils/test_fixtures.cpp
 )
 
+# Add Bedrock tests when enabled
+if(AI_SDK_ENABLE_BEDROCK)
+    list(APPEND AI_TEST_SOURCES
+        unit/bedrock_request_mapper_test.cpp
+        unit/bedrock_response_parser_test.cpp
+        unit/bedrock_stream_test.cpp
+        # Security component tests
+        unit/input_validator_test.cpp
+        unit/credential_redactor_test.cpp
+        integration/bedrock_integration_test.cpp
+    )
+endif()
+
+add_executable(ai_tests ${AI_TEST_SOURCES})
+
 # Link against the main library and test dependencies
 target_link_libraries(ai_tests
     PRIVATE
@@ -39,6 +55,14 @@ target_link_libraries(ai_tests
         GTest::gmock
         ClickHouse::Client  # ClickHouse C++ client for integration tests
 )
+
+# Link AWS SDK for Bedrock tests when enabled
+if(AI_SDK_ENABLE_BEDROCK)
+    target_link_libraries(ai_tests
+        PRIVATE
+            ${AWSSDK_LINK_LIBRARIES}
+    )
+endif()
 
 # Include directories for tests
 target_include_directories(ai_tests

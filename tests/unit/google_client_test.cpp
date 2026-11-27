@@ -191,6 +191,26 @@ TEST(GoogleRequestTest, AsksForTheLeastThinkingTheModelAccepts) {
   EXPECT_TRUE(thinking_config("custom-model").is_null());
 }
 
+TEST(GoogleRequestTest, StreamRequestsIncludeThoughtSummaries) {
+  google::GoogleRequestBuilder builder;
+  auto request = builder.build_request_json(
+      GenerateOptions(google::models::kGemini4Hydrogen, "Hi"));
+  google::include_thought_summaries(request);
+  EXPECT_EQ(
+      request["generationConfig"]["thinkingConfig"],
+      nlohmann::json({{"thinkingLevel", "low"}, {"includeThoughts", true}}));
+
+  // No summaries when thinking is off or the model has no thinking settings.
+  request =
+      builder.build_request_json(GenerateOptions("gemini-2.5-flash", "Hi"));
+  google::include_thought_summaries(request);
+  EXPECT_FALSE(request["generationConfig"]["thinkingConfig"].contains(
+      "includeThoughts"));
+  request = builder.build_request_json(GenerateOptions("custom-model", "Hi"));
+  google::include_thought_summaries(request);
+  EXPECT_FALSE(request.contains("generationConfig"));
+}
+
 TEST(GoogleRequestTest, MapsRolesAndSystemMessages) {
   google::GoogleRequestBuilder builder;
   GenerateOptions options(

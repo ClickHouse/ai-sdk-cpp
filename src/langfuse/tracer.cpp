@@ -1,6 +1,7 @@
 #include "ai/langfuse.h"
 #include "ai/logger.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <ctime>
 #include <httplib.h>
@@ -12,18 +13,55 @@ namespace langfuse {
 
 namespace {
 
-constexpr const char* kIngestionPath = "/api/public/ingestion";
+// OTLP/HTTP traces endpoint of Langfuse: the only ingestion API of Langfuse v4
+// (Langfuse Cloud) for traces and observations; also available in self-hosted
+// Langfuse since v3.22.0.
+constexpr const char* kOtlpTracesPath = "/api/public/otel/v1/traces";
 
-// Langfuse ingestion event type discriminators
-// (packages/shared/src/server/ingestion/types.ts::eventTypes).
-constexpr const char* kEventTraceCreate = "trace-create";
-constexpr const char* kEventSpanCreate = "span-create";
-constexpr const char* kEventSpanUpdate = "span-update";
-constexpr const char* kEventGenerationCreate = "generation-create";
+// Tells Langfuse v4 that every span carries the trace-level attributes
+// (propagated client side), so spans are visible without the delay of the
+// v3-to-v4 transition pipeline.
+constexpr const char* kIngestionVersionHeader = "x-langfuse-ingestion-version";
+constexpr const char* kIngestionVersion = "4";
 
-constexpr const char* kLevelDefault = "DEFAULT";
+constexpr const char* kInstrumentationScope = "ai-sdk-cpp";
+
+// Langfuse OpenTelemetry attribute names
+// (packages/shared/src/server/otel/attributes.ts).
+constexpr const char* kAttrTraceName = "langfuse.trace.name";
+constexpr const char* kAttrTraceInput = "langfuse.trace.input";
+constexpr const char* kAttrTraceOutput = "langfuse.trace.output";
+constexpr const char* kAttrTraceTags = "langfuse.trace.tags";
+constexpr const char* kAttrTraceMetadata = "langfuse.trace.metadata";
+constexpr const char* kAttrUserId = "langfuse.user.id";
+constexpr const char* kAttrSessionId = "langfuse.session.id";
+constexpr const char* kAttrRelease = "langfuse.release";
+constexpr const char* kAttrEnvironment = "langfuse.environment";
+constexpr const char* kAttrObservationType = "langfuse.observation.type";
+constexpr const char* kAttrObservationInput = "langfuse.observation.input";
+constexpr const char* kAttrObservationOutput = "langfuse.observation.output";
+constexpr const char* kAttrObservationMetadata =
+    "langfuse.observation.metadata";
+constexpr const char* kAttrObservationLevel = "langfuse.observation.level";
+constexpr const char* kAttrObservationStatusMessage =
+    "langfuse.observation.status_message";
+constexpr const char* kAttrModelName = "langfuse.observation.model.name";
+constexpr const char* kAttrModelParameters =
+    "langfuse.observation.model.parameters";
+constexpr const char* kAttrUsageDetails = "langfuse.observation.usage_details";
+// OpenTelemetry GenAI semantic conventions, for other OTLP consumers.
+constexpr const char* kAttrGenAiRequestModel = "gen_ai.request.model";
+constexpr const char* kAttrGenAiInputTokens = "gen_ai.usage.input_tokens";
+constexpr const char* kAttrGenAiOutputTokens = "gen_ai.usage.output_tokens";
+
+constexpr const char* kObservationTypeSpan = "span";
+constexpr const char* kObservationTypeGeneration = "generation";
 constexpr const char* kLevelError = "ERROR";
-constexpr const char* kUsageUnitTokens = "TOKENS";
+
+// opentelemetry.proto.trace.v1.Span.SpanKind / Status.StatusCode.
+constexpr int kSpanKindInternal = 1;
+constexpr int kSpanKindClient = 3;
+constexpr int kStatusCodeError = 2;
 
 // Strip the scheme prefix off a Langfuse host URL and return the leading
 // sub-path (everything after the host[:port], e.g. "/langfuse" if hosted under
@@ -125,8 +163,90 @@ JsonValue messages_input_from(const GenerateOptions& options) {
 JsonValue usage_to_langfuse(const Usage& u) {
   return {{"input", u.prompt_tokens},
           {"output", u.completion_tokens},
-          {"total", u.total_tokens},
-          {"unit", kUsageUnitTokens}};
+          {"total", u.total_tokens}};
+}
+
+// Langfuse expects input/output/metadata attributes as strings holding JSON;
+// plain strings are sent as is.
+std::string to_attribute_string(const JsonValue& value) {
+  if (value.is_string())
+    return value.get<std::string>();
+  return value.dump();
+}
+
+void add_attribute(JsonValue& span, const char* key, std::string value) {
+  span["attributes"].push_back(
+      {{"key", key}, {"value", {{"stringValue", std::move(value)}}}});
+}
+
+void add_attribute(JsonValue& span, const char* key, const JsonValue& value) {
+  add_attribute(span, key, to_attribute_string(value));
+}
+
+void add_attribute(JsonValue& span, const char* key, int64_t value) {
+  // OTLP/JSON encodes 64-bit integers as decimal strings.
+  span["attributes"].push_back(
+      {{"key", key}, {"value", {{"intValue", std::to_string(value)}}}});
+}
+
+void add_attribute(JsonValue& span,
+                   const char* key,
+                   const std::vector<std::string>& values) {
+  JsonValue array = JsonValue::array();
+  for (const auto& v : values)
+    array.push_back({{"stringValue", v}});
+  span["attributes"].push_back(
+      {{"key", key}, {"value", {{"arrayValue", {{"values", array}}}}}});
+}
+
+JsonValue make_span(const std::string& trace_id,
+                    const std::string& span_id,
+                    const std::string& parent_span_id,
+                    const std::string& name,
+                    int kind,
+                    const char* observation_type,
+                    const std::string& start_nanos) {
+  JsonValue span;
+  span["traceId"] = trace_id;
+  span["spanId"] = span_id;
+  if (!parent_span_id.empty())
+    span["parentSpanId"] = parent_span_id;
+  span["name"] = name;
+  span["kind"] = kind;
+  span["startTimeUnixNano"] = start_nanos;
+  span["attributes"] = JsonValue::array();
+  add_attribute(span, kAttrObservationType, std::string(observation_type));
+  return span;
+}
+
+void mark_error(JsonValue& span, const std::string& message) {
+  add_attribute(span, kAttrObservationLevel, std::string(kLevelError));
+  add_attribute(span, kAttrObservationStatusMessage, message);
+  span["status"] = {{"code", kStatusCodeError}, {"message", message}};
+}
+
+std::string random_hex_id(size_t bytes) {
+  static thread_local std::mt19937_64 engine{[] {
+    std::random_device rd;
+    return (static_cast<uint64_t>(rd()) << 32) ^ rd();
+  }()};
+  static const char* kHex = "0123456789abcdef";
+  std::string out(bytes * 2, '0');
+  bool all_zero = true;
+  do {
+    for (size_t i = 0; i < bytes; i += 8) {
+      uint64_t r = engine();
+      for (size_t j = 0; j < 8 && i + j < bytes; ++j) {
+        unsigned char b = static_cast<unsigned char>(r >> (j * 8));
+        out[(i + j) * 2] = kHex[b >> 4];
+        out[(i + j) * 2 + 1] = kHex[b & 0xF];
+        if (b != 0)
+          all_zero = false;
+      }
+    }
+    // An all-zero id is invalid in OpenTelemetry.
+  } while (all_zero);
+  return out;
 }
 
 }  // namespace
@@ -156,6 +276,7 @@ struct Tracer::HttpState {
         {"User-Agent", "ai-sdk-cpp-langfuse/0.1"},
         {"X-Langfuse-Sdk-Name", "ai-sdk-cpp"},
         {"X-Langfuse-Sdk-Variant", "ai-sdk-cpp"},
+        {kIngestionVersionHeader, kIngestionVersion},
     };
   }
 };
@@ -181,7 +302,7 @@ Tracer::HttpState& Tracer::http_state() {
 
 std::shared_ptr<Trace> Tracer::start_trace(const std::string& name,
                                            TraceOptions opts) {
-  auto trace = std::make_shared<Trace>(*this, Trace::new_uuid(), name);
+  auto trace = std::make_shared<Trace>(*this, Trace::new_trace_id(), name);
   if (opts.input)
     trace->set_input(std::move(*opts.input));
   if (opts.output)
@@ -197,38 +318,64 @@ std::shared_ptr<Trace> Tracer::start_trace(const std::string& name,
   return trace;
 }
 
-bool Tracer::send_batch(const JsonValue& events) {
+bool Tracer::export_spans(const JsonValue& spans) {
   if (!is_valid()) {
     ai::logger::log_warn(
         "Langfuse tracer not configured (missing host/public_key/secret_key); "
-        "dropping {} events",
-        events.is_array() ? events.size() : 0);
+        "dropping {} spans",
+        spans.is_array() ? spans.size() : 0);
     return false;
   }
 
+  // ExportTraceServiceRequest
+  // (opentelemetry/proto/collector/trace/v1/trace_service.proto).
+  JsonValue resource_attributes = JsonValue::array();
+  resource_attributes.push_back(
+      {{"key", "service.name"},
+       {"value", {{"stringValue", kInstrumentationScope}}}});
   JsonValue body;
-  body["batch"] = events;
+  body["resourceSpans"] = JsonValue::array();
+  body["resourceSpans"].push_back(
+      {{"resource", {{"attributes", std::move(resource_attributes)}}},
+       {"scopeSpans",
+        JsonValue::array({{{"scope", {{"name", kInstrumentationScope}}},
+                           {"spans", spans}}})}});
   std::string serialized = body.dump();
 
   std::lock_guard<std::mutex> lock(mu_);
   auto& s = http_state();
-  std::string path = s.base_path + kIngestionPath;
+  std::string path = s.base_path + kOtlpTracesPath;
   auto res =
       s.client.Post(path.c_str(), s.headers, serialized, "application/json");
 
   if (!res) {
-    ai::logger::log_error("Langfuse ingestion failed: {}",
+    ai::logger::log_error("Langfuse OTLP export failed: {}",
                           httplib::to_string(res.error()));
     return false;
   }
-  if (res->status >= 200 && res->status < 300) {
-    ai::logger::log_debug("Langfuse ingestion accepted ({}): {}", res->status,
+  if (res->status < 200 || res->status >= 300) {
+    ai::logger::log_error("Langfuse OTLP export non-2xx ({}): {}", res->status,
                           res->body);
-    return true;
+    return false;
   }
-  ai::logger::log_error("Langfuse ingestion non-2xx ({}): {}", res->status,
+
+  // ExportTraceServiceResponse may report spans the server rejected.
+  auto response = JsonValue::parse(res->body, nullptr, false);
+  if (response.is_object() && response.contains("partialSuccess") &&
+      response["partialSuccess"].is_object()) {
+    const auto& partial = response["partialSuccess"];
+    // int64 rejectedSpans may be encoded as a number or a decimal string.
+    const auto rejected = partial.value("rejectedSpans", JsonValue(0));
+    if ((rejected.is_number() && rejected.get<int64_t>() != 0) ||
+        (rejected.is_string() && rejected.get<std::string>() != "0")) {
+      ai::logger::log_error("Langfuse OTLP export rejected spans ({}): {}",
+                            res->status, res->body);
+      return false;
+    }
+  }
+  ai::logger::log_debug("Langfuse OTLP export accepted ({}): {}", res->status,
                         res->body);
-  return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -239,7 +386,8 @@ Trace::Trace(Tracer& tracer, std::string id, std::string name)
     : tracer_(tracer),
       id_(std::move(id)),
       name_(std::move(name)),
-      trace_start_(std::chrono::system_clock::now()) {}
+      trace_start_(std::chrono::system_clock::now()),
+      root_span_id_(new_span_id()) {}
 
 void Trace::set_input(JsonValue input) {
   if (ended_.load())
@@ -289,7 +437,7 @@ void Trace::instrument(GenerateOptions& options,
     return;
 
   PendingGeneration gen;
-  gen.id = new_uuid();
+  gen.id = new_span_id();
   gen.name = generation_name;
   gen.start_time = std::chrono::system_clock::now();
   gen.input = messages_input_from(options);
@@ -298,6 +446,11 @@ void Trace::instrument(GenerateOptions& options,
 
   {
     std::lock_guard<std::mutex> lock(mu_);
+    // A previous generation that was never finished is closed now, so that
+    // its tool spans keep their parent.
+    if (active_generation_ && !active_generation_->finalized)
+      events_.push_back(build_generation_span(
+          to_unix_nanos(std::chrono::system_clock::now()), nullptr));
     active_generation_ = std::move(gen);
   }
 
@@ -323,58 +476,21 @@ void Trace::instrument(GenerateOptions& options,
   };
 }
 
-namespace {
-
-// Build a span-create event body. Used for both tool-call starts (open span)
-// and the synthetic span emitted in record_tool_call_finish's fallback path.
-JsonValue make_span_create(const std::string& span_id,
-                           const std::string& trace_id,
-                           const std::string& parent_id,
-                           const std::string& name,
-                           const std::string& start_iso,
-                           const JsonValue& input,
-                           const std::string& environment) {
-  JsonValue body;
-  body["id"] = span_id;
-  body["traceId"] = trace_id;
-  body["name"] = name;
-  body["startTime"] = start_iso;
-  body["input"] = input;
-  body["environment"] = environment;
-  if (!parent_id.empty())
-    body["parentObservationId"] = parent_id;
-  return body;
-}
-
-JsonValue wrap_event(const char* type,
-                     const std::string& timestamp,
-                     JsonValue body) {
-  JsonValue event;
-  event["id"] = Trace::new_uuid();
-  event["timestamp"] = timestamp;
-  event["type"] = type;
-  event["body"] = std::move(body);
-  return event;
-}
-
-}  // namespace
-
 void Trace::record_tool_call_start(const ToolCall& call) {
   if (ended_.load())
     return;
 
-  // One clock read per event: startTime and the envelope timestamp share it.
-  std::string ts = to_iso8601(std::chrono::system_clock::now());
+  std::string now = to_unix_nanos(std::chrono::system_clock::now());
 
   std::lock_guard<std::mutex> lock(mu_);
   std::string parent_id =
-      active_generation_ ? active_generation_->id : std::string();
-  JsonValue body =
-      make_span_create(new_uuid(), id_, parent_id, call.tool_name, ts,
-                       call.arguments, tracer_.config().environment);
+      active_generation_ ? active_generation_->id : root_span_id_;
+  JsonValue span = make_span(id_, new_span_id(), parent_id, call.tool_name,
+                             kSpanKindInternal, kObservationTypeSpan, now);
+  add_attribute(span, kAttrObservationInput, call.arguments);
 
   size_t idx = events_.size();
-  events_.push_back(wrap_event(kEventSpanCreate, ts, std::move(body)));
+  events_.push_back(std::move(span));
   open_tool_spans_[call.id] = idx;
 }
 
@@ -382,43 +498,33 @@ void Trace::record_tool_call_finish(const ToolResult& result) {
   if (ended_.load())
     return;
 
-  std::string ts = to_iso8601(std::chrono::system_clock::now());
+  std::string now = to_unix_nanos(std::chrono::system_clock::now());
 
   std::lock_guard<std::mutex> lock(mu_);
   auto it = open_tool_spans_.find(result.tool_call_id);
-  JsonValue output =
-      result.is_success() ? result.result : JsonValue(result.error_message());
-
+  JsonValue* span = nullptr;
   if (it == open_tool_spans_.end()) {
     // No matching start (defensive). Emit a closed span with start==end.
     std::string parent_id =
-        active_generation_ ? active_generation_->id : std::string();
-    JsonValue body =
-        make_span_create(new_uuid(), id_, parent_id, result.tool_name, ts,
-                         result.arguments, tracer_.config().environment);
-    body["endTime"] = ts;
-    body["output"] = output;
-    body["level"] = result.is_success() ? kLevelDefault : kLevelError;
-    if (!result.is_success())
-      body["statusMessage"] = result.error_message();
-    events_.push_back(wrap_event(kEventSpanCreate, ts, std::move(body)));
-    return;
+        active_generation_ ? active_generation_->id : root_span_id_;
+    JsonValue created =
+        make_span(id_, new_span_id(), parent_id, result.tool_name,
+                  kSpanKindInternal, kObservationTypeSpan, now);
+    add_attribute(created, kAttrObservationInput, result.arguments);
+    events_.push_back(std::move(created));
+    span = &events_.back();
+  } else {
+    span = &events_[it->second];
+    open_tool_spans_.erase(it);
   }
 
-  // Close the open span by emitting span-update referencing the same id.
-  const std::string span_id =
-      events_[it->second]["body"]["id"].get<std::string>();
-  JsonValue body;
-  body["id"] = span_id;
-  body["traceId"] = id_;
-  body["endTime"] = ts;
-  body["output"] = output;
-  if (!result.is_success()) {
-    body["level"] = kLevelError;
-    body["statusMessage"] = result.error_message();
+  (*span)["endTimeUnixNano"] = now;
+  if (result.is_success()) {
+    add_attribute(*span, kAttrObservationOutput, result.result);
+  } else {
+    add_attribute(*span, kAttrObservationOutput, result.error_message());
+    mark_error(*span, result.error_message());
   }
-  events_.push_back(wrap_event(kEventSpanUpdate, ts, std::move(body)));
-  open_tool_spans_.erase(it);
 }
 
 void Trace::finish_generation(const GenerateResult& result) {
@@ -428,94 +534,126 @@ void Trace::finish_generation(const GenerateResult& result) {
   std::lock_guard<std::mutex> lock(mu_);
   if (!active_generation_ || active_generation_->finalized)
     return;
+
+  events_.push_back(build_generation_span(
+      to_unix_nanos(std::chrono::system_clock::now()), &result));
+}
+
+JsonValue Trace::build_generation_span(const std::string& end_nanos,
+                                       const GenerateResult* result) {
+  // Caller must hold mu_.
   auto& gen = *active_generation_;
   gen.finalized = true;
 
+  JsonValue span =
+      make_span(id_, gen.id, root_span_id_, gen.name, kSpanKindClient,
+                kObservationTypeGeneration, to_unix_nanos(gen.start_time));
+  span["endTimeUnixNano"] = end_nanos;
+  add_attribute(span, kAttrModelName, gen.model);
+  add_attribute(span, kAttrGenAiRequestModel, gen.model);
+  if (!gen.model_parameters.empty())
+    add_attribute(span, kAttrModelParameters, gen.model_parameters);
+  add_attribute(span, kAttrObservationInput, gen.input);
+
+  if (!result)
+    return span;
+
   // Aggregate per-step usage when the multi-step coordinator didn't roll it up.
-  Usage total = result.usage;
-  if (!result.steps.empty() && total.total_tokens == 0) {
+  Usage total = result->usage;
+  if (!result->steps.empty() && total.total_tokens == 0) {
     int p = 0, c = 0;
-    for (const auto& s : result.steps) {
+    for (const auto& s : result->steps) {
       p += s.usage.prompt_tokens;
       c += s.usage.completion_tokens;
     }
     total = Usage(p, c);
   }
 
-  std::string end_iso = to_iso8601(std::chrono::system_clock::now());
-
-  JsonValue body;
-  body["id"] = gen.id;
-  body["traceId"] = id_;
-  body["name"] = gen.name;
-  body["startTime"] = to_iso8601(gen.start_time);
-  body["endTime"] = end_iso;
-  body["model"] = gen.model;
-  if (!gen.model_parameters.empty())
-    body["modelParameters"] = gen.model_parameters;
-  body["input"] = gen.input;
-  body["output"] = result.text;
-  body["usage"] = usage_to_langfuse(total);
-  body["environment"] = tracer_.config().environment;
+  add_attribute(span, kAttrObservationOutput, result->text);
+  add_attribute(span, kAttrUsageDetails, usage_to_langfuse(total));
+  add_attribute(span, kAttrGenAiInputTokens,
+                static_cast<int64_t>(total.prompt_tokens));
+  add_attribute(span, kAttrGenAiOutputTokens,
+                static_cast<int64_t>(total.completion_tokens));
 
   JsonValue meta = JsonValue::object();
-  meta["finish_reason"] = result.finishReasonToString();
-  if (!result.steps.empty())
-    meta["steps"] = result.steps.size();
-  if (!result.warnings.empty())
-    meta["warnings"] = result.warnings;
-  body["metadata"] = std::move(meta);
+  meta["finish_reason"] = result->finishReasonToString();
+  if (!result->steps.empty())
+    meta["steps"] = result->steps.size();
+  if (!result->warnings.empty())
+    meta["warnings"] = result->warnings;
+  add_attribute(span, kAttrObservationMetadata, meta);
 
-  if (!result.is_success() && result.error) {
-    body["level"] = kLevelError;
-    body["statusMessage"] = *result.error;
-  }
+  if (!result->is_success() && result->error)
+    mark_error(span, *result->error);
 
-  events_.push_back(
-      wrap_event(kEventGenerationCreate, end_iso, std::move(body)));
+  return span;
 }
 
-JsonValue Trace::build_trace_event() const {
+JsonValue Trace::build_root_span(const std::string& end_nanos) const {
   // Caller must hold mu_.
-  std::string start_iso = to_iso8601(trace_start_);
+  JsonValue span =
+      make_span(id_, root_span_id_, std::string(), name_, kSpanKindInternal,
+                kObservationTypeSpan, to_unix_nanos(trace_start_));
+  span["endTimeUnixNano"] = end_nanos;
+  // Langfuse v4 takes the trace input/output from the root observation;
+  // the langfuse.trace.* attributes set them for Langfuse v3.
+  if (input_) {
+    add_attribute(span, kAttrObservationInput, *input_);
+    add_attribute(span, kAttrTraceInput, *input_);
+  }
+  if (output_) {
+    add_attribute(span, kAttrObservationOutput, *output_);
+    add_attribute(span, kAttrTraceOutput, *output_);
+  }
+  return span;
+}
 
-  JsonValue body;
-  body["id"] = id_;
-  body["name"] = name_;
-  body["timestamp"] = start_iso;
-  body["environment"] = tracer_.config().environment;
-  if (!tracer_.config().release.empty())
-    body["release"] = tracer_.config().release;
-  if (input_)
-    body["input"] = *input_;
-  if (output_)
-    body["output"] = *output_;
+void Trace::add_trace_level_attributes(JsonValue& span) const {
+  // Caller must hold mu_.
+  const auto& config = tracer_.config();
+  add_attribute(span, kAttrTraceName, name_);
+  add_attribute(span, kAttrEnvironment, config.environment);
+  if (!config.release.empty())
+    add_attribute(span, kAttrRelease, config.release);
   if (user_id_)
-    body["userId"] = *user_id_;
+    add_attribute(span, kAttrUserId, *user_id_);
   if (session_id_)
-    body["sessionId"] = *session_id_;
+    add_attribute(span, kAttrSessionId, *session_id_);
   if (metadata_)
-    body["metadata"] = *metadata_;
+    add_attribute(span, kAttrTraceMetadata, *metadata_);
   if (!tags_.empty())
-    body["tags"] = tags_;
-
-  return wrap_event(kEventTraceCreate, start_iso, std::move(body));
+    add_attribute(span, kAttrTraceTags, tags_);
 }
 
 bool Trace::end() {
   if (ended_.exchange(true))
     return true;
 
-  JsonValue batch = JsonValue::array();
+  JsonValue spans = JsonValue::array();
   {
     std::lock_guard<std::mutex> lock(mu_);
-    batch.push_back(build_trace_event());
-    for (auto& ev : events_)
-      batch.push_back(std::move(ev));
+    std::string now = to_unix_nanos(std::chrono::system_clock::now());
+
+    if (active_generation_ && !active_generation_->finalized)
+      events_.push_back(build_generation_span(now, nullptr));
+
+    spans.push_back(build_root_span(now));
+    for (auto& span : events_) {
+      // Tool calls that never finished are closed at the end of the trace.
+      if (!span.contains("endTimeUnixNano"))
+        span["endTimeUnixNano"] = now;
+      spans.push_back(std::move(span));
+    }
     events_.clear();
+    open_tool_spans_.clear();
+
+    // Langfuse v4 requires trace-level attributes on every span.
+    for (auto& span : spans)
+      add_trace_level_attributes(span);
   }
 
-  bool ok = tracer_.send_batch(batch);
+  bool ok = tracer_.export_spans(spans);
   return ok ||
          tracer_.config().error_policy == Config::ErrorPolicy::kBestEffort;
 }
@@ -537,6 +675,20 @@ std::string Trace::to_iso8601(std::chrono::system_clock::time_point t) {
                 tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
                 tm.tm_min, tm.tm_sec, static_cast<long long>(ms));
   return std::string(buf);
+}
+
+std::string Trace::to_unix_nanos(std::chrono::system_clock::time_point t) {
+  return std::to_string(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(t.time_since_epoch())
+          .count());
+}
+
+std::string Trace::new_trace_id() {
+  return random_hex_id(16);
+}
+
+std::string Trace::new_span_id() {
+  return random_hex_id(8);
 }
 
 std::string Trace::new_uuid() {

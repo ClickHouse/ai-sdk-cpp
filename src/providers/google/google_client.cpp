@@ -78,6 +78,8 @@ StreamResult GoogleClient::stream_text(const StreamOptions& options) {
     return StreamResult(std::move(impl));
   }
 
+  include_thought_summaries(request_json);
+
   auto headers = request_builder_->build_headers(config_);
   headers.emplace("Accept", "text/event-stream");
 

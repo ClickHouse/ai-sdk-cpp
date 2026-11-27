@@ -102,7 +102,8 @@ conversations continued from `response_messages` replay them automatically.
 Thinking tokens count against `max_tokens`, so the client asks for the least
 thinking each model accepts (`thinkingLevel` `low` or `minimal`, or the
 smallest `thinkingBudget` on Gemini 2.5), like the lowest reasoning effort of
-the OpenAI client. Gemini 4 and Gemini 3.6+ models ignore `temperature` and
+the OpenAI client; streams request thought summaries and emit them as
+reasoning events (`StreamEvent::is_reasoning_delta`). Gemini 4 and Gemini 3.6+ models ignore `temperature` and
 `top_p`, and the client does not send them for those models. Embeddings are not supported by this provider yet.
 
 #### Streaming Responses
@@ -385,25 +386,171 @@ This approach works with any OpenAI-compatible API provider. Simply provide:
 
 See the [OpenRouter example](examples/openrouter_example.cpp) for a complete demonstration.
 
+#### Amazon Bedrock Integration
+
+Amazon Bedrock provides access to foundation models from Anthropic, Amazon, Meta, and others through AWS infrastructure. The Bedrock provider uses the [Converse API](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html), including streaming and tool calling (with multi-step tool execution via `max_steps`), and uses AWS credentials and IAM for authentication. Assumed-role and web identity credentials are refreshed automatically.
+
+```cpp
+#include <ai/bedrock.h>
+#include <iostream>
+
+int main() {
+    // Uses AWS_REGION env var and default credential chain
+    auto client = ai::bedrock::create_client();
+    
+    ai::GenerateOptions options(ai::bedrock::models::kClaudeSonnet,
+                                "Explain cloud computing in simple terms.");
+    options.system = "You are a helpful assistant.";
+    auto result = client.generate_text(options);
+
+    if (result) {
+        std::cout << result.text << std::endl;
+    } else {
+        std::cerr << result.error_message() << std::endl;
+    }
+
+    return 0;
+}
+```
+
+##### Bedrock Configuration Options
+
+```cpp
+#include <ai/bedrock.h>
+
+int main() {
+    ai::bedrock::BedrockConfig config;
+    
+    // AWS region (required - or set AWS_REGION env var)
+    config.region = "us-east-1";
+    
+    // Optional: Use a specific AWS profile
+    config.profile = "my-profile";
+    
+    // Optional: Custom endpoint for VPC endpoints or local testing
+    config.endpoint_override = "https://vpce-xxx.bedrock-runtime.us-east-1.vpce.amazonaws.com";
+    
+    // Optional: Cross-account access via STS AssumeRole
+    config.role_arn = "arn:aws:iam::123456789012:role/BedrockAccessRole";
+    config.external_id = "my-external-id";  // Optional security enhancement
+    
+    // Optional: EKS/OIDC web identity federation
+    config.web_identity_token_file = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token";
+    
+    auto client = ai::bedrock::create_client(config);
+    
+    return 0;
+}
+```
+
+##### Bedrock Security Configuration
+
+```cpp
+ai::bedrock::SecurityConfig security;
+
+// Concurrency control
+security.max_concurrent_requests = 10;
+
+// Timeouts
+security.connection_timeout = std::chrono::seconds(5);
+security.request_timeout = std::chrono::seconds(120);
+
+// Input validation limits
+security.max_prompt_length = 200000;
+security.max_message_length = 200000;
+
+ai::bedrock::BedrockConfig config;
+config.security = security;
+auto client = ai::bedrock::create_client(config);
+```
+
+##### Available Bedrock Models
+
+```cpp
+// Claude models (current generation), as global inference profile IDs:
+// current Claude models need an inference profile for on-demand invocation
+ai::bedrock::models::kClaudeFable    // global.anthropic.claude-fable-5-2
+ai::bedrock::models::kClaudeOpus     // global.anthropic.claude-opus-5-5
+ai::bedrock::models::kClaudeSonnet   // global.anthropic.claude-sonnet-5-5
+ai::bedrock::models::kClaudeHaiku    // global.anthropic.claude-haiku-5-5
+
+// Geographic inference profiles are passed as plain strings,
+// e.g. "us.anthropic.claude-sonnet-5-5" or "eu.anthropic.claude-opus-5-5"
+
+// Amazon Titan models
+ai::bedrock::models::kTitanTextExpress  // amazon.titan-text-express-v1
+ai::bedrock::models::kTitanTextLite     // amazon.titan-text-lite-v1
+ai::bedrock::models::kTitanTextPremier  // amazon.titan-text-premier-v1:0
+
+// Meta Llama models
+ai::bedrock::models::kLlama3_8B   // meta.llama3-8b-instruct-v1:0
+ai::bedrock::models::kLlama3_70B  // meta.llama3-70b-instruct-v1:0
+```
+
+##### Bedrock Streaming
+
+```cpp
+#include <ai/bedrock.h>
+#include <iostream>
+
+int main() {
+    auto client = ai::bedrock::create_client();
+    
+    ai::GenerateOptions options(ai::bedrock::models::kClaudeSonnet,
+                                "Write a haiku about programming.");
+    options.system = "You are a helpful assistant.";
+    auto stream = client.stream_text(ai::StreamOptions(options));
+
+    for (const auto& event : stream) {
+        if (event.is_text_delta()) {
+            std::cout << event.text_delta << std::flush;
+        } else if (event.is_error()) {
+            std::cerr << event.error.value_or("unknown error") << std::endl;
+        }
+    }
+    
+    return 0;
+}
+```
+
+##### Building with Bedrock Support
+
+Bedrock support requires the AWS SDK for C++. Enable it with the CMake option:
+
+```bash
+cmake -B build -DAI_SDK_ENABLE_BEDROCK=ON
+cmake --build build
+```
+
+On macOS with Homebrew:
+```bash
+brew install aws-sdk-cpp
+cmake -B build -DAI_SDK_ENABLE_BEDROCK=ON
+cmake --build build
+```
+
 ## Features
 
 ### Currently Supported
 
-- ✅ **Text Generation**: Generate text completions with OpenAI, Anthropic, and Google Gemini models
+- ✅ **Text Generation**: Generate text completions with OpenAI, Anthropic, Bedrock, and Google Gemini models
 - ✅ **Streaming**: Real-time streaming of generated content
 - ✅ **Multi-turn Conversations**: Support for conversation history
 - ✅ **Error Handling**: Comprehensive error handling with optional types
 - ✅ **Embeddings**: OpenAI text embedding support
+- ✅ **Amazon Bedrock**: AWS-native access to Claude, Titan, and Llama models
 
 ### Recently Added
 
 - ✅ **Tool Calling**: Function calling and tool integration with multi-step support
 - ✅ **Async Tools**: Asynchronous tool execution with parallel processing
 - ✅ **Configurable Retries**: Customizable retry behavior with exponential backoff
+- ✅ **Bedrock Provider**: Amazon Bedrock integration via the Converse API (optional, requires the AWS SDK for C++)
 
 ### Coming Soon
 
 - 🚧 **Additional Providers**: Cohere and other providers
+- 🚧 **Bedrock Embeddings**: Text embedding support for Bedrock
 - 🚧 **Image Generation**: Support for image generation models
 
 ## Examples

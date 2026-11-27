@@ -40,6 +40,11 @@ inline constexpr const char* kSkipThoughtSignatureValidator =
 /// Model name for the URL path: accepts both "gemini-…" and "models/gemini-…".
 std::string model_resource_name(const std::string& model);
 
+/// Ask for thought summaries (`includeThoughts`) in a request that thinks
+/// (has a `thinkingConfig` other than `thinkingBudget: 0`); streams emit them
+/// as reasoning events.
+void include_thought_summaries(nlohmann::json& request);
+
 class GoogleRequestBuilder : public providers::RequestBuilder {
  public:
   /// The `GenerateContentRequest` body; the model is part of the URL.

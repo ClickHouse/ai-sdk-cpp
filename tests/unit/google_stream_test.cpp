@@ -43,12 +43,30 @@ TEST(GoogleStreamTest, ChunkedEventsAreReassembled) {
   EXPECT_TRUE(stream.get_next_event().is_finish());
 }
 
-TEST(GoogleStreamTest, SkipsThoughtsAndSignatureOnlyParts) {
+TEST(GoogleStreamTest, StreamsThoughtsAsReasoning) {
   google::GoogleStreamImpl stream;
   stream.process_sse_chunk_for_testing(
-      R"(data: {"candidates":[{"content":{"parts":[{"text":"Thinking...","thought":true}]}}]}
+      R"(data: {"candidates":[{"content":{"parts":[{"text":"Considering the question.","thought":true}]}}]}
 
-data: {"candidates":[{"content":{"parts":[{"text":"Answer"}]}}]}
+data: {"candidates":[{"content":{"parts":[{"text":"42"}]},"finishReason":"STOP"}]}
+
+)");
+
+  ASSERT_EQ(stream.queued_event_count_for_testing(), 3u);
+  const auto reasoning = stream.get_next_event();
+  ASSERT_TRUE(reasoning.is_reasoning_delta());
+  EXPECT_EQ(reasoning.reasoning_delta, "Considering the question.");
+  EXPECT_TRUE(reasoning.text_delta.empty());
+  const auto text = stream.get_next_event();
+  ASSERT_TRUE(text.is_text_delta());
+  EXPECT_EQ(text.text_delta, "42");
+  EXPECT_TRUE(stream.get_next_event().is_finish());
+}
+
+TEST(GoogleStreamTest, SkipsSignatureOnlyParts) {
+  google::GoogleStreamImpl stream;
+  stream.process_sse_chunk_for_testing(
+      R"(data: {"candidates":[{"content":{"parts":[{"text":"Answer"}]}}]}
 
 data: {"candidates":[{"content":{"parts":[{"text":"","thoughtSignature":"sig"}]},"finishReason":"STOP"}]}
 

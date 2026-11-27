@@ -40,6 +40,7 @@ add_ai_example(retry_config_example retry_config_example.cpp)
 # Simple test examples
 add_ai_example(test_openai test_openai.cpp)
 add_ai_example(test_anthropic test_anthropic.cpp)
+add_ai_example(test_bedrock test_bedrock.cpp)
 
 # OpenAI Responses API example (tool calling with the GPT-6 models)
 add_ai_example(openai_responses openai_responses.cpp)
@@ -66,8 +67,9 @@ add_ai_example(langfuse_tracing langfuse_tracing.cpp)
 
 # Component-specific examples
 add_subdirectory(components/openai)
-add_subdirectory(components/anthropic) 
+add_subdirectory(components/anthropic)
 add_subdirectory(components/google)
+add_subdirectory(components/bedrock)
 add_subdirectory(components/all)
 
 # Message to show how to run examples
@@ -93,4 +95,5 @@ message(STATUS "Component-specific examples:")
 message(STATUS "  ./examples/components/openai/openai_component_demo     (OpenAI + Core only)")
 message(STATUS "  ./examples/components/anthropic/anthropic_component_demo (Anthropic + Core only)")
 message(STATUS "  ./examples/components/google/google_component_demo       (Google + Core only)")
+message(STATUS "  ./examples/components/bedrock/bedrock_component_demo   (Bedrock + Core only)")
 message(STATUS "  ./examples/components/all/all_components_demo          (All components)")

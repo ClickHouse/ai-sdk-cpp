@@ -3,7 +3,9 @@
  *
  * Demonstrates how to wrap an `ai::Client::generate_text` call (with tools and
  * multi-step) so the LLM call and each tool execution show up as a trace in
- * Langfuse.
+ * Langfuse. Spans are exported with OTLP/HTTP to Langfuse's
+ * `/api/public/otel/v1/traces` endpoint (Langfuse Cloud, or self-hosted
+ * Langfuse v3.22.0 or later).
  *
  * Required env:
  *   OPENAI_API_KEY        (or use ai::anthropic instead)

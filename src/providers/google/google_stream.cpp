@@ -121,8 +121,11 @@ void GoogleStreamImpl::process_sse_event(const std::string& data) {
         if (const auto thought = part.find("thought"); thought != part.end() &&
                                                        thought->is_boolean() &&
                                                        thought->get<bool>()) {
-          // Thought summaries are not answer text, and `StreamEvent` has no
-          // payload for reasoning deltas yet.
+          // Thought summaries (`includeThoughts`) are reasoning, not answer
+          // text.
+          if (auto text = string_field(part, "text"); !text.empty()) {
+            push_event(StreamEvent::reasoning(std::move(text)));
+          }
           continue;
         }
         if (const auto call = part.find("functionCall");

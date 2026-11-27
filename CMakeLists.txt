@@ -16,6 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+option(AI_SDK_ENABLE_BEDROCK "Enable Amazon Bedrock provider (requires AWS SDK)" OFF)
 
 # Add third party directory (vendored and CMake-fetched dependencies)
 add_subdirectory(third_party)
@@ -71,6 +72,16 @@ configure_ai_component(ai-sdk-cpp-openai)
 configure_ai_component(ai-sdk-cpp-anthropic)
 configure_ai_component(ai-sdk-cpp-google)
 configure_ai_component(ai-sdk-cpp-langfuse)
+
+# Bedrock provider (optional, requires AWS SDK)
+if(AI_SDK_ENABLE_BEDROCK)
+    find_package(AWSSDK REQUIRED COMPONENTS core bedrock-runtime bedrock sts)
+    
+    add_library(ai-sdk-cpp-bedrock)
+    set_target_properties(ai-sdk-cpp-bedrock PROPERTIES EXPORT_NAME bedrock)
+    add_library(ai::bedrock ALIAS ai-sdk-cpp-bedrock)
+    configure_ai_component(ai-sdk-cpp-bedrock)
+endif()
 
 # Configure main interface library
 target_include_directories(ai-sdk-cpp 
@@ -138,6 +149,26 @@ target_sources(ai-sdk-cpp-langfuse
         src/langfuse/tracer.cpp
 )
 
+# Bedrock provider sources (conditional)
+if(AI_SDK_ENABLE_BEDROCK)
+    set(BEDROCK_SOURCES
+        src/providers/bedrock/bedrock_client.cpp
+        src/providers/bedrock/bedrock_request_mapper.cpp
+        src/providers/bedrock/bedrock_response_parser.cpp
+        src/providers/bedrock/bedrock_stream.cpp
+        src/providers/bedrock/bedrock_factory.cpp
+        src/providers/bedrock/bedrock_credentials.cpp
+        # Security components
+        src/providers/bedrock/input_validator.cpp
+        src/providers/bedrock/credential_redactor.cpp
+        src/providers/bedrock/secure_logger.cpp
+        src/providers/bedrock/model_discovery.cpp
+        # SDK lifecycle management
+        src/providers/bedrock/aws_sdk_manager.cpp
+    )
+    target_sources(ai-sdk-cpp-bedrock PRIVATE ${BEDROCK_SOURCES})
+endif()
+
 # Link dependencies
 target_link_libraries(ai-sdk-cpp-core
     PUBLIC
@@ -201,6 +232,23 @@ target_compile_definitions(ai-sdk-cpp-langfuse
         ${HTTPLIB_COMPILE_DEFS}
 )
 
+# Bedrock provider dependencies (uses AWS SDK instead of httplib)
+if(AI_SDK_ENABLE_BEDROCK)
+    target_link_libraries(ai-sdk-cpp-bedrock
+        PUBLIC
+            ai::core
+            nlohmann_json::nlohmann_json
+        PRIVATE
+            ${AWSSDK_LINK_LIBRARIES}
+            $<BUILD_INTERFACE:concurrentqueue>
+    )
+    
+    target_compile_definitions(ai-sdk-cpp-bedrock
+        PUBLIC
+            AI_SDK_HAS_BEDROCK=1
+    )
+endif()
+
 # Core needs HTTP definitions too
 target_compile_definitions(ai-sdk-cpp-core
     PRIVATE
@@ -217,6 +265,14 @@ target_link_libraries(ai-sdk-cpp
         ai::langfuse
 )
 
+# Conditionally link Bedrock to main library
+if(AI_SDK_ENABLE_BEDROCK)
+    target_link_libraries(ai-sdk-cpp
+        INTERFACE
+            ai::bedrock
+    )
+endif()
+
 # Define all component availability for main library
 target_compile_definitions(ai-sdk-cpp
     INTERFACE
@@ -226,6 +282,14 @@ target_compile_definitions(ai-sdk-cpp
         AI_SDK_HAS_LANGFUSE=1
 )
 
+# Add Bedrock availability definition when enabled
+if(AI_SDK_ENABLE_BEDROCK)
+    target_compile_definitions(ai-sdk-cpp
+        INTERFACE
+            AI_SDK_HAS_BEDROCK=1
+    )
+endif()
+
 # List of all concrete component targets
 set(COMPONENT_TARGETS
     ai-sdk-cpp-core
@@ -234,6 +298,9 @@ set(COMPONENT_TARGETS
     ai-sdk-cpp-google
     ai-sdk-cpp-langfuse
 )
+if(AI_SDK_ENABLE_BEDROCK)
+    list(APPEND COMPONENT_TARGETS ai-sdk-cpp-bedrock)
+endif()
 
 # Common compile options
 if(MSVC)
@@ -331,5 +398,6 @@ message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build examples: ${BUILD_EXAMPLES}")
 message(STATUS "  Build tests: ${BUILD_TESTS}")
+message(STATUS "  Bedrock provider: ${AI_SDK_ENABLE_BEDROCK}")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "")
