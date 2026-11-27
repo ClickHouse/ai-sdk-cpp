@@ -154,20 +154,19 @@ TEST_F(OpenAIClientTest, Gpt5FamilyUsesChatCompletionsCompatibleReasoning) {
   openai::OpenAIRequestBuilder builder;
 
   // GPT-5.1 and later accept "none" and reject "minimal".
-  for (const auto* model :
-       {openai::models::kGpt56, openai::models::kGpt56Luna,
-        openai::models::kGpt55, openai::models::kGpt54,
-        openai::models::kGpt54Mini, openai::models::kGpt54Nano, "gpt-5.2",
-        "gpt-5.1"}) {
+  for (const auto* model : {openai::models::kGpt56, openai::models::kGpt56Luna,
+                            openai::models::kGpt55, openai::models::kGpt54,
+                            openai::models::kGpt54Mini,
+                            openai::models::kGpt54Nano, "gpt-5.2", "gpt-5.1"}) {
     GenerateOptions options(model, "Use a tool");
     EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"], "none")
         << model;
   }
 
   // The original GPT-5 models reject "none"; they get the "minimal" floor.
-  for (const auto* model : {"gpt-5", "gpt-5-2025-08-07",
-                            openai::models::kGpt5Mini,
-                            openai::models::kGpt5Nano}) {
+  for (const auto* model :
+       {"gpt-5", "gpt-5-2025-08-07", openai::models::kGpt5Mini,
+        openai::models::kGpt5Nano}) {
     GenerateOptions options(model, "Use a tool");
     EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"],
               "minimal")
