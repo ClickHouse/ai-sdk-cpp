@@ -81,8 +81,9 @@ class HttpSseStream : public internal::StreamResultImpl {
 
   void push_event(StreamEvent event);
   static StreamEvent create_error_event(const std::string& message);
-  /// Push the terminal finish event (at most once per stream).
-  void push_finish_event_if_needed();
+  /// The terminal finish event, or nullopt if it was already taken (it is
+  /// emitted at most once per stream).
+  std::optional<StreamEvent> take_finish_event();
   /// Push the terminal finish event if still needed and mark the stream
   /// complete so consumers stop waiting for events.
   void mark_complete();

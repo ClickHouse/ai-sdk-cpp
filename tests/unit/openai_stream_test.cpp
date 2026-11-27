@@ -169,6 +169,19 @@ TEST_F(StreamEventTest, ConsumerWaitsForEventFromAnotherThread) {
   EXPECT_EQ(event.text_delta, "late");
 }
 
+TEST_F(StreamEventTest, NoEventsAfterFinish) {
+  openai::OpenAIStreamImpl stream;
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]})");
+  stream.process_sse_line_for_testing("data: [DONE]");
+
+  EXPECT_TRUE(stream.get_next_event().is_text_delta());
+  ASSERT_TRUE(stream.get_next_event().is_finish());
+  // The finish event is queued together with the completion flag, so the
+  // consumer stops here instead of waiting for (and yielding) another event.
+  EXPECT_FALSE(stream.has_more_events());
+}
+
 // Mock Stream Implementation Tests
 class MockStreamImpl {
  public:

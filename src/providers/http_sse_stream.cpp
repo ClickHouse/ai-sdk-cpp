@@ -218,28 +218,35 @@ StreamEvent HttpSseStream::create_error_event(const std::string& message) {
   return StreamEvent(kStreamEventTypeError, message);
 }
 
-void HttpSseStream::push_finish_event_if_needed() {
+std::optional<StreamEvent> HttpSseStream::take_finish_event() {
   bool expected = false;
   if (!finish_event_pushed_.compare_exchange_strong(expected, true)) {
     ai::logger::log_debug("Finish event already pushed, skipping");
-    return;
+    return std::nullopt;
   }
 
-  ai::logger::log_debug("Pushing finish event to queue");
   if (stream_errored_) {
     // Do not stamp a failed stream with a clean finish reason or usage.
-    push_event(StreamEvent(kStreamEventTypeFinish, kFinishReasonError));
-  } else if (usage_) {
-    push_event(StreamEvent(kStreamEventTypeFinish, *usage_, finish_reason_));
-  } else {
-    push_event(StreamEvent(kStreamEventTypeFinish, finish_reason_));
+    return StreamEvent(kStreamEventTypeFinish, kFinishReasonError);
   }
+  if (usage_) {
+    return StreamEvent(kStreamEventTypeFinish, *usage_, finish_reason_);
+  }
+  return StreamEvent(kStreamEventTypeFinish, finish_reason_);
 }
 
 void HttpSseStream::mark_complete() {
-  push_finish_event_if_needed();
+  auto finish_event = take_finish_event();
   {
+    // Queue the terminal event and mark the stream complete atomically, so a
+    // consumer that has dequeued the finish event never sees an incomplete
+    // stream with an empty queue (and waits for, then yields, a spurious
+    // event after the finish).
     std::lock_guard<std::mutex> lock(queue_mutex_);
+    if (finish_event) {
+      ai::logger::log_debug("Pushing finish event to queue");
+      event_queue_.push_back(std::move(*finish_event));
+    }
     is_complete_ = true;
   }
   queue_cv_.notify_all();
