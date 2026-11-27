@@ -46,6 +46,7 @@ set(HTTPLIB_COMPILE_DEFS
 add_library(ai-sdk-cpp-core)
 add_library(ai-sdk-cpp-openai)
 add_library(ai-sdk-cpp-anthropic)
+add_library(ai-sdk-cpp-google)
 add_library(ai-sdk-cpp-langfuse)
 add_library(ai-sdk-cpp INTERFACE)
 
@@ -53,6 +54,7 @@ add_library(ai-sdk-cpp INTERFACE)
 set_target_properties(ai-sdk-cpp-core PROPERTIES EXPORT_NAME core)
 set_target_properties(ai-sdk-cpp-openai PROPERTIES EXPORT_NAME openai)
 set_target_properties(ai-sdk-cpp-anthropic PROPERTIES EXPORT_NAME anthropic)
+set_target_properties(ai-sdk-cpp-google PROPERTIES EXPORT_NAME google)
 set_target_properties(ai-sdk-cpp-langfuse PROPERTIES EXPORT_NAME langfuse)
 set_target_properties(ai-sdk-cpp PROPERTIES EXPORT_NAME sdk)
 
@@ -61,12 +63,14 @@ add_library(ai::sdk ALIAS ai-sdk-cpp)
 add_library(ai::core ALIAS ai-sdk-cpp-core)
 add_library(ai::openai ALIAS ai-sdk-cpp-openai)
 add_library(ai::anthropic ALIAS ai-sdk-cpp-anthropic)
+add_library(ai::google ALIAS ai-sdk-cpp-google)
 add_library(ai::langfuse ALIAS ai-sdk-cpp-langfuse)
 
 # Configure all component libraries
 configure_ai_component(ai-sdk-cpp-core)
 configure_ai_component(ai-sdk-cpp-openai)
 configure_ai_component(ai-sdk-cpp-anthropic)
+configure_ai_component(ai-sdk-cpp-google)
 configure_ai_component(ai-sdk-cpp-langfuse)
 
 # Bedrock provider (optional, requires AWS SDK)
@@ -127,8 +131,17 @@ set(ANTHROPIC_SOURCES
     src/providers/anthropic/anthropic_factory.cpp
 )
 
+set(GOOGLE_SOURCES
+    src/providers/google/google_client.cpp
+    src/providers/google/google_request_builder.cpp
+    src/providers/google/google_response_parser.cpp
+    src/providers/google/google_stream.cpp
+    src/providers/google/google_factory.cpp
+)
+
 target_sources(ai-sdk-cpp-openai PRIVATE ${OPENAI_SOURCES})
 target_sources(ai-sdk-cpp-anthropic PRIVATE ${ANTHROPIC_SOURCES})
+target_sources(ai-sdk-cpp-google PRIVATE ${GOOGLE_SOURCES})
 
 # Langfuse tracing component
 target_sources(ai-sdk-cpp-langfuse
@@ -172,7 +185,7 @@ target_link_libraries(ai-sdk-cpp-core
 )
 
 # Provider components link to core and share common dependencies
-foreach(provider openai anthropic)
+foreach(provider openai anthropic google)
     target_link_libraries(ai-sdk-cpp-${provider}
         PUBLIC
             ai::core
@@ -248,6 +261,7 @@ target_link_libraries(ai-sdk-cpp
         ai::core
         ai::openai
         ai::anthropic
+        ai::google
         ai::langfuse
 )
 
@@ -264,6 +278,7 @@ target_compile_definitions(ai-sdk-cpp
     INTERFACE
         AI_SDK_HAS_OPENAI=1
         AI_SDK_HAS_ANTHROPIC=1
+        AI_SDK_HAS_GOOGLE=1
         AI_SDK_HAS_LANGFUSE=1
 )
 
@@ -280,6 +295,7 @@ set(COMPONENT_TARGETS
     ai-sdk-cpp-core
     ai-sdk-cpp-openai
     ai-sdk-cpp-anthropic
+    ai-sdk-cpp-google
     ai-sdk-cpp-langfuse
 )
 if(AI_SDK_ENABLE_BEDROCK)

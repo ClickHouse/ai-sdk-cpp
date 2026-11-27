@@ -21,6 +21,12 @@ int main() {
   std::cout << "- Anthropic: NO\n";
 #endif
 
+#ifdef AI_SDK_HAS_GOOGLE
+  std::cout << "- Google: YES\n";
+#else
+  std::cout << "- Google: NO\n";
+#endif
+
   std::cout << "\n";
 
   // Test core functionality
@@ -61,10 +67,25 @@ int main() {
   std::cout << "\nAnthropic functionality not available\n";
 #endif
 
+  // Test Google functionality
+#ifdef AI_SDK_HAS_GOOGLE
+  std::cout << "\nTesting Google functionality...\n";
+  try {
+    auto google_client = ai::google::create_client();
+    std::cout << "✓ Google client created successfully\n";
+    std::cout << "✓ Available models: " << ai::google::models::kGemini4Hydrogen
+              << ", " << ai::google::models::kGemini35FlashLite << "\n";
+  } catch (const std::exception& e) {
+    std::cout << "✗ Google client failed: " << e.what() << "\n";
+  }
+#else
+  std::cout << "\nGoogle functionality not available\n";
+#endif
+
   std::cout << "\n";
   std::cout << "This example demonstrates using all components together.\n";
-  std::cout
-      << "Both OpenAI and Anthropic should be available when linking ai::sdk\n";
+  std::cout << "OpenAI, Anthropic, and Google should be available when linking "
+               "ai::sdk\n";
 
   return 0;
 }

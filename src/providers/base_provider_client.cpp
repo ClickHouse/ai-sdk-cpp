@@ -68,8 +68,8 @@ GenerateResult BaseProviderClient::generate_text_single_step(
     auto headers = request_builder_->build_headers(config_);
 
     // Make the request
-    auto result = http_handler_->post(config_.completions_endpoint_path,
-                                      headers, json_body);
+    auto result =
+        http_handler_->post(completions_path(options), headers, json_body);
 
     if (!result.is_success()) {
       // Parse error response using provider-specific parser

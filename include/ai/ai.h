@@ -12,6 +12,10 @@
 #include "anthropic.h"
 #endif
 
+#ifdef AI_SDK_HAS_GOOGLE
+#include "google.h"
+#endif
+
 // Type definitions
 #include "types/client.h"
 #include "types/enums.h"
@@ -79,5 +83,13 @@
 /// if (result) {
 ///     std::cout << result->text << std::endl;
 /// }
+/// ```
+///
+/// Google Gemini Integration:
+/// ```cpp
+/// auto client = ai::google::create_client();  // GEMINI_API_KEY
+/// ai::GenerateOptions options(ai::google::models::kDefaultModel,
+///                             "Explain quantum computing in simple terms.");
+/// auto result = client.generate_text(options);
 /// ```
 namespace ai {}
