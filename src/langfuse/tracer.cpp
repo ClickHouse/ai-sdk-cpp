@@ -361,7 +361,8 @@ bool Tracer::export_spans(const JsonValue& spans) {
 
   // ExportTraceServiceResponse may report spans the server rejected.
   auto response = JsonValue::parse(res->body, nullptr, false);
-  if (response.is_object() && response.contains("partialSuccess")) {
+  if (response.is_object() && response.contains("partialSuccess") &&
+      response["partialSuccess"].is_object()) {
     const auto& partial = response["partialSuccess"];
     // int64 rejectedSpans may be encoded as a number or a decimal string.
     const auto rejected = partial.value("rejectedSpans", JsonValue(0));
