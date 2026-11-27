@@ -120,14 +120,27 @@ class ContentsBuilder {
   }
 
   void add_user_text(const std::string& text) {
-    contents_.push_back({{"role", "user"},
-                         {"parts", nlohmann::json::array({text_part(text)})}});
+    append_content("user", nlohmann::json::array({text_part(text)}));
   }
 
   nlohmann::json& contents() { return contents_; }
   nlohmann::json& system_parts() { return system_parts_; }
 
  private:
+  /// Gemini expects alternating `user` and `model` turns: parts of
+  /// consecutive messages with the same role (two user messages in a row, or
+  /// tool results followed by a user message) join one content entry.
+  void append_content(const char* role, nlohmann::json parts) {
+    if (!contents_.empty() && contents_.back()["role"] == role) {
+      auto& previous = contents_.back()["parts"];
+      for (auto& part : parts) {
+        previous.push_back(std::move(part));
+      }
+      return;
+    }
+    contents_.push_back({{"role", role}, {"parts", std::move(parts)}});
+  }
+
   void add_user_content(const Message& message) {
     nlohmann::json parts = nlohmann::json::array();
     for (const auto& part : message.content) {
@@ -141,7 +154,7 @@ class ContentsBuilder {
       }
     }
     if (!parts.empty()) {
-      contents_.push_back({{"role", "user"}, {"parts", std::move(parts)}});
+      append_content("user", std::move(parts));
     }
   }
 
@@ -232,7 +245,7 @@ class ContentsBuilder {
           kSkipThoughtSignatureValidator;
     }
 
-    contents_.push_back({{"role", "model"}, {"parts", std::move(parts)}});
+    append_content("model", std::move(parts));
   }
 
   nlohmann::json contents_ = nlohmann::json::array();

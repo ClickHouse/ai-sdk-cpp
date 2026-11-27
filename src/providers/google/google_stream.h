@@ -19,6 +19,10 @@ class GoogleStreamImpl : public providers::streaming::HttpSseStream {
                        .read_timeout_seconds = 120}) {}
   ~GoogleStreamImpl() override;
 
+  /// Finish a stream that was never started with an error event (and an
+  /// error finish event), e.g. when the request could not be built.
+  void fail(const std::string& message);
+
  private:
   void reset_stream_state() override;
   void process_sse_line(std::string_view line) override;

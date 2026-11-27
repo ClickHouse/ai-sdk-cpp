@@ -24,6 +24,12 @@ GoogleStreamImpl::~GoogleStreamImpl() {
   stop_stream();
 }
 
+void GoogleStreamImpl::fail(const std::string& message) {
+  note_stream_error();
+  push_event(create_error_event(message));
+  mark_complete();
+}
+
 void GoogleStreamImpl::reset_stream_state() {
   event_data_.clear();
   call_index_ = 0;

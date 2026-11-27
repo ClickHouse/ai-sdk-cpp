@@ -4,6 +4,7 @@
 #include "ai/google.h"
 #include "ai/tools.h"
 #include "ai/types/generate_options.h"
+#include "ai/types/stream_options.h"
 #include "providers/google/google_request_builder.h"
 #include "providers/google/google_response_parser.h"
 
@@ -367,6 +368,31 @@ TEST(GoogleRequestTest, IgnoresOtherProvidersParts) {
   EXPECT_EQ(model_parts[0], nlohmann::json({{"text", "Hello!"}}));
 }
 
+TEST(GoogleRequestTest, MergesConsecutiveTurnsOfTheSameRole) {
+  google::GoogleRequestBuilder builder;
+  GenerateOptions options(
+      google::models::kDefaultModel,
+      Messages{Message::user("First."), Message::user("Second."),
+               Message::assistant_with_tools(
+                   "", {ToolCallContentPart("call_1", "weather",
+                                            {{"location", "Paris"}})}),
+               Message::tool_results(
+                   {ToolResultContentPart("call_1", {{"temperature", 18}})}),
+               Message::user("Thanks, and Rome?")});
+
+  const auto request = builder.build_request_json(options);
+  const auto& contents = request["contents"];
+  ASSERT_EQ(contents.size(), 3u);
+  EXPECT_EQ(contents[0]["role"], "user");
+  ASSERT_EQ(contents[0]["parts"].size(), 2u);
+  EXPECT_EQ(contents[0]["parts"][1]["text"], "Second.");
+  EXPECT_EQ(contents[1]["role"], "model");
+  EXPECT_EQ(contents[2]["role"], "user");
+  ASSERT_EQ(contents[2]["parts"].size(), 2u);
+  EXPECT_TRUE(contents[2]["parts"][0].contains("functionResponse"));
+  EXPECT_EQ(contents[2]["parts"][1]["text"], "Thanks, and Rome?");
+}
+
 // Response parsing
 
 TEST(GoogleParserTest, ParsesTextResponse) {
@@ -575,6 +601,29 @@ TEST(GoogleClientTest, UsesModelPathAndDefaults) {
   EXPECT_EQ(google::GoogleClient::model_path("models/gemini-4-neon",
                                              "streamGenerateContent"),
             "/v1beta/models/gemini-4-neon:streamGenerateContent");
+}
+
+TEST(GoogleClientTest, StreamReportsRequestBuildErrors) {
+  google::GoogleClient client("test-key", "http://127.0.0.1:9");
+  GenerateOptions options(google::models::kDefaultModel, "Name?");
+  options.response_format = nlohmann::json::object({{"type", "xml"}});
+
+  auto stream = client.stream_text(StreamOptions(options));
+  bool saw_error = false;
+  bool saw_finish = false;
+  for (const auto& event : stream) {
+    if (event.is_error()) {
+      saw_error = true;
+      EXPECT_THAT(event.error.value_or(""),
+                  testing::HasSubstr("Unsupported response_format"));
+    } else if (event.is_finish()) {
+      saw_finish = true;
+      EXPECT_EQ(event.finish_reason, kFinishReasonError);
+      break;
+    }
+  }
+  EXPECT_TRUE(saw_error);
+  EXPECT_TRUE(saw_finish);
 }
 
 TEST(GoogleClientTest, AuthenticatesWithGoogApiKeyHeader) {

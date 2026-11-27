@@ -6,6 +6,7 @@
 #include "google_response_parser.h"
 #include "google_stream.h"
 
+#include <exception>
 #include <memory>
 
 namespace ai {
@@ -63,12 +64,23 @@ StreamResult GoogleClient::stream_text(const StreamOptions& options) {
       "Starting text streaming - model: {}, prompt length: {}", options.model,
       options.prompt.length());
 
-  auto request_json = request_builder_->build_request_json(options);
+  auto impl = std::make_unique<GoogleStreamImpl>();
+
+  // Report requests that cannot be built (unsupported `response_format`, a
+  // tool result without its call) as stream errors, like generate_text does.
+  nlohmann::json request_json;
+  try {
+    request_json = request_builder_->build_request_json(options);
+  } catch (const std::exception& e) {
+    ai::logger::log_error("Failed to build Gemini stream request: {}",
+                          e.what());
+    impl->fail(std::string("Exception: ") + e.what());
+    return StreamResult(std::move(impl));
+  }
 
   auto headers = request_builder_->build_headers(config_);
   headers.emplace("Accept", "text/event-stream");
 
-  auto impl = std::make_unique<GoogleStreamImpl>();
   impl->start_stream(config_.base_url +
                          model_path(options.model, "streamGenerateContent") +
                          "?alt=sse",
