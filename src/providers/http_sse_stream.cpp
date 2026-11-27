@@ -2,13 +2,7 @@
 
 #include "ai/logger.h"
 
-#include <chrono>
 #include <utility>
-
-namespace {
-constexpr auto kEventTimeout = static_cast<std::chrono::seconds>(30);
-constexpr auto kSleepInterval = std::chrono::milliseconds(1);
-}  // namespace
 
 namespace ai {
 namespace providers {
@@ -37,7 +31,10 @@ void HttpSseStream::start_stream(const std::string& url,
 
   // Reset state for new stream
   should_stop_ = false;
-  is_complete_ = false;
+  {
+    std::lock_guard<std::mutex> queue_lock(queue_mutex_);
+    is_complete_ = false;
+  }
   finish_event_pushed_ = false;
   stream_errored_ = false;
   line_buffer_.clear();
@@ -54,37 +51,30 @@ void HttpSseStream::start_stream(const std::string& url,
 }
 
 StreamEvent HttpSseStream::get_next_event() {
-  StreamEvent event("");
-  auto start_time = std::chrono::steady_clock::now();
+  // No timeout of its own here: the gaps between events can be long (e.g.
+  // while a model reasons without streaming its reasoning), and a stalled
+  // connection makes the stream thread push an error event and complete once
+  // its HTTP read timeout expires.
+  std::unique_lock<std::mutex> lock(queue_mutex_);
+  queue_cv_.wait(lock,
+                 [this] { return !event_queue_.empty() || is_complete_; });
 
-  while (!event_queue_.try_dequeue(event)) {
-    if (is_complete_ && event_queue_.size_approx() == 0) {
-      // Stream is complete and queue is empty
-      ai::logger::log_debug(
-          "Stream complete and queue empty, returning empty event");
-      return StreamEvent("");
-    }
-
-    // Check for timeout
-    if (std::chrono::steady_clock::now() - start_time > kEventTimeout) {
-      ai::logger::log_error(
-          "Timeout waiting for next stream event after {} seconds",
-          kEventTimeout.count());
-      return StreamEvent(kStreamEventTypeError,
-                         "Timeout waiting for next event");
-    }
-
-    std::this_thread::sleep_for(kSleepInterval);
+  if (event_queue_.empty()) {
+    ai::logger::log_debug(
+        "Stream complete and queue empty, returning empty event");
+    return StreamEvent("");
   }
 
+  StreamEvent event = std::move(event_queue_.front());
+  event_queue_.pop_front();
   ai::logger::log_debug("Dequeued event type: {}",
                         static_cast<int>(event.type));
   return event;
 }
 
 bool HttpSseStream::has_more_events() const {
-  // No locks needed - these are atomic operations
-  return event_queue_.size_approx() > 0 || !is_complete_;
+  std::lock_guard<std::mutex> lock(queue_mutex_);
+  return !event_queue_.empty() || !is_complete_;
 }
 
 void HttpSseStream::stop_stream() {
@@ -216,7 +206,11 @@ void HttpSseStream::consume_chunk(const char* data, std::size_t length) {
 }
 
 void HttpSseStream::push_event(StreamEvent event) {
-  event_queue_.enqueue(std::move(event));
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    event_queue_.push_back(std::move(event));
+  }
+  queue_cv_.notify_one();
 }
 
 StreamEvent HttpSseStream::create_error_event(const std::string& message) {
@@ -224,27 +218,38 @@ StreamEvent HttpSseStream::create_error_event(const std::string& message) {
   return StreamEvent(kStreamEventTypeError, message);
 }
 
-void HttpSseStream::push_finish_event_if_needed() {
+std::optional<StreamEvent> HttpSseStream::take_finish_event() {
   bool expected = false;
   if (!finish_event_pushed_.compare_exchange_strong(expected, true)) {
     ai::logger::log_debug("Finish event already pushed, skipping");
-    return;
+    return std::nullopt;
   }
 
-  ai::logger::log_debug("Pushing finish event to queue");
   if (stream_errored_) {
     // Do not stamp a failed stream with a clean finish reason or usage.
-    push_event(StreamEvent(kStreamEventTypeFinish, kFinishReasonError));
-  } else if (usage_) {
-    push_event(StreamEvent(kStreamEventTypeFinish, *usage_, finish_reason_));
-  } else {
-    push_event(StreamEvent(kStreamEventTypeFinish, finish_reason_));
+    return StreamEvent(kStreamEventTypeFinish, kFinishReasonError);
   }
+  if (usage_) {
+    return StreamEvent(kStreamEventTypeFinish, *usage_, finish_reason_);
+  }
+  return StreamEvent(kStreamEventTypeFinish, finish_reason_);
 }
 
 void HttpSseStream::mark_complete() {
-  push_finish_event_if_needed();
-  is_complete_ = true;  // Atomic write
+  auto finish_event = take_finish_event();
+  {
+    // Queue the terminal event and mark the stream complete atomically, so a
+    // consumer that has dequeued the finish event never sees an incomplete
+    // stream with an empty queue (and waits for, then yields, a spurious
+    // event after the finish).
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    if (finish_event) {
+      ai::logger::log_debug("Pushing finish event to queue");
+      event_queue_.push_back(std::move(*finish_event));
+    }
+    is_complete_ = true;
+  }
+  queue_cv_.notify_all();
 }
 
 void HttpSseStream::flush_all_pending_tool_calls() {

@@ -43,15 +43,13 @@ void OpenAIStreamImpl::process_sse_line(std::string_view line) {
         push_event(StreamEvent(content));
       }
 
-      if (delta.contains("reasoning_content") &&
-          !delta["reasoning_content"].is_null()) {
-        std::string content = delta["reasoning_content"].get<std::string>();
-        ai::logger::log_debug("Received reasoning_content chunk - length: {}",
-                              content.length());
-        // TODO: currently not passing content, needs revamping of StreamEvent
-        // constructor
-        push_event(
-            StreamEvent(StreamEventType::kStreamEventTypeReasoningDelta));
+      // OpenAI-compatible servers stream reasoning in a field of their own:
+      // `reasoning_content` (DeepSeek, vLLM, SGLang) or `reasoning`
+      // (OpenRouter, Ollama).
+      for (const char* key : {"reasoning_content", "reasoning"}) {
+        if (delta.contains(key) && delta[key].is_string()) {
+          push_event(StreamEvent::reasoning(delta[key].get<std::string>()));
+        }
       }
 
       if (delta.contains("tool_calls") && delta["tool_calls"].is_array()) {
