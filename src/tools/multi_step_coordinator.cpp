@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <map>
 
 #include <ai/logger.h>
@@ -11,9 +12,27 @@ namespace {
 // its contract of holding the complete conversation continuation.
 void append_terminal_assistant_reply(const ai::GenerateResult& step_result,
                                      ai::Messages& response_messages) {
-  if (!step_result.text.empty()) {
+  if (!step_result.response_messages.empty()) {
+    response_messages.insert(response_messages.end(),
+                             step_result.response_messages.begin(),
+                             step_result.response_messages.end());
+  } else if (!step_result.text.empty()) {
     response_messages.push_back(ai::Message::assistant(step_result.text));
   }
+}
+
+// Whether the provider returned the complete assistant turn, tool calls
+// included, in the step's response_messages. Providers whose replies carry
+// state the next request has to replay (the `reasoning` items of the OpenAI
+// Responses API, see `ProviderContentPart`) do so; that turn is fed back as is
+// instead of being rebuilt from the text and the tool calls.
+bool has_provider_tool_call_turn(const ai::GenerateResult& step_result) {
+  return std::any_of(
+      step_result.response_messages.begin(),
+      step_result.response_messages.end(), [](const ai::Message& message) {
+        return message.role == ai::kMessageRoleAssistant &&
+               message.has_tool_calls();
+      });
 }
 }  // namespace
 
@@ -136,13 +155,19 @@ GenerateResult MultiStepCoordinator::execute_multi_step(
       // Append assistant turn (text + tool calls) and tool result messages to
       // the running accumulator. Next iteration's input messages are rebuilt
       // from `initial_messages + response_messages` at the top of the loop.
-      std::vector<ToolCallContentPart> tool_call_contents;
-      tool_call_contents.reserve(step_result.tool_calls.size());
-      for (const auto& tc : step_result.tool_calls) {
-        tool_call_contents.emplace_back(tc.id, tc.tool_name, tc.arguments);
+      if (has_provider_tool_call_turn(step_result)) {
+        response_messages.insert(response_messages.end(),
+                                 step_result.response_messages.begin(),
+                                 step_result.response_messages.end());
+      } else {
+        std::vector<ToolCallContentPart> tool_call_contents;
+        tool_call_contents.reserve(step_result.tool_calls.size());
+        for (const auto& tc : step_result.tool_calls) {
+          tool_call_contents.emplace_back(tc.id, tc.tool_name, tc.arguments);
+        }
+        response_messages.push_back(Message::assistant_with_tools(
+            step_result.text, tool_call_contents));
       }
-      response_messages.push_back(
-          Message::assistant_with_tools(step_result.text, tool_call_contents));
 
       Messages tool_messages =
           tool_results_to_messages(step_result.tool_calls, tool_results);

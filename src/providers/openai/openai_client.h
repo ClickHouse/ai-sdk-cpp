@@ -4,6 +4,8 @@
 #include "ai/types/stream_options.h"
 #include "providers/base_provider_client.h"
 
+#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -30,6 +32,16 @@ class OpenAIClient : public providers::BaseProviderClient {
   // Member access for testing
   const std::string& get_api_key() const { return config_.api_key; }
   const std::string& get_base_url() const { return config_.base_url; }
+
+ protected:
+  /// For clients of the other OpenAI APIs, which share the models, the
+  /// authentication, and the embeddings endpoint.
+  OpenAIClient(const std::string& api_key,
+               const std::string& base_url,
+               std::string completions_endpoint_path,
+               std::optional<retry::RetryConfig> retry_config,
+               std::unique_ptr<providers::RequestBuilder> request_builder,
+               std::unique_ptr<providers::ResponseParser> response_parser);
 };
 
 }  // namespace openai
