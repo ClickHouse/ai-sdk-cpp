@@ -9,6 +9,7 @@
 #include "bedrock_response_parser.h"
 #include "bedrock_stream.h"
 #include "input_validator.h"
+#include "model_discovery.h"
 #include "secure_logger.h"
 
 #include <algorithm>
@@ -57,10 +58,11 @@ struct BedrockClient::Impl {
   std::string region;
   std::string profile;
   std::string endpoint_override;
+  BedrockConfig config;  // For model discovery, which uses its own client
   bool valid{false};
 
-  explicit Impl(const BedrockConfig& config)
-      : input_validator(config.security) {
+  explicit Impl(const BedrockConfig& client_config_in)
+      : input_validator(client_config_in.security), config(client_config_in) {
     if (config.security.max_concurrent_requests <= 0) {
       throw ConfigurationError("max_concurrent_requests must be positive");
     }
@@ -239,8 +241,25 @@ std::vector<std::string> BedrockClient::supported_models() const {
 }
 
 bool BedrockClient::supports_model(const std::string& model_name) const {
-  auto models = supported_models();
-  return std::find(models.begin(), models.end(), model_name) != models.end();
+  // Any model ID, inference profile or ARN is forwarded to Converse as is;
+  // the catalog lives on the AWS side (see `list_models`).
+  return !model_name.empty();
+}
+
+ModelListResult BedrockClient::list_models() {
+  // `ListFoundationModels` returns foundation model IDs of the Region;
+  // inference profile IDs (`global.anthropic...`) are not part of it.
+  try {
+    ModelDiscovery discovery(pimpl_->config);
+    ModelListResult listed;
+    for (const auto& info : discovery.list_models()) {
+      listed.models.push_back(info.model_id);
+    }
+    return listed;
+  } catch (const std::exception& e) {
+    return ModelListResult("Failed to list Bedrock models: " +
+                           std::string(e.what()));
+  }
 }
 
 std::string BedrockClient::config_info() const {
