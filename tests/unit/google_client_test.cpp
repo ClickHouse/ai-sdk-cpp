@@ -142,7 +142,8 @@ TEST(GoogleRequestTest, OmitsSamplingParametersForRecentModels) {
 
     const auto request = builder.build_request_json(options);
 
-    EXPECT_FALSE(request.contains("generationConfig")) << model;
+    EXPECT_FALSE(request["generationConfig"].contains("temperature")) << model;
+    EXPECT_FALSE(request["generationConfig"].contains("topP")) << model;
   }
 
   // Earlier models still accept them.
@@ -154,6 +155,40 @@ TEST(GoogleRequestTest, OmitsSamplingParametersForRecentModels) {
     const auto request = builder.build_request_json(options);
     EXPECT_TRUE(request["generationConfig"].contains("temperature")) << model;
   }
+}
+
+TEST(GoogleRequestTest, AsksForTheLeastThinkingTheModelAccepts) {
+  google::GoogleRequestBuilder builder;
+  const auto thinking_config = [&builder](const std::string& model) {
+    const auto request =
+        builder.build_request_json(GenerateOptions(model, "Hi"));
+    return request.contains("generationConfig")
+               ? request["generationConfig"].value("thinkingConfig",
+                                                   nlohmann::json())
+               : nlohmann::json();
+  };
+
+  const nlohmann::json low = {{"thinkingLevel", "low"}};
+  const nlohmann::json minimal = {{"thinkingLevel", "minimal"}};
+  for (const auto* model :
+       {google::models::kGemini4Carbon, google::models::kGemini4Neon,
+        google::models::kGemini4Hydrogen, google::models::kGemini4Argon,
+        "models/gemini-4-neon", google::models::kGemini38Flash,
+        "gemini-3.1-pro-preview"}) {
+    EXPECT_EQ(thinking_config(model), low) << model;
+  }
+  for (const auto* model :
+       {google::models::kGemini36Flash, google::models::kGemini35FlashLite,
+        google::models::kGemini31FlashLite, "gemini-3-flash-preview"}) {
+    EXPECT_EQ(thinking_config(model), minimal) << model;
+  }
+  EXPECT_EQ(thinking_config("gemini-2.5-flash"),
+            nlohmann::json({{"thinkingBudget", 0}}));
+  EXPECT_EQ(thinking_config("gemini-2.5-pro"),
+            nlohmann::json({{"thinkingBudget", 128}}));
+  // Models without known thinking settings get none.
+  EXPECT_TRUE(thinking_config("gemini-3.8-flash-tts").is_null());
+  EXPECT_TRUE(thinking_config("custom-model").is_null());
 }
 
 TEST(GoogleRequestTest, MapsRolesAndSystemMessages) {

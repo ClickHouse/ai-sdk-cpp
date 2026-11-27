@@ -99,9 +99,11 @@ attach thought signatures to their function calls and reject a follow-up
 request that does not send them back; the client keeps them in
 `response_messages` (as `ai::ProviderContentPart`), so the multi-step loop and
 conversations continued from `response_messages` replay them automatically.
-Note that thinking tokens count against `max_tokens`, and that Gemini 4 and
-Gemini 3.6+ models ignore `temperature` and `top_p` (the client does not send
-them for those models). Embeddings are not supported by this provider yet.
+Thinking tokens count against `max_tokens`, so the client asks for the least
+thinking each model accepts (`thinkingLevel` `low` or `minimal`, or the
+smallest `thinkingBudget` on Gemini 2.5), like the lowest reasoning effort of
+the OpenAI client. Gemini 4 and Gemini 3.6+ models ignore `temperature` and
+`top_p`, and the client does not send them for those models. Embeddings are not supported by this provider yet.
 
 #### Streaming Responses
 

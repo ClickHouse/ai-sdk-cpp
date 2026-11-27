@@ -18,10 +18,14 @@ namespace models {
 /// Gemini 4 model identifiers
 ///
 /// Gemini 4 and Gemini 3.6+ models ignore `temperature` and `top_p` (and warn
-/// about them), so the client does not send them for those models. All of
-/// these models think before answering, and the thinking tokens count against
-/// `max_tokens` (`maxOutputTokens`): a small limit can be used up before any
-/// text is produced.
+/// about them), so the client does not send them for those models.
+///
+/// Thinking tokens count against `max_tokens` (`maxOutputTokens`). Like the
+/// OpenAI client with its lowest reasoning effort, the client asks the models
+/// listed here (and Gemini 2.5) for the least thinking they accept:
+/// `thinkingLevel` `low` on Gemini 4 and Gemini 3.8 Flash, `minimal` on Gemini
+/// 3.6 Flash and the Flash-Lite models, and the smallest `thinkingBudget` on
+/// Gemini 2.5.
 constexpr const char* kGemini4Carbon = "gemini-4-carbon";
 constexpr const char* kGemini4Neon = "gemini-4-neon";
 constexpr const char* kGemini4Hydrogen = "gemini-4-hydrogen";

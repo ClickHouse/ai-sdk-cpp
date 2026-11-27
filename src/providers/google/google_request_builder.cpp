@@ -70,6 +70,47 @@ bool ignores_sampling_parameters(const std::string& model) {
   return major >= 4 || (major == 3 && minor >= 6);
 }
 
+/// The `thinkingConfig` with the least thinking the model accepts, or
+/// std::nullopt for models with no known thinking settings. Like the lowest
+/// reasoning effort of the OpenAI builders, it keeps the provider-neutral
+/// options within their latency and token budget: thinking tokens count
+/// against `maxOutputTokens`, and the default levels (`high` on Gemini 4 Neon
+/// and Hydrogen) can use up a small limit before any text is produced.
+std::optional<nlohmann::json> lowest_thinking_config(std::string_view model) {
+  if (model.starts_with(kModelsPrefix)) {
+    model.remove_prefix(kModelsPrefix.size());
+  }
+  // Gemini 4 requires `thinkingLevel` (`thinkingBudget` is deprecated), and
+  // every Gemini 4 model supports `low`; `minimal` is not supported.
+  if (const auto version = gemini_version(model);
+      version && version->first >= 4) {
+    return nlohmann::json{{"thinkingLevel", "low"}};
+  }
+  // Gemini 3 levels per model, from the thinking guide.
+  for (const auto* low_model :
+       {"gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-3-pro-preview"}) {
+    if (model == low_model) {
+      return nlohmann::json{{"thinkingLevel", "low"}};
+    }
+  }
+  for (const auto* minimal_model :
+       {"gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite",
+        "gemini-3-flash-preview"}) {
+    if (model == minimal_model) {
+      return nlohmann::json{{"thinkingLevel", "minimal"}};
+    }
+  }
+  // Gemini 2.5 takes a token budget: 0 disables thinking on Flash and
+  // Flash-Lite, Pro cannot disable it and accepts at least 128.
+  if (model == "gemini-2.5-flash" || model == "gemini-2.5-flash-lite") {
+    return nlohmann::json{{"thinkingBudget", 0}};
+  }
+  if (model == "gemini-2.5-pro") {
+    return nlohmann::json{{"thinkingBudget", 128}};
+  }
+  return std::nullopt;
+}
+
 nlohmann::json text_part(const std::string& text) {
   return {{"text", text}};
 }
@@ -355,6 +396,9 @@ nlohmann::json GoogleRequestBuilder::build_request_json(
   }
   if (options.response_format) {
     apply_response_format(*options.response_format, generation_config);
+  }
+  if (auto thinking_config = lowest_thinking_config(options.model)) {
+    generation_config["thinkingConfig"] = std::move(*thinking_config);
   }
   if (!generation_config.empty()) {
     request["generationConfig"] = std::move(generation_config);
