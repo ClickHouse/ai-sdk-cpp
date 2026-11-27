@@ -74,6 +74,7 @@ if(AI_SDK_ENABLE_BEDROCK)
     find_package(AWSSDK REQUIRED COMPONENTS core bedrock-runtime bedrock sts)
     
     add_library(ai-sdk-cpp-bedrock)
+    set_target_properties(ai-sdk-cpp-bedrock PROPERTIES EXPORT_NAME bedrock)
     add_library(ai::bedrock ALIAS ai-sdk-cpp-bedrock)
     configure_ai_component(ai-sdk-cpp-bedrock)
 endif()
@@ -276,8 +277,6 @@ set(COMPONENT_TARGETS
     ai-sdk-cpp-anthropic
     ai-sdk-cpp-langfuse
 )
-
-set(COMPONENT_TARGETS ai-sdk-cpp-core ai-sdk-cpp-openai ai-sdk-cpp-anthropic)
 if(AI_SDK_ENABLE_BEDROCK)
     list(APPEND COMPONENT_TARGETS ai-sdk-cpp-bedrock)
 endif()

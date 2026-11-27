@@ -5,11 +5,10 @@
 
 #ifdef AI_SDK_HAS_BEDROCK
 
-#include "providers/bedrock/bedrock_request_mapper.h"
-
 #include "ai/bedrock.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/message.h"
+#include "providers/bedrock/bedrock_request_mapper.h"
 
 namespace ai {
 namespace bedrock {

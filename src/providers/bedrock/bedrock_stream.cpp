@@ -2,6 +2,10 @@
 
 #include "ai/logger.h"
 
+#include <chrono>
+#include <semaphore>
+#include <thread>
+
 #include <aws/bedrock-runtime/BedrockRuntimeClient.h>
 #include <aws/bedrock-runtime/model/ContentBlockDelta.h>
 #include <aws/bedrock-runtime/model/ContentBlockDeltaEvent.h>
@@ -10,10 +14,6 @@
 #include <aws/bedrock-runtime/model/MessageStartEvent.h>
 #include <aws/bedrock-runtime/model/MessageStopEvent.h>
 #include <aws/bedrock-runtime/model/StopReason.h>
-
-#include <chrono>
-#include <semaphore>
-#include <thread>
 
 namespace {
 constexpr auto kEventTimeout = std::chrono::seconds(60);
@@ -27,7 +27,7 @@ BedrockStreamImpl::BedrockStreamImpl() = default;
 
 BedrockStreamImpl::~BedrockStreamImpl() {
   stop_stream();
-  
+
   // Ensure semaphore is released if stream was destroyed before completion
   if (semaphore_ != nullptr) {
     semaphore_->release();
@@ -220,13 +220,13 @@ void BedrockStreamImpl::push_event(const StreamEvent& event) {
 
 void BedrockStreamImpl::mark_complete() {
   stream_complete_ = true;
-  
+
   // Release semaphore if we were given one (for concurrency control)
   if (semaphore_ != nullptr) {
     semaphore_->release();
     semaphore_ = nullptr;  // Prevent double-release
   }
-  
+
   ai::logger::log_debug("Stream marked as complete");
 }
 

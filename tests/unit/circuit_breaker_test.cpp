@@ -37,7 +37,7 @@ TEST_F(CircuitBreakerTest, StaysClosedOnSuccess) {
   breaker_->record_success();
   breaker_->record_success();
   breaker_->record_success();
-  
+
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Closed);
   EXPECT_FALSE(breaker_->is_open());
 }
@@ -46,10 +46,10 @@ TEST_F(CircuitBreakerTest, StaysClosedOnSuccess) {
 TEST_F(CircuitBreakerTest, OpensAfterThresholdFailures) {
   breaker_->record_failure();
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Closed);
-  
+
   breaker_->record_failure();
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Closed);
-  
+
   breaker_->record_failure();  // Third failure - should open
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Open);
   EXPECT_TRUE(breaker_->is_open());
@@ -60,10 +60,10 @@ TEST_F(CircuitBreakerTest, SuccessResetsFailureCount) {
   breaker_->record_failure();
   breaker_->record_failure();
   breaker_->record_success();  // Reset
-  
+
   EXPECT_EQ(breaker_->get_failure_count(), 0);
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Closed);
-  
+
   // Need 3 more failures to open
   breaker_->record_failure();
   breaker_->record_failure();
@@ -77,10 +77,10 @@ TEST_F(CircuitBreakerTest, TransitionsToHalfOpenAfterTimeout) {
   breaker_->record_failure();
   breaker_->record_failure();
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Open);
-  
+
   // Wait for timeout
   std::this_thread::sleep_for(std::chrono::milliseconds(1100));
-  
+
   // is_open() should trigger transition to HalfOpen
   EXPECT_FALSE(breaker_->is_open());
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::HalfOpen);
@@ -92,12 +92,12 @@ TEST_F(CircuitBreakerTest, HalfOpenClosesOnSuccess) {
   breaker_->record_failure();
   breaker_->record_failure();
   breaker_->record_failure();
-  
+
   // Wait for timeout to transition to HalfOpen
   std::this_thread::sleep_for(std::chrono::milliseconds(1100));
   breaker_->is_open();  // Trigger transition
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::HalfOpen);
-  
+
   // Success should close the circuit
   breaker_->record_success();
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Closed);
@@ -110,12 +110,12 @@ TEST_F(CircuitBreakerTest, HalfOpenReopensOnFailure) {
   breaker_->record_failure();
   breaker_->record_failure();
   breaker_->record_failure();
-  
+
   // Wait for timeout to transition to HalfOpen
   std::this_thread::sleep_for(std::chrono::milliseconds(1100));
   breaker_->is_open();  // Trigger transition
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::HalfOpen);
-  
+
   // Failure should reopen the circuit
   breaker_->record_failure();
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Open);
@@ -129,7 +129,7 @@ TEST_F(CircuitBreakerTest, ResetClosesCircuit) {
   breaker_->record_failure();
   breaker_->record_failure();
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Open);
-  
+
   // Reset should close it
   breaker_->reset();
   EXPECT_EQ(breaker_->get_state(), CircuitBreaker::State::Closed);
@@ -140,13 +140,13 @@ TEST_F(CircuitBreakerTest, ResetClosesCircuit) {
 // Test default configuration
 TEST_F(CircuitBreakerTest, DefaultConfiguration) {
   CircuitBreaker default_breaker;
-  
+
   // Default threshold is 5
   for (int i = 0; i < 4; i++) {
     default_breaker.record_failure();
     EXPECT_EQ(default_breaker.get_state(), CircuitBreaker::State::Closed);
   }
-  
+
   default_breaker.record_failure();  // 5th failure
   EXPECT_EQ(default_breaker.get_state(), CircuitBreaker::State::Open);
 }

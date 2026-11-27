@@ -21,11 +21,13 @@ GenerateResult BedrockResponseParser::parse_converse_response(
   if (result.GetOutput().MessageHasBeenSet()) {
     const auto& message = result.GetOutput().GetMessage();
     gen_result.text = extract_text(message.GetContent());
-    ai::logger::log_debug("Extracted text length: {}", gen_result.text.length());
+    ai::logger::log_debug("Extracted text length: {}",
+                          gen_result.text.length());
 
     // Add assistant response to messages
     if (!gen_result.text.empty()) {
-      gen_result.response_messages.push_back(Message::assistant(gen_result.text));
+      gen_result.response_messages.push_back(
+          Message::assistant(gen_result.text));
     }
   }
 
@@ -41,7 +43,7 @@ GenerateResult BedrockResponseParser::parse_converse_response(
   gen_result.usage.completion_tokens = usage.GetOutputTokens();
   gen_result.usage.total_tokens =
       gen_result.usage.prompt_tokens + gen_result.usage.completion_tokens;
-  
+
   if (gen_result.usage.total_tokens > 0) {
     ai::logger::log_debug("Token usage - input: {}, output: {}, total: {}",
                           gen_result.usage.prompt_tokens,

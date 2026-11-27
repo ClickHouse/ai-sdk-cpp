@@ -2,19 +2,18 @@
 
 #include "ai/types/stream_result.h"
 
+#include <atomic>
+#include <concurrentqueue.h>
+#include <memory>
+#include <semaphore>
+#include <thread>
+
 #include <aws/bedrock-runtime/BedrockRuntimeClient.h>
 #include <aws/bedrock-runtime/BedrockRuntimeErrors.h>
 #include <aws/bedrock-runtime/model/ContentBlockDeltaEvent.h>
 #include <aws/bedrock-runtime/model/ConverseStreamRequest.h>
 #include <aws/bedrock-runtime/model/MessageStartEvent.h>
 #include <aws/bedrock-runtime/model/MessageStopEvent.h>
-
-#include <concurrentqueue.h>
-
-#include <atomic>
-#include <memory>
-#include <semaphore>
-#include <thread>
 
 namespace ai {
 namespace bedrock {
@@ -36,7 +35,8 @@ class BedrockStreamImpl : public internal::StreamResultImpl {
   /// Start streaming with the given client and request
   /// @param client AWS Bedrock runtime client
   /// @param request ConverseStream request
-  /// @param semaphore Optional semaphore to release on completion (for concurrency control)
+  /// @param semaphore Optional semaphore to release on completion (for
+  /// concurrency control)
   void start_stream(
       std::shared_ptr<Aws::BedrockRuntime::BedrockRuntimeClient> client,
       Aws::BedrockRuntime::Model::ConverseStreamRequest request,

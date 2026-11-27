@@ -74,9 +74,9 @@ void CircuitBreaker::record_failure() {
       failure_count_++;
       if (failure_count_ >= threshold_) {
         transition_to(State::Open);
-        SecureLogger::log_warn(
-            "Circuit breaker opened after " + std::to_string(failure_count_) +
-            " consecutive failures");
+        SecureLogger::log_warn("Circuit breaker opened after " +
+                               std::to_string(failure_count_) +
+                               " consecutive failures");
       }
       break;
 

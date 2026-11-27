@@ -9,13 +9,15 @@ namespace bedrock {
 namespace {
 // Model ID patterns for validation
 // Standard Bedrock model ID: provider.model-name-version
-// Examples: anthropic.claude-3-5-sonnet-20241022-v2:0, amazon.titan-text-express-v1
+// Examples: anthropic.claude-3-5-sonnet-20241022-v2:0,
+// amazon.titan-text-express-v1
 const std::regex kStandardModelIdPattern(
     R"(^[a-z0-9-]+\.[a-z0-9-]+(-[a-z0-9]+)*(-v[0-9]+)?(:[0-9]+)?$)",
     std::regex::icase);
 
 // Cross-region inference profile format: region.provider.model-name-version
-// Examples: us.anthropic.claude-sonnet-4-5-20250929-v1:0, eu.anthropic.claude-3-5-sonnet-v1:0
+// Examples: us.anthropic.claude-sonnet-4-5-20250929-v1:0,
+// eu.anthropic.claude-3-5-sonnet-v1:0
 const std::regex kInferenceProfilePattern(
     R"(^[a-z]{2}\.[a-z0-9-]+\.[a-z0-9-]+(-[a-z0-9]+)*(-v[0-9]+)?(:[0-9]+)?$)",
     std::regex::icase);
@@ -30,7 +32,8 @@ const std::regex kProvisionedArnPattern(
     R"(^arn:aws:bedrock:[a-z0-9-]+:[0-9]+:provisioned-model-throughput/[a-zA-Z0-9-_]+$)");
 
 // Inference profile ARN format
-// Example: arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-3-5-sonnet-v1:0
+// Example:
+// arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-3-5-sonnet-v1:0
 const std::regex kInferenceProfileArnPattern(
     R"(^arn:aws:bedrock:[a-z0-9-]+:[0-9]+:inference-profile/[a-zA-Z0-9-_.:/]+$)");
 
@@ -38,7 +41,8 @@ const std::regex kInferenceProfileArnPattern(
 
 InputValidator::InputValidator() : config_() {}
 
-InputValidator::InputValidator(const SecurityConfig& config) : config_(config) {}
+InputValidator::InputValidator(const SecurityConfig& config)
+    : config_(config) {}
 
 std::optional<std::string> InputValidator::validate(
     const GenerateOptions& options) const {

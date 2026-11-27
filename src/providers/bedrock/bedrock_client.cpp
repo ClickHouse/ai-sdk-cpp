@@ -10,6 +10,14 @@
 #include "input_validator.h"
 #include "secure_logger.h"
 
+#include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <fstream>
+#include <memory>
+#include <mutex>
+#include <semaphore>
+
 #include <aws/bedrock-runtime/BedrockRuntimeClient.h>
 #include <aws/bedrock-runtime/model/ConverseRequest.h>
 #include <aws/core/Aws.h>
@@ -18,14 +26,6 @@
 #include <aws/sts/STSClient.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/model/AssumeRoleWithWebIdentityRequest.h>
-
-#include <algorithm>
-#include <chrono>
-#include <cstdlib>
-#include <fstream>
-#include <memory>
-#include <mutex>
-#include <semaphore>
 
 namespace ai {
 namespace bedrock {
@@ -126,8 +126,8 @@ struct BedrockClient::Impl {
     SecureLogger::log_debug("Bedrock client initialized - region: " + region);
   }
 
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> create_credentials_provider(
-      const BedrockConfig& config) {
+  std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
+  create_credentials_provider(const BedrockConfig& config) {
     // Priority 1: STS AssumeRole for cross-account access
     if (!config.role_arn.empty()) {
       return create_assume_role_provider(config);
@@ -141,7 +141,8 @@ struct BedrockClient::Impl {
     // Priority 3: Profile-based credentials
     if (!config.profile.empty()) {
       SecureLogger::log_debug("Using AWS profile for credentials");
-      return std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
+      return std::make_shared<
+          Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
           config.profile.c_str());
     }
 
@@ -150,8 +151,8 @@ struct BedrockClient::Impl {
     return std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>();
   }
 
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> create_assume_role_provider(
-      const BedrockConfig& config) {
+  std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
+  create_assume_role_provider(const BedrockConfig& config) {
     SecureLogger::log_debug("Using STS AssumeRole for credentials");
 
     // Create STS client with default credentials
@@ -183,8 +184,8 @@ struct BedrockClient::Impl {
         credentials.GetSessionToken());
   }
 
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> create_web_identity_provider(
-      const BedrockConfig& config) {
+  std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
+  create_web_identity_provider(const BedrockConfig& config) {
     SecureLogger::log_debug("Using Web Identity Token for credentials");
 
     // Read the token from file
@@ -217,12 +218,13 @@ struct BedrockClient::Impl {
 };
 
 BedrockClient::BedrockClient(const BedrockConfig& config) {
-  // Acquire SDK reference first - ensures SDK is initialized before creating Impl
+  // Acquire SDK reference first - ensures SDK is initialized before creating
+  // Impl
   AwsSdkManager::instance().acquire();
-  
+
   // Now create the implementation (which uses AWS SDK)
   pimpl_ = std::make_unique<Impl>(config);
-  
+
   SecureLogger::log_info("Bedrock client created for region: " +
                          pimpl_->region);
 }
@@ -230,8 +232,9 @@ BedrockClient::BedrockClient(const BedrockConfig& config) {
 BedrockClient::~BedrockClient() {
   // Destroy pimpl first (releases AWS resources)
   pimpl_.reset();
-  
-  // Then release SDK reference - SDK will shutdown when last client is destroyed
+
+  // Then release SDK reference - SDK will shutdown when last client is
+  // destroyed
   AwsSdkManager::instance().release();
 }
 
@@ -297,8 +300,8 @@ GenerateResult BedrockClient::generate_text(const GenerateOptions& options) {
     GenerateResult result;
 
     if (outcome.IsSuccess()) {
-      result = pimpl_->response_parser.parse_converse_response(
-          outcome.GetResult());
+      result =
+          pimpl_->response_parser.parse_converse_response(outcome.GetResult());
       pimpl_->circuit_breaker.record_success();
 
       // Log successful API call
@@ -310,10 +313,10 @@ GenerateResult BedrockClient::generate_text(const GenerateOptions& options) {
       pimpl_->circuit_breaker.record_failure();
 
       // Log API error
-      SecureLogger::log_api_error(
-          "Converse", options.model, pimpl_->region,
-          outcome.GetError().GetExceptionName(),
-          outcome.GetError().GetMessage(), result.is_retryable.value_or(false));
+      SecureLogger::log_api_error("Converse", options.model, pimpl_->region,
+                                  outcome.GetError().GetExceptionName(),
+                                  outcome.GetError().GetMessage(),
+                                  result.is_retryable.value_or(false));
     }
 
     return result;

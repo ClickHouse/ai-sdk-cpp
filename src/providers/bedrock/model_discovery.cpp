@@ -5,16 +5,16 @@
 #include "aws_sdk_manager.h"
 #include "secure_logger.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <mutex>
+
 #include <aws/bedrock/BedrockClient.h>
 #include <aws/bedrock/model/ListFoundationModelsRequest.h>
 #include <aws/bedrock/model/ListFoundationModelsResult.h>
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
-
-#include <algorithm>
-#include <cstdlib>
-#include <mutex>
 
 namespace ai {
 namespace bedrock {
@@ -32,7 +32,8 @@ std::string get_region_from_env() {
   return "";
 }
 
-// Extract provider from model ID (e.g., "anthropic" from "anthropic.claude-3-5-sonnet-v1:0")
+// Extract provider from model ID (e.g., "anthropic" from
+// "anthropic.claude-3-5-sonnet-v1:0")
 std::string extract_provider(const std::string& model_id) {
   auto dot_pos = model_id.find('.');
   if (dot_pos != std::string::npos) {
@@ -121,10 +122,9 @@ std::vector<ModelInfo> ModelDiscovery::list_models() {
 bool ModelDiscovery::is_model_accessible(const std::string& model_id) {
   auto models = list_models();
 
-  return std::any_of(models.begin(), models.end(),
-                     [&model_id](const ModelInfo& info) {
-                       return info.model_id == model_id;
-                     });
+  return std::any_of(
+      models.begin(), models.end(),
+      [&model_id](const ModelInfo& info) { return info.model_id == model_id; });
 }
 
 void ModelDiscovery::invalidate_cache() {
@@ -153,9 +153,9 @@ std::vector<ModelInfo> ModelDiscovery::fetch_models_from_api() {
 
   if (!outcome.IsSuccess()) {
     const auto& error = outcome.GetError();
-    SecureLogger::log_error("Failed to list foundation models: " +
-                            error.GetExceptionName() + " - " +
-                            error.GetMessage());
+    SecureLogger::log_error(
+        "Failed to list foundation models: " + error.GetExceptionName() +
+        " - " + error.GetMessage());
     throw std::runtime_error("Failed to list foundation models: " +
                              error.GetMessage());
   }

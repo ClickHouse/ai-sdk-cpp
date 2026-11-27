@@ -1,4 +1,5 @@
 #include "aws_sdk_manager.h"
+
 #include "secure_logger.h"
 
 namespace ai {

@@ -5,11 +5,10 @@
 
 #ifdef AI_SDK_HAS_BEDROCK
 
-#include "providers/bedrock/input_validator.h"
-
 #include "ai/bedrock.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/message.h"
+#include "providers/bedrock/input_validator.h"
 
 namespace ai {
 namespace bedrock {
@@ -22,8 +21,10 @@ class InputValidatorTest : public ::testing::Test {
 
 // Test valid model ID patterns
 TEST_F(InputValidatorTest, ValidStandardModelIds) {
-  EXPECT_TRUE(validator_.is_valid_model_id("anthropic.claude-3-5-sonnet-20241022-v2:0"));
-  EXPECT_TRUE(validator_.is_valid_model_id("anthropic.claude-3-5-haiku-20241022-v1:0"));
+  EXPECT_TRUE(validator_.is_valid_model_id(
+      "anthropic.claude-3-5-sonnet-20241022-v2:0"));
+  EXPECT_TRUE(
+      validator_.is_valid_model_id("anthropic.claude-3-5-haiku-20241022-v1:0"));
   EXPECT_TRUE(validator_.is_valid_model_id("amazon.titan-text-express-v1"));
   EXPECT_TRUE(validator_.is_valid_model_id("amazon.titan-text-lite-v1"));
   EXPECT_TRUE(validator_.is_valid_model_id("meta.llama3-8b-instruct-v1:0"));
@@ -36,8 +37,9 @@ TEST_F(InputValidatorTest, ValidArnModelIds) {
       "arn:aws:bedrock:us-east-1:123456789012:custom-model/my-model"));
   EXPECT_TRUE(validator_.is_valid_model_id(
       "arn:aws:bedrock:us-west-2:123456789012:provisioned-model/my-model"));
-  EXPECT_TRUE(validator_.is_valid_model_id(
-      "arn:aws:bedrock:eu-west-1:123456789012:foundation-model/anthropic/claude"));
+  EXPECT_TRUE(
+      validator_.is_valid_model_id("arn:aws:bedrock:eu-west-1:123456789012:"
+                                   "foundation-model/anthropic/claude"));
 }
 
 // Test invalid model IDs
@@ -98,7 +100,7 @@ TEST_F(InputValidatorTest, InvalidMaxTokens) {
 TEST_F(InputValidatorTest, ValidPromptLength) {
   std::string short_prompt = "Hello, world!";
   std::string medium_prompt(1000, 'a');
-  
+
   EXPECT_TRUE(validator_.is_valid_prompt_length(short_prompt));
   EXPECT_TRUE(validator_.is_valid_prompt_length(medium_prompt));
   EXPECT_TRUE(validator_.is_valid_prompt_length(""));
@@ -108,7 +110,7 @@ TEST_F(InputValidatorTest, InvalidPromptLength) {
   SecurityConfig config;
   config.max_prompt_length = 100;
   InputValidator strict_validator(config);
-  
+
   std::string long_prompt(101, 'a');
   EXPECT_FALSE(strict_validator.is_valid_prompt_length(long_prompt));
 }

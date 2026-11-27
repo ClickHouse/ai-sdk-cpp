@@ -5,10 +5,9 @@
 
 #ifdef AI_SDK_HAS_BEDROCK
 
-#include "providers/bedrock/bedrock_stream.h"
-
 #include "ai/bedrock.h"
 #include "ai/types/stream_event.h"
+#include "providers/bedrock/bedrock_stream.h"
 
 namespace ai {
 namespace bedrock {

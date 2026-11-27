@@ -134,7 +134,8 @@ int main() {
 
     if (bedrock_result) {
       std::cout << "Answer: " << bedrock_result.text << "\n";
-      std::cout << "Usage: " << bedrock_result.usage.total_tokens << " tokens\n\n";
+      std::cout << "Usage: " << bedrock_result.usage.total_tokens
+                << " tokens\n\n";
     } else {
       std::cout << "Error: " << bedrock_result.error_message() << "\n\n";
     }

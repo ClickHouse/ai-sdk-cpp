@@ -18,11 +18,15 @@ namespace bedrock {
 namespace models {
 /// Claude models on Bedrock (using inference profiles for cross-region support)
 /// Use inference profile IDs (us.*, eu.*, global.*) for on-demand access
-constexpr const char* kClaudeSonnet = "us.anthropic.claude-3-5-sonnet-20241022-v2:0";
-constexpr const char* kClaudeHaiku = "us.anthropic.claude-3-5-haiku-20241022-v1:0";
+constexpr const char* kClaudeSonnet =
+    "us.anthropic.claude-3-5-sonnet-20241022-v2:0";
+constexpr const char* kClaudeHaiku =
+    "us.anthropic.claude-3-5-haiku-20241022-v1:0";
 constexpr const char* kClaudeOpus = "us.anthropic.claude-3-opus-20240229-v1:0";
-constexpr const char* kClaudeSonnet4 = "global.anthropic.claude-sonnet-4-20250514-v1:0";
-constexpr const char* kClaudeSonnet45 = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+constexpr const char* kClaudeSonnet4 =
+    "global.anthropic.claude-sonnet-4-20250514-v1:0";
+constexpr const char* kClaudeSonnet45 =
+    "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
 
 /// Amazon Titan models (direct model IDs - on-demand supported)
 constexpr const char* kTitanTextExpress = "amazon.titan-text-express-v1";
@@ -44,10 +48,10 @@ constexpr const char* kDefaultModel = kClaudeSonnet;
 
 /// Model information returned by model discovery
 struct ModelInfo {
-  std::string model_id;       // Full model identifier
-  std::string provider;       // Model provider (e.g., "anthropic", "amazon", "meta")
-  std::string name;           // Human-readable model name
-  bool supports_streaming;    // Whether model supports streaming
+  std::string model_id;  // Full model identifier
+  std::string provider;  // Model provider (e.g., "anthropic", "amazon", "meta")
+  std::string name;      // Human-readable model name
+  bool supports_streaming;      // Whether model supports streaming
   bool supports_system_prompt;  // Whether model supports system prompts
   std::vector<std::string> capabilities;  // List of capabilities
 };
@@ -104,7 +108,8 @@ struct BedrockConfig {
   /// Used with role_arn for web identity federation.
   std::string web_identity_token_file;
 
-  /// Role session name for STS AssumeRole (default: "bedrock-provider-session").
+  /// Role session name for STS AssumeRole (default:
+  /// "bedrock-provider-session").
   std::string role_session_name = "bedrock-provider-session";
 
   /// Security configuration
@@ -146,7 +151,9 @@ bool validate_model_access(const std::string& model_id,
 
 /// Get the provider name
 /// @return "bedrock"
-constexpr const char* provider_name() { return "bedrock"; }
+constexpr const char* provider_name() {
+  return "bedrock";
+}
 
 }  // namespace bedrock
 }  // namespace ai

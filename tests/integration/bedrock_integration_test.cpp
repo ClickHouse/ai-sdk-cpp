@@ -53,7 +53,8 @@ TEST_F(BedrockIntegrationTest, GenerateTextReturnsValidResponse) {
 
   auto result = client_.generate_text(options);
 
-  EXPECT_FALSE(result.error.has_value()) << "Error: " << result.error.value_or("");
+  EXPECT_FALSE(result.error.has_value())
+      << "Error: " << result.error.value_or("");
   EXPECT_FALSE(result.text.empty());
   EXPECT_EQ(result.finish_reason, kFinishReasonStop);
 }
@@ -63,13 +64,15 @@ TEST_F(BedrockIntegrationTest, GenerateTextWithSystemPrompt) {
   GenerateOptions options;
   // Use Amazon Nova which supports on-demand throughput
   options.model = "amazon.nova-lite-v1:0";
-  options.system = "You are a helpful assistant that responds in exactly one word.";
+  options.system =
+      "You are a helpful assistant that responds in exactly one word.";
   options.prompt = "What color is the sky?";
   options.max_tokens = 20;
 
   auto result = client_.generate_text(options);
 
-  EXPECT_FALSE(result.error.has_value()) << "Error: " << result.error.value_or("");
+  EXPECT_FALSE(result.error.has_value())
+      << "Error: " << result.error.value_or("");
   EXPECT_FALSE(result.text.empty());
 }
 
@@ -87,7 +90,8 @@ TEST_F(BedrockIntegrationTest, GenerateTextWithMessages) {
 
   auto result = client_.generate_text(options);
 
-  EXPECT_FALSE(result.error.has_value()) << "Error: " << result.error.value_or("");
+  EXPECT_FALSE(result.error.has_value())
+      << "Error: " << result.error.value_or("");
   EXPECT_FALSE(result.text.empty());
   // Response should mention "Alice"
   EXPECT_NE(result.text.find("Alice"), std::string::npos);
@@ -200,17 +204,17 @@ class BedrockModelDiscoveryTest : public ::testing::Test {
 TEST_F(BedrockModelDiscoveryTest, ListAvailableModelsReturnsResults) {
   try {
     auto models = list_available_models();
-    
+
     // Should return at least some models
     EXPECT_GT(models.size(), 0) << "Should have at least one available model";
-    
+
     // Print available models for debugging
     std::cout << "Available models (" << models.size() << "):" << std::endl;
     for (const auto& model : models) {
       std::cout << "  - " << model.model_id << " (" << model.provider << ")"
                 << " streaming=" << model.supports_streaming << std::endl;
     }
-    
+
     // Check model info structure
     for (const auto& model : models) {
       EXPECT_FALSE(model.model_id.empty());
@@ -229,9 +233,9 @@ TEST_F(BedrockModelDiscoveryTest, ValidateModelAccessForKnownModels) {
   bool has_nova_lite = validate_model_access(models::kNovaLite);
   bool has_nova_micro = validate_model_access(models::kNovaMicro);
   bool has_titan = validate_model_access(models::kTitanTextExpress);
-  
+
   // At least one of these should be accessible
-  EXPECT_TRUE(has_nova_lite || has_nova_micro || has_titan) 
+  EXPECT_TRUE(has_nova_lite || has_nova_micro || has_titan)
       << "At least one common model should be accessible";
 }
 
@@ -269,16 +273,17 @@ class BedrockMultiModelTest : public ::testing::Test {
 TEST_F(BedrockMultiModelTest, GenerateWithDifferentModels) {
   // Get available models
   std::vector<std::string> models_to_test;
-  
+
   try {
     auto available = list_available_models();
     for (const auto& model : available) {
       // Only test text models that support streaming
-      if (model.supports_streaming && 
-          std::find(model.capabilities.begin(), model.capabilities.end(), "text") 
-              != model.capabilities.end()) {
+      if (model.supports_streaming &&
+          std::find(model.capabilities.begin(), model.capabilities.end(),
+                    "text") != model.capabilities.end()) {
         models_to_test.push_back(model.model_id);
-        if (models_to_test.size() >= 3) break;  // Test up to 3 models
+        if (models_to_test.size() >= 3)
+          break;  // Test up to 3 models
       }
     }
   } catch (const std::exception& e) {
@@ -292,7 +297,7 @@ TEST_F(BedrockMultiModelTest, GenerateWithDifferentModels) {
 
   for (const auto& model_id : models_to_test) {
     std::cout << "Testing model: " << model_id << std::endl;
-    
+
     GenerateOptions options;
     options.model = model_id;
     options.prompt = "Say 'test' and nothing else.";
@@ -302,14 +307,14 @@ TEST_F(BedrockMultiModelTest, GenerateWithDifferentModels) {
 
     // Some models may not be enabled - that's OK
     if (result.error.has_value()) {
-      std::cout << "  Model " << model_id << " error: " << result.error.value() 
+      std::cout << "  Model " << model_id << " error: " << result.error.value()
                 << std::endl;
       continue;
     }
 
-    EXPECT_FALSE(result.text.empty()) 
+    EXPECT_FALSE(result.text.empty())
         << "Model " << model_id << " should return text";
-    std::cout << "  Model " << model_id << " response: " << result.text 
+    std::cout << "  Model " << model_id << " response: " << result.text
               << std::endl;
   }
 }
@@ -318,7 +323,7 @@ TEST_F(BedrockMultiModelTest, GenerateWithDifferentModels) {
 TEST_F(BedrockMultiModelTest, SupportsCustomModelArn) {
   // This test verifies that ARN-format model IDs pass validation
   // The actual API call may fail if the model doesn't exist
-  
+
   GenerateOptions options;
   // Use a valid ARN format (will fail at API level, but should pass validation)
   options.model = "arn:aws:bedrock:us-east-1:123456789012:custom-model/test";
@@ -345,16 +350,16 @@ TEST_F(BedrockMultiModelTest, SupportsInferenceProfile) {
   options.max_tokens = 50;
 
   std::cout << "Testing inference profile: " << options.model << std::endl;
-  
+
   auto result = client_.generate_text(options);
 
   // Should succeed with inference profile
-  EXPECT_FALSE(result.error.has_value()) 
+  EXPECT_FALSE(result.error.has_value())
       << "Error: " << result.error.value_or("");
   EXPECT_FALSE(result.text.empty()) << "Should return text";
-  
+
   std::cout << "  Response: " << result.text << std::endl;
-  std::cout << "  Tokens - prompt: " << result.usage.prompt_tokens 
+  std::cout << "  Tokens - prompt: " << result.usage.prompt_tokens
             << ", completion: " << result.usage.completion_tokens << std::endl;
 }
 
@@ -366,8 +371,9 @@ TEST_F(BedrockMultiModelTest, StreamingWithInferenceProfile) {
   options.prompt = "Count from 1 to 3.";
   options.max_tokens = 50;
 
-  std::cout << "Testing streaming with inference profile: " << options.model << std::endl;
-  
+  std::cout << "Testing streaming with inference profile: " << options.model
+            << std::endl;
+
   auto stream = client_.stream_text(options);
 
   std::string full_text;
@@ -389,7 +395,7 @@ TEST_F(BedrockMultiModelTest, StreamingWithInferenceProfile) {
   EXPECT_GT(chunk_count, 0) << "Should receive multiple text chunks";
   EXPECT_FALSE(full_text.empty()) << "Should receive text content";
   EXPECT_TRUE(got_finish) << "Should receive finish event";
-  
+
   std::cout << "  Received " << chunk_count << " chunks" << std::endl;
   std::cout << "  Full response: " << full_text << std::endl;
 }

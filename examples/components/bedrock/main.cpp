@@ -46,9 +46,8 @@ int main() {
       std::cout << "✓ Bedrock client created successfully\n";
       std::cout << "✓ Provider: " << maybe_client->provider_name() << "\n";
       std::cout << "✓ Default model: " << maybe_client->default_model() << "\n";
-      std::cout << "✓ Available models: "
-                << ai::bedrock::models::kClaudeSonnet << ", "
-                << ai::bedrock::models::kClaudeHaiku << ", "
+      std::cout << "✓ Available models: " << ai::bedrock::models::kClaudeSonnet
+                << ", " << ai::bedrock::models::kClaudeHaiku << ", "
                 << ai::bedrock::models::kTitanTextExpress << "\n";
     } else {
       std::cout << "✗ Bedrock client creation failed (check AWS credentials)\n";

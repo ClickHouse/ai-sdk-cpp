@@ -52,7 +52,8 @@ int main() {
 
     ai::StreamOptions stream_options;
     stream_options.model = ai::bedrock::models::kClaudeSonnet;
-    stream_options.prompt = "Count from 1 to 5 slowly and with each number say 'tick'";
+    stream_options.prompt =
+        "Count from 1 to 5 slowly and with each number say 'tick'";
     stream_options.max_tokens = 100;
 
     auto stream = client.stream_text(stream_options);

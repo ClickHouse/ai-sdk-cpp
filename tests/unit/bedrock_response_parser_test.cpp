@@ -5,10 +5,9 @@
 
 #ifdef AI_SDK_HAS_BEDROCK
 
-#include "providers/bedrock/bedrock_response_parser.h"
-
 #include "ai/bedrock.h"
 #include "ai/core.h"
+#include "providers/bedrock/bedrock_response_parser.h"
 
 #include <aws/bedrock-runtime/BedrockRuntimeErrors.h>
 #include <aws/bedrock-runtime/model/ConverseResult.h>
@@ -26,8 +25,8 @@ class BedrockResponseParserTest : public ::testing::Test {
 // Test error retryability - ThrottlingException
 TEST_F(BedrockResponseParserTest, ThrottlingErrorIsRetryable) {
   Aws::Client::AWSError<Aws::BedrockRuntime::BedrockRuntimeErrors> error(
-      Aws::BedrockRuntime::BedrockRuntimeErrors::THROTTLING, "ThrottlingException",
-      "Rate exceeded", false);
+      Aws::BedrockRuntime::BedrockRuntimeErrors::THROTTLING,
+      "ThrottlingException", "Rate exceeded", false);
 
   EXPECT_TRUE(parser_.is_error_retryable(error));
 }
@@ -53,8 +52,8 @@ TEST_F(BedrockResponseParserTest, InternalFailureIsRetryable) {
 // Test error retryability - ValidationException
 TEST_F(BedrockResponseParserTest, ValidationErrorIsNotRetryable) {
   Aws::Client::AWSError<Aws::BedrockRuntime::BedrockRuntimeErrors> error(
-      Aws::BedrockRuntime::BedrockRuntimeErrors::VALIDATION, "ValidationException",
-      "Invalid request", false);
+      Aws::BedrockRuntime::BedrockRuntimeErrors::VALIDATION,
+      "ValidationException", "Invalid request", false);
 
   EXPECT_FALSE(parser_.is_error_retryable(error));
 }
@@ -80,8 +79,8 @@ TEST_F(BedrockResponseParserTest, ResourceNotFoundIsNotRetryable) {
 // Test error message contains exception name
 TEST_F(BedrockResponseParserTest, ErrorMessageContainsExceptionName) {
   Aws::Client::AWSError<Aws::BedrockRuntime::BedrockRuntimeErrors> error(
-      Aws::BedrockRuntime::BedrockRuntimeErrors::VALIDATION, "ValidationException",
-      "Invalid model ID", false);
+      Aws::BedrockRuntime::BedrockRuntimeErrors::VALIDATION,
+      "ValidationException", "Invalid model ID", false);
 
   auto result = parser_.parse_converse_error(error);
 
@@ -93,8 +92,8 @@ TEST_F(BedrockResponseParserTest, ErrorMessageContainsExceptionName) {
 // Test error result has correct finish reason
 TEST_F(BedrockResponseParserTest, ErrorResultHasErrorFinishReason) {
   Aws::Client::AWSError<Aws::BedrockRuntime::BedrockRuntimeErrors> error(
-      Aws::BedrockRuntime::BedrockRuntimeErrors::VALIDATION, "ValidationException",
-      "Test error", false);
+      Aws::BedrockRuntime::BedrockRuntimeErrors::VALIDATION,
+      "ValidationException", "Test error", false);
 
   auto result = parser_.parse_converse_error(error);
 
