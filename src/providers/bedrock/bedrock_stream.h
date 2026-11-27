@@ -42,6 +42,10 @@ class BedrockStreamImpl : public internal::StreamResultImpl {
       Aws::BedrockRuntime::Model::ConverseStreamRequest request,
       std::counting_semaphore<>* semaphore = nullptr);
 
+  /// Finish the stream immediately with an error event, without calling the
+  /// API (used when the request is rejected before it is sent)
+  void fail(const std::string& error_message);
+
   // StreamResultImpl interface
   StreamEvent get_next_event() override;
   bool has_more_events() const override;

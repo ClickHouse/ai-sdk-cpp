@@ -128,14 +128,19 @@ struct BedrockClient::Impl {
 
   std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
   create_credentials_provider(const BedrockConfig& config) {
-    // Priority 1: STS AssumeRole for cross-account access
-    if (!config.role_arn.empty()) {
-      return create_assume_role_provider(config);
+    // Priority 1: Web Identity Token for EKS/OIDC (requires role_arn)
+    if (!config.web_identity_token_file.empty()) {
+      if (config.role_arn.empty()) {
+        throw ConfigurationError(
+            "web_identity_token_file requires role_arn to be set in "
+            "BedrockConfig");
+      }
+      return create_web_identity_provider(config);
     }
 
-    // Priority 2: Web Identity Token for EKS/OIDC
-    if (!config.web_identity_token_file.empty()) {
-      return create_web_identity_provider(config);
+    // Priority 2: STS AssumeRole for cross-account access
+    if (!config.role_arn.empty()) {
+      return create_assume_role_provider(config);
     }
 
     // Priority 3: Profile-based credentials
@@ -361,9 +366,9 @@ StreamResult BedrockClient::stream_text(const StreamOptions& options) {
   if (validation_error.has_value()) {
     SecureLogger::log_warn("Input validation failed: " +
                            validation_error.value());
-    // Return a stream that immediately yields an error
+    // Return a stream that immediately yields the validation error
     auto impl = std::make_unique<BedrockStreamImpl>();
-    // The stream will be in error state
+    impl->fail(validation_error.value());
     return StreamResult(std::move(impl));
   }
 
@@ -371,6 +376,7 @@ StreamResult BedrockClient::stream_text(const StreamOptions& options) {
   if (pimpl_->circuit_breaker.is_open()) {
     SecureLogger::log_warn("Circuit breaker is open, rejecting stream request");
     auto impl = std::make_unique<BedrockStreamImpl>();
+    impl->fail("Service temporarily unavailable (circuit breaker open)");
     return StreamResult(std::move(impl));
   }
 
@@ -402,12 +408,11 @@ std::string BedrockClient::provider_name() const {
 
 std::vector<std::string> BedrockClient::supported_models() const {
   return {
-      // Claude models on Bedrock (inference profiles)
-      models::kClaudeSonnet,
-      models::kClaudeHaiku,
-      models::kClaudeOpus,
-      models::kClaudeSonnet4,
-      models::kClaudeSonnet45,
+      // Claude models on Bedrock
+      models::kClaudeFable52,
+      models::kClaudeOpus55,
+      models::kClaudeSonnet55,
+      models::kClaudeHaiku55,
       // Amazon Titan models
       models::kTitanTextExpress,
       models::kTitanTextLite,

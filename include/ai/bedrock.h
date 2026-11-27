@@ -16,17 +16,19 @@ namespace ai {
 namespace bedrock {
 
 namespace models {
-/// Claude models on Bedrock (using inference profiles for cross-region support)
-/// Use inference profile IDs (us.*, eu.*, global.*) for on-demand access
-constexpr const char* kClaudeSonnet =
-    "us.anthropic.claude-3-5-sonnet-20241022-v2:0";
-constexpr const char* kClaudeHaiku =
-    "us.anthropic.claude-3-5-haiku-20241022-v1:0";
-constexpr const char* kClaudeOpus = "us.anthropic.claude-3-opus-20240229-v1:0";
-constexpr const char* kClaudeSonnet4 =
-    "global.anthropic.claude-sonnet-4-20250514-v1:0";
-constexpr const char* kClaudeSonnet45 =
-    "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+/// Claude models on Bedrock (Bedrock model IDs take the `anthropic.` prefix).
+/// Cross-region inference profiles are also accepted, e.g.
+/// "us.anthropic.claude-sonnet-5-5" or "global.anthropic.claude-opus-5-5".
+constexpr const char* kClaudeFable52 = "anthropic.claude-fable-5-2";
+constexpr const char* kClaudeOpus55 = "anthropic.claude-opus-5-5";
+constexpr const char* kClaudeSonnet55 = "anthropic.claude-sonnet-5-5";
+constexpr const char* kClaudeHaiku55 = "anthropic.claude-haiku-5-5";
+
+/// Aliases for the current generation of each Claude model family
+constexpr const char* kClaudeFable = kClaudeFable52;
+constexpr const char* kClaudeOpus = kClaudeOpus55;
+constexpr const char* kClaudeSonnet = kClaudeSonnet55;
+constexpr const char* kClaudeHaiku = kClaudeHaiku55;
 
 /// Amazon Titan models (direct model IDs - on-demand supported)
 constexpr const char* kTitanTextExpress = "amazon.titan-text-express-v1";

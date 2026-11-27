@@ -99,6 +99,11 @@ void BedrockStreamImpl::start_stream(
   });
 }
 
+void BedrockStreamImpl::fail(const std::string& error_message) {
+  push_event(StreamEvent(kStreamEventTypeError, error_message));
+  mark_complete();
+}
+
 StreamEvent BedrockStreamImpl::get_next_event() {
   StreamEvent event("");
   auto start_time = std::chrono::steady_clock::now();

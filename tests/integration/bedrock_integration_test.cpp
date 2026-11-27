@@ -345,7 +345,7 @@ TEST_F(BedrockMultiModelTest, SupportsCustomModelArn) {
 TEST_F(BedrockMultiModelTest, SupportsInferenceProfile) {
   GenerateOptions options;
   // Use Claude Sonnet 4.5 inference profile (cross-region)
-  options.model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+  options.model = "us.anthropic.claude-sonnet-5-5";
   options.prompt = "Say 'Hello from Claude!' and nothing else.";
   options.max_tokens = 50;
 
@@ -367,7 +367,7 @@ TEST_F(BedrockMultiModelTest, SupportsInferenceProfile) {
 TEST_F(BedrockMultiModelTest, StreamingWithInferenceProfile) {
   StreamOptions options;
   // Use Claude Sonnet 4.5 inference profile (cross-region)
-  options.model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+  options.model = "us.anthropic.claude-sonnet-5-5";
   options.prompt = "Count from 1 to 3.";
   options.max_tokens = 50;
 

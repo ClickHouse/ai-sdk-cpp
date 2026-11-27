@@ -3,8 +3,6 @@
 #include "ai/types/generate_options.h"
 #include "ai/types/stream_options.h"
 
-// Forward declare AWS types to avoid including BedrockRuntimeClient.h
-// which has a broken dependency on Paginator.h in homebrew's AWS SDK
 #include <aws/bedrock-runtime/model/ContentBlock.h>
 #include <aws/bedrock-runtime/model/ConversationRole.h>
 #include <aws/bedrock-runtime/model/ConverseRequest.h>

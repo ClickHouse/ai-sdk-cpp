@@ -311,14 +311,15 @@ int main() {
     // Uses AWS_REGION env var and default credential chain
     auto client = ai::bedrock::create_client();
     
-    auto result = client.generate_text({
-        .model = ai::bedrock::models::kClaudeSonnet,
-        .system = "You are a helpful assistant.",
-        .prompt = "Explain cloud computing in simple terms."
-    });
+    ai::GenerateOptions options(ai::bedrock::models::kClaudeSonnet,
+                                "Explain cloud computing in simple terms.");
+    options.system = "You are a helpful assistant.";
+    auto result = client.generate_text(options);
 
     if (result) {
-        std::cout << result->text << std::endl;
+        std::cout << result.text << std::endl;
+    } else {
+        std::cerr << result.error_message() << std::endl;
     }
 
     return 0;
@@ -384,10 +385,14 @@ auto client = ai::bedrock::create_client(config);
 ##### Available Bedrock Models
 
 ```cpp
-// Claude models
-ai::bedrock::models::kClaudeSonnet   // anthropic.claude-3-5-sonnet-20241022-v2:0
-ai::bedrock::models::kClaudeHaiku    // anthropic.claude-3-5-haiku-20241022-v1:0
-ai::bedrock::models::kClaudeOpus     // anthropic.claude-3-opus-20240229-v1:0
+// Claude models (current generation)
+ai::bedrock::models::kClaudeFable    // anthropic.claude-fable-5-2
+ai::bedrock::models::kClaudeOpus     // anthropic.claude-opus-5-5
+ai::bedrock::models::kClaudeSonnet   // anthropic.claude-sonnet-5-5
+ai::bedrock::models::kClaudeHaiku    // anthropic.claude-haiku-5-5
+
+// Cross-region inference profiles are passed as plain strings,
+// e.g. "us.anthropic.claude-sonnet-5-5" or "global.anthropic.claude-opus-5-5"
 
 // Amazon Titan models
 ai::bedrock::models::kTitanTextExpress  // amazon.titan-text-express-v1
@@ -408,15 +413,16 @@ ai::bedrock::models::kLlama3_70B  // meta.llama3-70b-instruct-v1:0
 int main() {
     auto client = ai::bedrock::create_client();
     
-    auto stream = client.stream_text({
-        .model = ai::bedrock::models::kClaudeSonnet,
-        .system = "You are a helpful assistant.",
-        .prompt = "Write a haiku about programming."
-    });
-    
-    for (const auto& chunk : stream) {
-        if (chunk.text) {
-            std::cout << chunk.text.value() << std::flush;
+    ai::GenerateOptions options(ai::bedrock::models::kClaudeSonnet,
+                                "Write a haiku about programming.");
+    options.system = "You are a helpful assistant.";
+    auto stream = client.stream_text(ai::StreamOptions(options));
+
+    for (const auto& event : stream) {
+        if (event.is_text_delta()) {
+            std::cout << event.text_delta << std::flush;
+        } else if (event.is_error()) {
+            std::cerr << event.error.value_or("unknown error") << std::endl;
         }
     }
     

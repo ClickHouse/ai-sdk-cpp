@@ -12,11 +12,20 @@ set(AI_SDK_VERSION "@PROJECT_VERSION@")
 # Find PUBLIC dependencies only
 find_dependency(nlohmann_json CONFIG REQUIRED)
 
+# The optional Bedrock component links the AWS SDK for C++
+set(AI_SDK_ENABLE_BEDROCK @AI_SDK_ENABLE_BEDROCK@)
+if(AI_SDK_ENABLE_BEDROCK)
+    find_dependency(AWSSDK REQUIRED COMPONENTS core bedrock-runtime bedrock sts)
+endif()
+
 # Include the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/ai-sdk-cpp-targets.cmake")
 
 # Available components
 set(AI_SDK_AVAILABLE_COMPONENTS core openai anthropic langfuse)
+if(AI_SDK_ENABLE_BEDROCK)
+    list(APPEND AI_SDK_AVAILABLE_COMPONENTS bedrock)
+endif()
 
 # Check requested components
 set(AI_SDK_REQUESTED_COMPONENTS ${ai-sdk-cpp_FIND_COMPONENTS})

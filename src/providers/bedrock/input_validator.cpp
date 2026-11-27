@@ -15,11 +15,11 @@ const std::regex kStandardModelIdPattern(
     R"(^[a-z0-9-]+\.[a-z0-9-]+(-[a-z0-9]+)*(-v[0-9]+)?(:[0-9]+)?$)",
     std::regex::icase);
 
-// Cross-region inference profile format: region.provider.model-name-version
-// Examples: us.anthropic.claude-sonnet-4-5-20250929-v1:0,
-// eu.anthropic.claude-3-5-sonnet-v1:0
+// Cross-region inference profile format: geo.provider.model-name-version
+// Examples: us.anthropic.claude-sonnet-5-5, eu.anthropic.claude-opus-5-5,
+// apac.anthropic.claude-haiku-5-5, global.anthropic.claude-fable-5-2
 const std::regex kInferenceProfilePattern(
-    R"(^[a-z]{2}\.[a-z0-9-]+\.[a-z0-9-]+(-[a-z0-9]+)*(-v[0-9]+)?(:[0-9]+)?$)",
+    R"(^[a-z]{2,6}\.[a-z0-9-]+\.[a-z0-9-]+(-[a-z0-9]+)*(-v[0-9]+)?(:[0-9]+)?$)",
     std::regex::icase);
 
 // ARN format for custom/fine-tuned models

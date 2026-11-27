@@ -31,6 +31,19 @@ TEST_F(InputValidatorTest, ValidStandardModelIds) {
   EXPECT_TRUE(validator_.is_valid_model_id("meta.llama3-70b-instruct-v1:0"));
 }
 
+// Test current Claude model IDs and cross-region inference profiles
+TEST_F(InputValidatorTest, ValidCurrentClaudeModelIdsAndInferenceProfiles) {
+  EXPECT_TRUE(validator_.is_valid_model_id(models::kClaudeFable52));
+  EXPECT_TRUE(validator_.is_valid_model_id(models::kClaudeOpus55));
+  EXPECT_TRUE(validator_.is_valid_model_id(models::kClaudeSonnet55));
+  EXPECT_TRUE(validator_.is_valid_model_id(models::kClaudeHaiku55));
+  EXPECT_TRUE(validator_.is_valid_model_id("us.anthropic.claude-sonnet-5-5"));
+  EXPECT_TRUE(validator_.is_valid_model_id("eu.anthropic.claude-opus-5-5"));
+  EXPECT_TRUE(validator_.is_valid_model_id("apac.anthropic.claude-haiku-5-5"));
+  EXPECT_TRUE(
+      validator_.is_valid_model_id("global.anthropic.claude-fable-5-2"));
+}
+
 // Test valid ARN model IDs
 TEST_F(InputValidatorTest, ValidArnModelIds) {
   EXPECT_TRUE(validator_.is_valid_model_id(

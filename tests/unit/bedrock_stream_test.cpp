@@ -38,6 +38,18 @@ TEST_F(BedrockStreamTest, CanStopStream) {
   EXPECT_TRUE(impl.has_more_events());
 }
 
+// Test a rejected stream yields its error immediately and then ends
+TEST_F(BedrockStreamTest, FailedStreamYieldsErrorAndCompletes) {
+  BedrockStreamImpl impl;
+  impl.fail("Invalid model ID format: bad model");
+
+  auto event = impl.get_next_event();
+  EXPECT_EQ(event.type, kStreamEventTypeError);
+  ASSERT_TRUE(event.error.has_value());
+  EXPECT_EQ(event.error.value(), "Invalid model ID format: bad model");
+  EXPECT_FALSE(impl.has_more_events());
+}
+
 // Note: More comprehensive streaming tests would require mocking
 // the AWS BedrockRuntimeClient, which is complex due to the
 // event stream handler pattern. Integration tests provide

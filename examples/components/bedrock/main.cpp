@@ -33,7 +33,7 @@ int main() {
   // Test core functionality
   std::cout << "Testing core functionality...\n";
   ai::GenerateOptions options;
-  options.model = "anthropic.claude-sonnet-4-20250514-v1:0";
+  options.model = ai::bedrock::models::kClaudeSonnet;
   options.prompt = "Hello world";
   std::cout << "✓ Core types work fine\n\n";
 
