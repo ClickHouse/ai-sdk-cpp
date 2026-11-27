@@ -146,6 +146,17 @@ TEST_F(BedrockIntegrationTest, ConfigInfoContainsRegion) {
   EXPECT_NE(info.find("region"), std::string::npos);
 }
 
+// The live model list contains the foundation models of the Region
+TEST_F(BedrockIntegrationTest, ListModelsReturnsFoundationModels) {
+  auto result = client_.list_models();
+
+  ASSERT_TRUE(result.is_success()) << result.error.value_or("");
+  EXPECT_FALSE(result.models.empty());
+  for (const auto& model : result.models) {
+    EXPECT_FALSE(model.empty());
+  }
+}
+
 // Test input validation - invalid max_tokens
 TEST_F(BedrockIntegrationTest, RejectsInvalidMaxTokens) {
   GenerateOptions options;

@@ -30,6 +30,7 @@ set(AI_TEST_SOURCES
 # Add Bedrock tests when enabled
 if(AI_SDK_ENABLE_BEDROCK)
     list(APPEND AI_TEST_SOURCES
+        unit/bedrock_client_test.cpp
         unit/bedrock_request_mapper_test.cpp
         unit/bedrock_response_parser_test.cpp
         unit/bedrock_stream_test.cpp
