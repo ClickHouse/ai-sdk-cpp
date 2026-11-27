@@ -3,7 +3,15 @@
 /// Langfuse tracing for ai-sdk-cpp.
 ///
 /// Records traces, generations, and tool spans for `ai::Client::generate_text`
-/// calls and POSTs them to Langfuse's `/api/public/ingestion` endpoint.
+/// calls and exports them as OpenTelemetry spans (OTLP/HTTP with JSON
+/// encoding) to Langfuse's `/api/public/otel/v1/traces` endpoint. This is the
+/// ingestion API of Langfuse v4 (Langfuse Cloud) and is also accepted by
+/// self-hosted Langfuse v3.22.0 and later.
+///
+/// Each trace is exported as a root span carrying the trace-level attributes
+/// (name, user, session, tags, metadata, input, output); generations and tool
+/// calls are its descendants. Trace-level attributes are propagated to every
+/// span, as Langfuse v4 requires for filtering.
 ///
 /// Usage:
 /// ```cpp
@@ -64,7 +72,7 @@ struct Config {
   /// Environment to attach to all traces (Langfuse default is "default").
   std::string environment = "default";
 
-  /// HTTP timeouts for the ingestion request.
+  /// HTTP timeouts for the OTLP export request.
   int connection_timeout_sec = 10;
   int read_timeout_sec = 30;
 
@@ -107,14 +115,16 @@ class Tracer {
   std::shared_ptr<Trace> start_trace(const std::string& name,
                                      TraceOptions opts = {});
 
-  /// POST a batch of ingestion events to Langfuse. Returns true on 2xx.
-  /// Public so advanced callers can build their own event batches; most users
-  /// should rely on `Trace::end()`.
-  bool send_batch(const JsonValue& events);
+  /// POST a JSON array of OTLP spans (the JSON encoding of
+  /// `opentelemetry.proto.trace.v1.Span`) to Langfuse's OTLP endpoint, wrapped
+  /// in a single `resourceSpans` / `scopeSpans` entry. Returns true on 2xx
+  /// without rejected spans. Public so advanced callers can export their own
+  /// spans; most users should rely on `Trace::end()`.
+  bool export_spans(const JsonValue& spans);
 
  private:
   // Lazily constructed httplib client + base path + Basic-auth header. Cached
-  // to avoid TLS handshake per send_batch call. Guarded by mu_.
+  // to avoid TLS handshake per export_spans call. Guarded by mu_.
   struct HttpState;
   HttpState& http_state();
 
@@ -123,14 +133,16 @@ class Tracer {
   std::unique_ptr<HttpState> http_;
 };
 
-/// A Trace owns a list of pending ingestion events and writes them all to
-/// Langfuse on `end()`. Use one Trace per logical request (per call to a
+/// A Trace owns a list of pending spans and exports them all to Langfuse on
+/// `end()`. Use one Trace per logical request (per call to a
 /// user-facing API like `generateSQL`).
 ///
 /// Methods are thread-safe: callbacks fired from generate_text's worker
 /// threads can record into the same Trace concurrently.
 class Trace : public std::enable_shared_from_this<Trace> {
  public:
+  /// `id` is the OpenTelemetry trace id: 32 lowercase hex characters. It is
+  /// also the trace id shown by Langfuse.
   Trace(Tracer& tracer, std::string id, std::string name);
 
   const std::string& id() const { return id_; }
@@ -140,11 +152,13 @@ class Trace : public std::enable_shared_from_this<Trace> {
   void set_output(JsonValue output);
   void set_user_id(std::string user_id);
   void set_session_id(std::string session_id);
+  /// Trace metadata; should be a JSON object (Langfuse ignores other values).
   void set_metadata(JsonValue metadata);
   void add_tag(std::string tag);
 
   /// Attach Langfuse callbacks to `options`. Records:
-  ///  - a parent generation observation (model, modelParameters, input)
+  ///  - a generation observation (model, model parameters, input) as a child
+  ///    of the trace's root span
   ///  - one tool span per tool call (input=args, output=result)
   ///
   /// Existing callbacks on `options` are preserved (chained, called after the
@@ -157,16 +171,29 @@ class Trace : public std::enable_shared_from_this<Trace> {
   /// `instrument()`-ed generation. Safe to call once per `instrument()`.
   void finish_generation(const GenerateResult& result);
 
-  /// Flush all accumulated events to Langfuse. Idempotent; subsequent calls
+  /// Export all accumulated spans to Langfuse. Idempotent; subsequent calls
   /// are no-ops. After end(), further set_* / instrument / finish_generation
-  /// calls become no-ops to prevent silently dropping events. Returns true on
+  /// calls become no-ops to prevent silently dropping spans. A generation
+  /// without `finish_generation()` and tool spans without a finish callback
+  /// are closed at the time of `end()`. Returns true on
   /// success (or when Config::error_policy is kBestEffort and the request
   /// failed).
   bool end();
 
-  /// Generate a new UUID v4. Exposed so callers (and `Tracer::start_trace`)
-  /// can mint trace ids without re-implementing UUID generation.
+  /// Generate a new UUID v4. Trace and span ids are OpenTelemetry ids; mint
+  /// them with `new_trace_id` and `new_span_id`.
   static std::string new_uuid();
+
+  /// Generate a random OpenTelemetry trace id (32 lowercase hex characters).
+  /// `Tracer::start_trace` uses it for `Trace::id`.
+  static std::string new_trace_id();
+
+  /// Generate a random OpenTelemetry span id (16 lowercase hex characters).
+  static std::string new_span_id();
+
+  /// Format a system_clock time_point as unix nanoseconds in a decimal string,
+  /// the OTLP/JSON encoding of `startTimeUnixNano` / `endTimeUnixNano`.
+  static std::string to_unix_nanos(std::chrono::system_clock::time_point t);
 
   /// Format a system_clock time_point as RFC 3339 / ISO 8601 with millisecond
   /// precision and trailing 'Z'. Public so callers can stamp custom events.
@@ -174,7 +201,7 @@ class Trace : public std::enable_shared_from_this<Trace> {
 
  private:
   struct PendingGeneration {
-    std::string id;
+    std::string id;  // OpenTelemetry span id
     std::string name;
     std::chrono::system_clock::time_point start_time;
     JsonValue input;
@@ -188,9 +215,19 @@ class Trace : public std::enable_shared_from_this<Trace> {
   // Closes a tool-call span. Called from on_tool_call_finish.
   void record_tool_call_finish(const ToolResult& result);
 
-  // Builds and pushes the trace-create event with the current
-  // input/output/metadata/tags.
-  JsonValue build_trace_event() const;
+  // Builds the span of `active_generation_` ending at `end_nanos` and marks
+  // the generation finalized. `result` (output, usage, status) may be null
+  // for a generation that was never finished. Caller must hold mu_.
+  JsonValue build_generation_span(const std::string& end_nanos,
+                                  const GenerateResult* result);
+
+  // Builds the root span that represents the trace itself, with the current
+  // input/output. Caller must hold mu_.
+  JsonValue build_root_span(const std::string& end_nanos) const;
+
+  // Adds the attributes shared by all spans of the trace (name, user,
+  // session, tags, metadata, release, environment). Caller must hold mu_.
+  void add_trace_level_attributes(JsonValue& span) const;
 
   Tracer& tracer_;
   std::string id_;
@@ -198,6 +235,8 @@ class Trace : public std::enable_shared_from_this<Trace> {
 
   mutable std::mutex mu_;
   std::chrono::system_clock::time_point trace_start_;
+  // Span id of the root span that represents the trace itself.
+  std::string root_span_id_;
   std::optional<JsonValue> input_;
   std::optional<JsonValue> output_;
   std::optional<std::string> user_id_;
@@ -205,14 +244,14 @@ class Trace : public std::enable_shared_from_this<Trace> {
   std::optional<JsonValue> metadata_;
   std::vector<std::string> tags_;
 
-  // Pending observation events accumulated until `end()` flushes them.
+  // Pending OTLP spans accumulated until `end()` exports them.
   std::vector<JsonValue> events_;
 
   // Active generation, set by instrument() and closed by finish_generation().
   std::optional<PendingGeneration> active_generation_;
 
-  // Map tool_call_id -> open span event index in events_, used to update
-  // span end_time / output when the tool finishes.
+  // Map tool_call_id -> open span index in events_, used to set the span's
+  // end time / output when the tool finishes.
   std::unordered_map<std::string, size_t> open_tool_spans_;
 
   std::atomic<bool> ended_{false};

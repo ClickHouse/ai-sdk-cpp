@@ -4,8 +4,9 @@
 #include "providers/stream_utils.h"
 
 #include <atomic>
-#include <concurrentqueue.h>
+#include <condition_variable>
 #include <cstddef>
+#include <deque>
 #include <httplib.h>
 #include <map>
 #include <mutex>
@@ -53,7 +54,8 @@ class HttpSseStream : public internal::StreamResultImpl {
     process_sse_line(line);
   }
   std::size_t queued_event_count_for_testing() const {
-    return event_queue_.size_approx();
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    return event_queue_.size();
   }
 #endif
 
@@ -79,8 +81,9 @@ class HttpSseStream : public internal::StreamResultImpl {
 
   void push_event(StreamEvent event);
   static StreamEvent create_error_event(const std::string& message);
-  /// Push the terminal finish event (at most once per stream).
-  void push_finish_event_if_needed();
+  /// The terminal finish event, or nullopt if it was already taken (it is
+  /// emitted at most once per stream).
+  std::optional<StreamEvent> take_finish_event();
   /// Push the terminal finish event if still needed and mark the stream
   /// complete so consumers stop waiting for events.
   void mark_complete();
@@ -106,11 +109,16 @@ class HttpSseStream : public internal::StreamResultImpl {
   void consume_chunk(const char* data, std::size_t length);
 
   Options options_;
-  moodycamel::ConcurrentQueue<StreamEvent> event_queue_;
+  // Events produced by the stream thread. The consumer blocks on
+  // `queue_cv_` until an event arrives or the stream completes; a stalled
+  // connection is bounded by the HTTP read timeout of the stream thread.
+  mutable std::mutex queue_mutex_;
+  std::condition_variable queue_cv_;
+  std::deque<StreamEvent> event_queue_;
   std::thread stream_thread_;
   std::mutex thread_mutex_;
   std::string line_buffer_;
-  std::atomic<bool> is_complete_{false};
+  bool is_complete_{false};  // Guarded by queue_mutex_.
   std::atomic<bool> should_stop_{false};
   std::atomic<bool> finish_event_pushed_{false};
   std::atomic<bool> stream_errored_{false};

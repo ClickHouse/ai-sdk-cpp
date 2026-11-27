@@ -29,7 +29,17 @@ struct StreamEvent {
   explicit StreamEvent(ToolCall call)
       : type(kStreamEventTypeToolCall), tool_call(std::move(call)) {}
 
+  static StreamEvent reasoning(std::string reasoning_text) {
+    StreamEvent event(kStreamEventTypeReasoningDelta);
+    event.reasoning_delta = std::move(reasoning_text);
+    return event;
+  }
+
   bool is_text_delta() const { return type == kStreamEventTypeTextDelta; }
+
+  bool is_reasoning_delta() const {
+    return type == kStreamEventTypeReasoningDelta;
+  }
 
   bool is_error() const { return type == kStreamEventTypeError; }
 
@@ -39,6 +49,7 @@ struct StreamEvent {
 
   StreamEventType type;
   std::string text_delta;
+  std::string reasoning_delta;
   std::optional<std::string> error;
   std::optional<Usage> usage;
   std::optional<FinishReason> finish_reason;
