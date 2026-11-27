@@ -35,7 +35,8 @@ AnthropicClient::AnthropicClient(const std::string& api_key,
               .auth_header_name = "x-api-key",
               .auth_header_prefix = "",
               .extra_headers = {{"anthropic-version", "2023-06-01"}},
-              .retry_config = retry_config},
+              .retry_config = retry_config,
+              .models_endpoint_path = "/v1/models"},
           std::make_unique<AnthropicRequestBuilder>(),
           std::make_unique<AnthropicResponseParser>()) {
   ai::logger::log_debug("Anthropic client initialized with base_url: {}{}",
@@ -73,10 +74,8 @@ std::string AnthropicClient::provider_name() const {
 }
 
 std::vector<std::string> AnthropicClient::supported_models() const {
-  // Both the friendly aliases (e.g. "claude-sonnet-4-5") and their dated
-  // snapshot variants (e.g. "claude-sonnet-4-5-20250929") are accepted by the
-  // Anthropic API; list both so identifiers in `ai::anthropic::models::*`
-  // resolve via `supports_model()`.
+  // The well-known identifiers of `ai::anthropic::models`, aliases and dated
+  // snapshots. Not exhaustive: `list_models` asks the API.
   return {models::kClaudeFable52,  models::kClaudeOpus55,
           models::kClaudeSonnet55, models::kClaudeHaiku55,
           models::kClaudeFable51,  models::kClaudeFable5,
@@ -90,8 +89,9 @@ std::vector<std::string> AnthropicClient::supported_models() const {
 }
 
 bool AnthropicClient::supports_model(const std::string& model_name) const {
-  auto models = supported_models();
-  return std::find(models.begin(), models.end(), model_name) != models.end();
+  // Any model name is forwarded to the API as is; the model catalog lives
+  // on the provider side (see `list_models`).
+  return !model_name.empty();
 }
 
 std::string AnthropicClient::config_info() const {

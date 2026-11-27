@@ -128,6 +128,17 @@ TEST_F(AnthropicIntegrationTest, ConversationWithMessages) {
 }
 
 // Model Testing
+TEST_F(AnthropicIntegrationTest, ListModels) {
+  if (!use_real_api_) {
+    GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
+  }
+
+  // Anthropic pages the list; every page is followed.
+  const auto result = client_->list_models();
+  ASSERT_TRUE(result.is_success()) << result.error_message();
+  EXPECT_THAT(result.models, testing::Contains(testing::StartsWith("claude-")));
+}
+
 TEST_F(AnthropicIntegrationTest, DifferentModelSupport) {
   if (!use_real_api_) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";

@@ -46,13 +46,27 @@ GenerateResult HttpRequestHandler::post(const std::string& path,
                                         const httplib::Headers& headers,
                                         const std::string& body,
                                         const std::string& content_type) {
+  return send_with_retry(Method::kPost, path, headers, body, content_type);
+}
+
+GenerateResult HttpRequestHandler::get(const std::string& path,
+                                       const httplib::Headers& headers) {
+  return send_with_retry(Method::kGet, path, headers, {}, {});
+}
+
+GenerateResult HttpRequestHandler::send_with_retry(
+    Method method,
+    const std::string& path,
+    const httplib::Headers& headers,
+    const std::string& body,
+    const std::string& content_type) {
   // Create a retry policy with the configured settings
   retry::RetryPolicy retry_policy(config_.retry_config);
 
   // Define the function to execute with retry
-  auto execute_request = [this, &path, &headers, &body,
+  auto execute_request = [this, method, &path, &headers, &body,
                           &content_type]() -> GenerateResult {
-    return execute_single_request(path, headers, body, content_type);
+    return execute_single_request(method, path, headers, body, content_type);
   };
 
   // Define the function to check if a result is retryable
@@ -72,6 +86,7 @@ GenerateResult HttpRequestHandler::post(const std::string& path,
 }
 
 GenerateResult HttpRequestHandler::execute_single_request(
+    Method method,
     const std::string& path,
     const httplib::Headers& headers,
     const std::string& body,
@@ -104,10 +119,11 @@ GenerateResult HttpRequestHandler::execute_single_request(
     return error_result;
   };
 
-  return make_request(path, headers, body, content_type, handler);
+  return make_request(method, path, headers, body, content_type, handler);
 }
 
-GenerateResult HttpRequestHandler::make_request(const std::string& path,
+GenerateResult HttpRequestHandler::make_request(Method method,
+                                                const std::string& path,
                                                 const httplib::Headers& headers,
                                                 const std::string& body,
                                                 const std::string& content_type,
@@ -116,10 +132,16 @@ GenerateResult HttpRequestHandler::make_request(const std::string& path,
     // Combine base_path with the endpoint path
     std::string full_path = config_.base_path + path;
 
-    ai::logger::log_debug("Making {} request to {}:{}{}",
-                          config_.use_ssl ? "HTTPS" : "HTTP", config_.host,
-                          full_path,
-                          " with body size: " + std::to_string(body.size()));
+    ai::logger::log_debug(
+        "Making {} {} request to {}:{}{}", config_.use_ssl ? "HTTPS" : "HTTP",
+        method == Method::kGet ? "GET" : "POST", config_.host, full_path,
+        " with body size: " + std::to_string(body.size()));
+
+    const auto send = [&](auto& cli) {
+      return method == Method::kGet
+                 ? cli.Get(full_path, headers)
+                 : cli.Post(full_path, headers, body, content_type);
+    };
 
     if (config_.use_ssl) {
       httplib::SSLClient cli(config_.host);
@@ -127,14 +149,14 @@ GenerateResult HttpRequestHandler::make_request(const std::string& path,
       cli.set_read_timeout(config_.read_timeout_sec, 0);
       cli.enable_server_certificate_verification(config_.verify_ssl_cert);
 
-      auto res = cli.Post(full_path, headers, body, content_type);
+      auto res = send(cli);
       return handler(res, "HTTPS");
     } else {
       httplib::Client cli(config_.host);
       cli.set_connection_timeout(config_.connection_timeout_sec, 0);
       cli.set_read_timeout(config_.read_timeout_sec, 0);
 
-      auto res = cli.Post(full_path, headers, body, content_type);
+      auto res = send(cli);
       return handler(res, "HTTP");
     }
   } catch (const std::exception& e) {

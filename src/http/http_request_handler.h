@@ -35,23 +35,37 @@ class HttpRequestHandler {
                       const std::string& body,
                       const std::string& content_type = "application/json");
 
+  // Makes a GET request (with the same retry policy as `post`) and returns the
+  // raw response wrapped in GenerateResult
+  GenerateResult get(const std::string& path, const httplib::Headers& headers);
+
   // Extracts host and SSL settings from a base URL
   static HttpConfig parse_base_url(const std::string& base_url);
 
  private:
+  enum class Method { kGet, kPost };
+
   HttpConfig config_;
+
+  GenerateResult send_with_retry(Method method,
+                                 const std::string& path,
+                                 const httplib::Headers& headers,
+                                 const std::string& body,
+                                 const std::string& content_type);
 
   // Handler for processing HTTP responses
   using ResponseHandler =
       std::function<GenerateResult(const httplib::Result&, const std::string&)>;
-  GenerateResult make_request(const std::string& path,
+  GenerateResult make_request(Method method,
+                              const std::string& path,
                               const httplib::Headers& headers,
                               const std::string& body,
                               const std::string& content_type,
                               ResponseHandler handler);
 
   // Execute a single HTTP request (used by retry logic)
-  GenerateResult execute_single_request(const std::string& path,
+  GenerateResult execute_single_request(Method method,
+                                        const std::string& path,
                                         const httplib::Headers& headers,
                                         const std::string& body,
                                         const std::string& content_type);

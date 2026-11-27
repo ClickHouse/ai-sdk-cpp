@@ -128,6 +128,16 @@ TEST_F(OpenAIIntegrationTest, ConversationWithMessages) {
 }
 
 // Model Testing
+TEST_F(OpenAIIntegrationTest, ListModels) {
+  if (!use_real_api_) {
+    GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
+  }
+
+  const auto result = client_->list_models();
+  ASSERT_TRUE(result.is_success()) << result.error_message();
+  EXPECT_THAT(result.models, testing::Contains(testing::StartsWith("gpt-")));
+}
+
 TEST_F(OpenAIIntegrationTest, DifferentModelSupport) {
   if (!use_real_api_) {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
@@ -428,11 +438,9 @@ TEST_F(EnvironmentConfigTest, DefaultClientCreation) {
     EXPECT_TRUE(client.is_valid());
     EXPECT_EQ(client.provider_name(), "openai");
 
-    // Test that supported models include expected ones
-    auto models = client.supported_models();
+    // Any non-empty model name is forwarded to the API
     EXPECT_TRUE(client.supports_model(ai::openai::models::kGpt56Luna));
-    EXPECT_TRUE(client.supports_model(ai::openai::models::kGpt41));
-    EXPECT_FALSE(client.supports_model("gpt-3.5-turbo"));
+    EXPECT_TRUE(client.supports_model("gpt-3.5-turbo"));
   } else {
     GTEST_SKIP() << "No OPENAI_API_KEY environment variable set";
   }

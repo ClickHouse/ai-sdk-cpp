@@ -117,9 +117,7 @@ TEST_F(AnthropicClientTest, SupportsValidModel) {
   EXPECT_TRUE(client_->supports_model("claude-haiku-4-5-20251001"));
 }
 
-TEST_F(AnthropicClientTest, DoesNotSupportInvalidModel) {
-  EXPECT_FALSE(client_->supports_model("invalid-model"));
-  EXPECT_FALSE(client_->supports_model("gpt-4"));
+TEST_F(AnthropicClientTest, DoesNotSupportEmptyModelName) {
   EXPECT_FALSE(client_->supports_model(""));
 }
 

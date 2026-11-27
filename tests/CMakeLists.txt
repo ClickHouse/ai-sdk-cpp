@@ -9,6 +9,7 @@ add_executable(ai_tests
     unit/openai_embeddings_test.cpp
     unit/multi_step_coordinator_test.cpp
     unit/openai_responses_test.cpp
+    unit/list_models_test.cpp
 
     # Integration tests
     integration/openai_integration_test.cpp

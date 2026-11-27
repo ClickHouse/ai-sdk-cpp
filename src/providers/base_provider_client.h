@@ -27,6 +27,11 @@ struct ProviderConfig {
 
   // Optional retry configuration
   std::optional<retry::RetryConfig> retry_config;
+
+  // Endpoint listing the available models (OpenAI and Anthropic shape:
+  // `{"data": [{"id": ...}, ...]}`, Anthropic paginated with `has_more` and
+  // `last_id`).
+  std::string models_endpoint_path;
 };
 
 // Interface for provider-specific request building
@@ -66,6 +71,7 @@ class BaseProviderClient : public Client {
   GenerateResult generate_text(const GenerateOptions& options) override;
   StreamResult stream_text(const StreamOptions& options) override;
   EmbeddingResult embeddings(const EmbeddingOptions& options) override;
+  ModelListResult list_models() override;
 
   bool is_valid() const override { return !config_.api_key.empty(); }
 

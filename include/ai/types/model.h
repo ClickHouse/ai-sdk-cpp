@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ai {
 
@@ -32,6 +33,24 @@ struct Model {
   }
 
   bool operator!=(const Model& other) const { return !(*this == other); }
+};
+
+/// The model IDs a provider serves to the client's API key, as returned by
+/// `Client::list_models`.
+struct ModelListResult {
+  std::vector<std::string> models;
+  std::optional<std::string> error;
+
+  ModelListResult() = default;
+
+  explicit ModelListResult(std::string error_message)
+      : error(std::move(error_message)) {}
+
+  bool is_success() const { return !error.has_value(); }
+
+  explicit operator bool() const { return is_success(); }
+
+  std::string error_message() const { return error.value_or(""); }
 };
 
 }  // namespace ai

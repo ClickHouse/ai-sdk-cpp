@@ -197,5 +197,67 @@ EmbeddingResult BaseProviderClient::embeddings(
   }
 }
 
+ModelListResult BaseProviderClient::list_models() {
+  if (config_.models_endpoint_path.empty()) {
+    return ModelListResult("The " + provider_name() +
+                           " provider has no models endpoint");
+  }
+
+  const auto headers = request_builder_->build_headers(config_);
+  ModelListResult listed;
+  std::string path = config_.models_endpoint_path;
+
+  // OpenAI returns every model at once; Anthropic pages with `has_more` and
+  // `last_id` (passed back as `after_id`).
+  while (true) {
+    auto result = http_handler_->get(path, headers);
+    if (!result.is_success()) {
+      if (result.provider_metadata.has_value()) {
+        const int status_code = std::stoi(result.provider_metadata.value());
+        return ModelListResult(response_parser_
+                                   ->parse_error_completion_response(
+                                       status_code, result.error.value_or(""))
+                                   .error_message());
+      }
+      return ModelListResult(result.error_message());
+    }
+
+    nlohmann::json json_response;
+    try {
+      json_response = nlohmann::json::parse(result.text);
+    } catch (const nlohmann::json::exception& e) {
+      return ModelListResult("Failed to parse models response: " +
+                             std::string(e.what()));
+    }
+
+    if (!json_response.contains("data") || !json_response["data"].is_array()) {
+      return ModelListResult("Unexpected models response: no `data` array");
+    }
+    for (const auto& entry : json_response["data"]) {
+      if (entry.is_object() && entry.contains("id") &&
+          entry["id"].is_string()) {
+        listed.models.push_back(entry["id"].get<std::string>());
+      }
+    }
+
+    const auto has_more = json_response.find("has_more");
+    if (has_more == json_response.end() || !has_more->is_boolean() ||
+        !has_more->get<bool>()) {
+      break;
+    }
+    const auto last_id = json_response.find("last_id");
+    if (last_id == json_response.end() || !last_id->is_string() ||
+        last_id->get<std::string>().empty()) {
+      return ModelListResult(
+          "Unexpected models response: `has_more` without `last_id`");
+    }
+    path = config_.models_endpoint_path +
+           "?after_id=" + last_id->get<std::string>();
+  }
+
+  ai::logger::log_debug("Listed {} models", listed.models.size());
+  return listed;
+}
+
 }  // namespace providers
 }  // namespace ai
