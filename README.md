@@ -427,14 +427,15 @@ auto client = ai::bedrock::create_client(config);
 ##### Available Bedrock Models
 
 ```cpp
-// Claude models (current generation)
-ai::bedrock::models::kClaudeFable    // anthropic.claude-fable-5-2
-ai::bedrock::models::kClaudeOpus     // anthropic.claude-opus-5-5
-ai::bedrock::models::kClaudeSonnet   // anthropic.claude-sonnet-5-5
-ai::bedrock::models::kClaudeHaiku    // anthropic.claude-haiku-5-5
+// Claude models (current generation), as global inference profile IDs:
+// current Claude models need an inference profile for on-demand invocation
+ai::bedrock::models::kClaudeFable    // global.anthropic.claude-fable-5-2
+ai::bedrock::models::kClaudeOpus     // global.anthropic.claude-opus-5-5
+ai::bedrock::models::kClaudeSonnet   // global.anthropic.claude-sonnet-5-5
+ai::bedrock::models::kClaudeHaiku    // global.anthropic.claude-haiku-5-5
 
-// Cross-region inference profiles are passed as plain strings,
-// e.g. "us.anthropic.claude-sonnet-5-5" or "global.anthropic.claude-opus-5-5"
+// Geographic inference profiles are passed as plain strings,
+// e.g. "us.anthropic.claude-sonnet-5-5" or "eu.anthropic.claude-opus-5-5"
 
 // Amazon Titan models
 ai::bedrock::models::kTitanTextExpress  // amazon.titan-text-express-v1

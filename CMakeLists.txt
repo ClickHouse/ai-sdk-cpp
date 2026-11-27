@@ -144,6 +144,7 @@ if(AI_SDK_ENABLE_BEDROCK)
         src/providers/bedrock/bedrock_response_parser.cpp
         src/providers/bedrock/bedrock_stream.cpp
         src/providers/bedrock/bedrock_factory.cpp
+        src/providers/bedrock/bedrock_credentials.cpp
         # Security components
         src/providers/bedrock/input_validator.cpp
         src/providers/bedrock/credential_redactor.cpp

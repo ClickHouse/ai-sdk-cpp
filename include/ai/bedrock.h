@@ -16,13 +16,16 @@ namespace ai {
 namespace bedrock {
 
 namespace models {
-/// Claude models on Bedrock (Bedrock model IDs take the `anthropic.` prefix).
-/// Cross-region inference profiles are also accepted, e.g.
-/// "us.anthropic.claude-sonnet-5-5" or "global.anthropic.claude-opus-5-5".
-constexpr const char* kClaudeFable52 = "anthropic.claude-fable-5-2";
-constexpr const char* kClaudeOpus55 = "anthropic.claude-opus-5-5";
-constexpr const char* kClaudeSonnet55 = "anthropic.claude-sonnet-5-5";
-constexpr const char* kClaudeHaiku55 = "anthropic.claude-haiku-5-5";
+/// Claude models on Bedrock, as global cross-region inference profile IDs.
+/// The current Claude models cannot be invoked on demand with the bare model
+/// ID (`anthropic.claude-...`) in most or all Regions: Bedrock requires an
+/// inference profile. Geographic profiles keep the processing in one
+/// geography, e.g. "us.anthropic.claude-sonnet-5-5" or
+/// "eu.anthropic.claude-opus-5-5"; which geographies exist differs per model.
+constexpr const char* kClaudeFable52 = "global.anthropic.claude-fable-5-2";
+constexpr const char* kClaudeOpus55 = "global.anthropic.claude-opus-5-5";
+constexpr const char* kClaudeSonnet55 = "global.anthropic.claude-sonnet-5-5";
+constexpr const char* kClaudeHaiku55 = "global.anthropic.claude-haiku-5-5";
 
 /// Aliases for the current generation of each Claude model family
 constexpr const char* kClaudeFable = kClaudeFable52;

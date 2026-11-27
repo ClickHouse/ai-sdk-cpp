@@ -11,6 +11,7 @@
 
 #include <cstdlib>
 #include <optional>
+#include <string>
 
 namespace ai {
 namespace bedrock {
@@ -57,13 +58,43 @@ TEST_F(BedrockStreamTest, FailedStreamYieldsErrorAndCompletes) {
   EXPECT_FALSE(impl.has_more_events());
 }
 
+// Sets (or unsets) an environment variable and restores its previous value
+class ScopedEnvVar {
+ public:
+  ScopedEnvVar(const char* name, const std::optional<std::string>& value)
+      : name_(name) {
+    if (const char* previous = std::getenv(name)) {
+      previous_ = previous;
+    }
+    set(value);
+  }
+  ~ScopedEnvVar() { set(previous_); }
+
+  ScopedEnvVar(const ScopedEnvVar&) = delete;
+  ScopedEnvVar& operator=(const ScopedEnvVar&) = delete;
+
+ private:
+  void set(const std::optional<std::string>& value) {
+    if (value) {
+      ::setenv(name_.c_str(), value->c_str(), 1);
+    } else {
+      ::unsetenv(name_.c_str());
+    }
+  }
+
+  std::string name_;
+  std::optional<std::string> previous_;
+};
+
 // A stream may outlive the client that created it: it shares ownership of
 // everything its background thread uses
 TEST_F(BedrockStreamTest, StreamOutlivesClient) {
   // Static credentials and an endpoint nothing listens on, so that the request
   // fails fast without network access or credential discovery
-  ::setenv("AWS_ACCESS_KEY_ID", "AKIDEXAMPLE", 1);
-  ::setenv("AWS_SECRET_ACCESS_KEY", "secret", 1);
+  // (restored when the test ends)
+  ScopedEnvVar access_key("AWS_ACCESS_KEY_ID", "AKIDEXAMPLE");
+  ScopedEnvVar secret_key("AWS_SECRET_ACCESS_KEY", "secret");
+  ScopedEnvVar session_token("AWS_SESSION_TOKEN", std::nullopt);
 
   BedrockConfig config;
   config.region = "us-east-1";

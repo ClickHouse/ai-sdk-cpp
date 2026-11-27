@@ -3,6 +3,7 @@
 #include "ai/bedrock.h"
 #include "ai/errors.h"
 #include "aws_sdk_manager.h"
+#include "bedrock_credentials.h"
 #include "secure_logger.h"
 
 #include <algorithm>
@@ -20,17 +21,6 @@ namespace ai {
 namespace bedrock {
 
 namespace {
-
-// Helper to get region from environment
-std::string get_region_from_env() {
-  if (const char* region = std::getenv("AWS_REGION")) {
-    return region;
-  }
-  if (const char* region = std::getenv("AWS_DEFAULT_REGION")) {
-    return region;
-  }
-  return "";
-}
 
 // Extract provider from model ID (e.g., "anthropic" from
 // "anthropic.claude-3-5-sonnet-v1:0")
@@ -66,31 +56,19 @@ void ModelDiscovery::initialize_client(const BedrockConfig& config) {
         "environment variable or provide region in BedrockConfig.");
   }
 
-  // Configure AWS client
+  // Configure AWS client. `endpoint_override` is not applied: it is the
+  // endpoint of the Bedrock runtime service, not of the Bedrock control plane
+  // that lists the models.
   Aws::Client::ClientConfiguration client_config;
   client_config.region = region_;
-
-  if (!config.endpoint_override.empty()) {
-    client_config.endpointOverride = config.endpoint_override;
-  }
-
-  // Set timeouts from security config
   client_config.connectTimeoutMs =
       static_cast<long>(config.security.connection_timeout.count() * 1000);
   client_config.requestTimeoutMs =
       static_cast<long>(config.security.request_timeout.count() * 1000);
 
-  // Create credentials provider
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider;
-
-  if (!config.profile.empty()) {
-    credentials_provider =
-        std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
-            config.profile.c_str());
-  } else {
-    credentials_provider =
-        std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>();
-  }
+  // The same identity as `BedrockClient` (role, web identity, profile, or the
+  // default chain)
+  auto credentials_provider = make_credentials_provider(config, region_);
 
   // Create Bedrock client (not BedrockRuntime - this is for management APIs)
   client_ = std::make_shared<Aws::Bedrock::BedrockClient>(credentials_provider,
@@ -122,9 +100,19 @@ std::vector<ModelInfo> ModelDiscovery::list_models() {
 bool ModelDiscovery::is_model_accessible(const std::string& model_id) {
   auto models = list_models();
 
-  return std::any_of(
-      models.begin(), models.end(),
-      [&model_id](const ModelInfo& info) { return info.model_id == model_id; });
+  // A cross-region inference profile ID (`us.anthropic.claude-...`,
+  // `global.anthropic.claude-...`) refers to the foundation model ID after
+  // the geography prefix
+  std::string foundation_model_id = model_id;
+  const auto first_dot = model_id.find('.');
+  if (model_id.rfind("arn:", 0) != 0 && first_dot != std::string::npos &&
+      model_id.find('.', first_dot + 1) != std::string::npos) {
+    foundation_model_id = model_id.substr(first_dot + 1);
+  }
+
+  return std::any_of(models.begin(), models.end(), [&](const ModelInfo& info) {
+    return info.model_id == model_id || info.model_id == foundation_model_id;
+  });
 }
 
 void ModelDiscovery::invalidate_cache() {
