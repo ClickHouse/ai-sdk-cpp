@@ -146,7 +146,7 @@ void BedrockStreamImpl::stop_stream() {
 }
 
 void BedrockStreamImpl::on_message_start(
-    const Aws::BedrockRuntime::Model::MessageStartEvent& event) {
+    const Aws::BedrockRuntime::Model::MessageStartEvent& /*event*/) {
   ai::logger::log_debug("Received messageStart event");
   // messageStart contains metadata about the message
   // We don't need to emit an event for this, just log it

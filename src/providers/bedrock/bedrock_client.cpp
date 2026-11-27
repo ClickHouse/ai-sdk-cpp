@@ -339,7 +339,7 @@ GenerateResult BedrockClient::generate_text(const GenerateOptions& options) {
   }
 }
 
-EmbeddingResult BedrockClient::embeddings(const EmbeddingOptions& options) {
+EmbeddingResult BedrockClient::embeddings(const EmbeddingOptions& /*options*/) {
   // Embeddings not yet supported
   SecureLogger::log_debug("embeddings called - not supported in V1");
 
