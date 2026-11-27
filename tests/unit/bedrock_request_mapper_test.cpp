@@ -169,6 +169,46 @@ TEST_F(BedrockRequestMapperTest, MergesSystemMessagesIntoSystem) {
             Aws::BedrockRuntime::Model::ConversationRole::user);
 }
 
+// With only system messages, the prompt becomes the conversation
+TEST_F(BedrockRequestMapperTest, UsesPromptWhenOnlySystemMessages) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.prompt = "Hello";
+  options.messages = {Message::system("Be brief.")};
+
+  auto request = mapper_.map_to_converse_request(options);
+
+  ASSERT_EQ(request.GetSystem().size(), 1);
+  ASSERT_EQ(request.GetMessages().size(), 1);
+  EXPECT_EQ(request.GetMessages()[0].GetRole(),
+            Aws::BedrockRuntime::Model::ConversationRole::user);
+  EXPECT_EQ(request.GetMessages()[0].GetContent()[0].GetText(), "Hello");
+}
+
+// Dropping a system message between two user turns merges them, because
+// Converse requires alternating roles
+TEST_F(BedrockRequestMapperTest, MergesAdjacentSameRoleTurns) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.messages = {
+      Message::user("First"),
+      Message::system("Answer in English."),
+      Message::user("Second"),
+      Message::assistant("Reply"),
+  };
+
+  auto request = mapper_.map_to_converse_request(options);
+
+  ASSERT_EQ(request.GetMessages().size(), 2);
+  const auto& user = request.GetMessages()[0];
+  EXPECT_EQ(user.GetRole(), Aws::BedrockRuntime::Model::ConversationRole::user);
+  ASSERT_EQ(user.GetContent().size(), 2);
+  EXPECT_EQ(user.GetContent()[0].GetText(), "First");
+  EXPECT_EQ(user.GetContent()[1].GetText(), "Second");
+  EXPECT_EQ(request.GetMessages()[1].GetRole(),
+            Aws::BedrockRuntime::Model::ConversationRole::assistant);
+}
+
 ToolSet make_weather_tools() {
   ToolSet tools;
   tools["get_weather"] =

@@ -139,7 +139,20 @@ TEST_F(InputValidatorTest, ValidationFailsOnMissingPromptAndMessages) {
 
   auto error = validator_.validate(options);
   EXPECT_TRUE(error.has_value());
-  EXPECT_NE(error->find("prompt or messages"), std::string::npos);
+  EXPECT_NE(error->find("Either prompt or"), std::string::npos);
+}
+
+TEST_F(InputValidatorTest, ValidationFailsWithOnlySystemMessages) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.messages = {Message::system("Be brief.")};
+
+  auto error = validator_.validate(options);
+  ASSERT_TRUE(error.has_value());
+  EXPECT_NE(error->find("non-system messages"), std::string::npos);
+
+  options.prompt = "Hello";
+  EXPECT_FALSE(validator_.validate(options).has_value());
 }
 
 TEST_F(InputValidatorTest, ValidationPassesWithMessages) {

@@ -77,9 +77,6 @@ struct SecurityConfig {
 
   /// Maximum total message content length (default: 200000)
   size_t max_message_length = 200000;
-
-  /// Model list cache TTL (default: 5 minutes)
-  std::chrono::minutes model_cache_ttl{5};
 };
 
 /// Configuration for Bedrock client
@@ -134,10 +131,12 @@ std::optional<Client> try_create_client();
 /// @return Vector of ModelInfo for available models
 /// @throws ConfigurationError if region is not configured
 /// @throws std::runtime_error if API call fails
-/// @note Results are cached according to SecurityConfig.model_cache_ttl
+/// @note Every call queries the Bedrock API (`ListFoundationModels`)
 std::vector<ModelInfo> list_available_models(const BedrockConfig& config = {});
 
-/// Validate that a model is accessible in the user's AWS account
+/// Check that a model is offered in the configured Region: the model ID (or,
+/// for an inference profile ID, the model ID after the geography prefix) is in
+/// the `ListFoundationModels` result. Model access grants are not checked.
 /// @param model_id The model identifier to validate
 /// @param config Bedrock configuration
 /// @return true if the model is accessible, false otherwise

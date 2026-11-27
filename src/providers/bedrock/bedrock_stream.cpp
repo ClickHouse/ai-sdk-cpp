@@ -232,24 +232,31 @@ void BedrockStreamImpl::push_error(const std::string& message) {
 }
 
 void BedrockStreamImpl::mark_complete() {
-  if (errored_) {
-    // Do not stamp a failed stream with a clean finish reason or usage
-    push_event(StreamEvent(kStreamEventTypeFinish, kFinishReasonError));
-  } else if (!stop_requested_) {
-    if (usage_) {
-      push_event(StreamEvent(kStreamEventTypeFinish, *usage_, finish_reason_));
-    } else {
-      push_event(StreamEvent(kStreamEventTypeFinish, finish_reason_));
-    }
-  }
-
   if (semaphore_) {
     semaphore_->release();
     semaphore_.reset();
   }
 
+  std::optional<StreamEvent> finish_event;
+  if (errored_) {
+    // Do not stamp a failed stream with a clean finish reason or usage
+    finish_event.emplace(kStreamEventTypeFinish, kFinishReasonError);
+  } else if (!stop_requested_) {
+    if (usage_) {
+      finish_event.emplace(kStreamEventTypeFinish, *usage_, finish_reason_);
+    } else {
+      finish_event.emplace(kStreamEventTypeFinish, finish_reason_);
+    }
+  }
+
+  // Push the finish event and mark the stream complete in one critical
+  // section: otherwise a consumer that has just read the finish event could
+  // see `has_more_events() == true`, wait, and get an empty event after it.
   {
     std::lock_guard<std::mutex> lock(queue_mutex_);
+    if (finish_event) {
+      event_queue_.push_back(std::move(*finish_event));
+    }
     complete_ = true;
   }
   queue_cv_.notify_all();

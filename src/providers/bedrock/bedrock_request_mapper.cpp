@@ -117,16 +117,18 @@ void BedrockRequestMapper::fill_request(Request& request,
     }
   }
 
-  if (!options.messages.empty()) {
-    request.SetMessages(convert_messages(options.messages));
-  } else if (!options.prompt.empty()) {
+  // The conversation: the non-system messages, or the prompt if there are
+  // none (e.g. only system messages were given)
+  auto messages = convert_messages(options.messages);
+  if (messages.empty() && !options.prompt.empty()) {
     Model::Message user_message;
     user_message.SetRole(Model::ConversationRole::user);
     Model::ContentBlock content_block;
     content_block.SetText(options.prompt);
     user_message.AddContent(std::move(content_block));
-    request.AddMessages(std::move(user_message));
+    messages.push_back(std::move(user_message));
   }
+  request.SetMessages(std::move(messages));
 
   request.SetInferenceConfig(build_inference_config(options));
 
@@ -145,7 +147,19 @@ Aws::Vector<Model::Message> BedrockRequestMapper::convert_messages(
     if (message.role == kMessageRoleSystem) {
       continue;
     }
-    if (auto converted = convert_message(message)) {
+    auto converted = convert_message(message);
+    if (!converted) {
+      continue;
+    }
+    // Converse requires alternating roles; dropping system (or empty)
+    // messages can leave two turns of the same role next to each other, so
+    // merge such turns (as the Anthropic API does itself)
+    if (!bedrock_messages.empty() &&
+        bedrock_messages.back().GetRole() == converted->GetRole()) {
+      for (auto& block : converted->GetContent()) {
+        bedrock_messages.back().AddContent(block);
+      }
+    } else {
       bedrock_messages.push_back(std::move(*converted));
     }
   }

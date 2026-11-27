@@ -1,5 +1,6 @@
 #include "input_validator.h"
 
+#include <algorithm>
 #include <regex>
 #include <sstream>
 
@@ -86,9 +87,15 @@ std::optional<std::string> InputValidator::validate(
     }
   }
 
-  // Must have either prompt or messages
-  if (options.prompt.empty() && options.messages.empty()) {
-    return "Either prompt or messages must be provided";
+  // Must have a prompt or a non-system message: Bedrock takes system
+  // messages separately, and a conversation cannot be empty
+  const bool has_conversation_message =
+      std::any_of(options.messages.begin(), options.messages.end(),
+                  [](const Message& message) {
+                    return message.role != kMessageRoleSystem;
+                  });
+  if (options.prompt.empty() && !has_conversation_message) {
+    return "Either prompt or non-system messages must be provided";
   }
 
   return std::nullopt;  // Valid

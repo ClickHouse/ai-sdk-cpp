@@ -34,8 +34,7 @@ std::string extract_provider(const std::string& model_id) {
 
 }  // namespace
 
-ModelDiscovery::ModelDiscovery(const BedrockConfig& config)
-    : cache_ttl_(config.security.model_cache_ttl) {
+ModelDiscovery::ModelDiscovery(const BedrockConfig& config) {
   // Ensure AWS SDK is initialized before creating any AWS clients
   ensure_aws_sdk_initialized();
   initialize_client(config);
@@ -78,23 +77,10 @@ void ModelDiscovery::initialize_client(const BedrockConfig& config) {
 }
 
 std::vector<ModelInfo> ModelDiscovery::list_models() {
-  std::lock_guard<std::mutex> lock(cache_mutex_);
-
-  // Return cached results if still valid
-  if (is_cache_valid() && !cached_models_.empty()) {
-    SecureLogger::log_debug("Returning cached model list (" +
-                            std::to_string(cached_models_.size()) + " models)");
-    return cached_models_;
-  }
-
-  // Fetch fresh data from API
-  cached_models_ = fetch_models_from_api();
-  cache_time_ = std::chrono::steady_clock::now();
-
-  SecureLogger::log_info("Fetched " + std::to_string(cached_models_.size()) +
+  auto models = fetch_models_from_api();
+  SecureLogger::log_info("Fetched " + std::to_string(models.size()) +
                          " models from Bedrock API");
-
-  return cached_models_;
+  return models;
 }
 
 bool ModelDiscovery::is_model_accessible(const std::string& model_id) {
@@ -113,23 +99,6 @@ bool ModelDiscovery::is_model_accessible(const std::string& model_id) {
   return std::any_of(models.begin(), models.end(), [&](const ModelInfo& info) {
     return info.model_id == model_id || info.model_id == foundation_model_id;
   });
-}
-
-void ModelDiscovery::invalidate_cache() {
-  std::lock_guard<std::mutex> lock(cache_mutex_);
-  cached_models_.clear();
-  SecureLogger::log_debug("Model cache invalidated");
-}
-
-bool ModelDiscovery::is_cache_valid() const {
-  if (cached_models_.empty()) {
-    return false;
-  }
-
-  auto now = std::chrono::steady_clock::now();
-  auto elapsed =
-      std::chrono::duration_cast<std::chrono::minutes>(now - cache_time_);
-  return elapsed < cache_ttl_;
 }
 
 std::vector<ModelInfo> ModelDiscovery::fetch_models_from_api() {

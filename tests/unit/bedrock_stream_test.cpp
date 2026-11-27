@@ -109,8 +109,13 @@ TEST_F(BedrockStreamTest, StreamOutlivesClient) {
 
   bool saw_error = false;
   bool saw_finish = false;
+  int events_after_finish = 0;
   for (const auto& event : *stream) {
-    if (event.is_error()) {
+    if (saw_finish) {
+      // The finish event is the last one, even though it is pushed by
+      // another thread while this one iterates
+      ++events_after_finish;
+    } else if (event.is_error()) {
       saw_error = true;
     } else if (event.type == kStreamEventTypeFinish) {
       saw_finish = true;
@@ -119,6 +124,7 @@ TEST_F(BedrockStreamTest, StreamOutlivesClient) {
   }
   EXPECT_TRUE(saw_error);
   EXPECT_TRUE(saw_finish);
+  EXPECT_EQ(events_after_finish, 0);
 }
 
 // Note: More comprehensive streaming tests would require mocking
