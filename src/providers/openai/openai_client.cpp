@@ -8,46 +8,53 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 namespace ai {
 namespace openai {
 
 OpenAIClient::OpenAIClient(const std::string& api_key,
                            const std::string& base_url)
-    : BaseProviderClient(
-          providers::ProviderConfig{
-              .api_key = api_key,
-              .base_url = base_url,
-              .completions_endpoint_path = "/v1/chat/completions",
-              .embeddings_endpoint_path = "/v1/embeddings",
-              .auth_header_name = "Authorization",
-              .auth_header_prefix = "Bearer ",
-              .extra_headers = {},
-              .retry_config = std::nullopt},
-          std::make_unique<OpenAIRequestBuilder>(),
-          std::make_unique<OpenAIResponseParser>()) {
-  ai::logger::log_debug("OpenAI client initialized with base_url: {}",
-                        base_url);
-}
+    : OpenAIClient(api_key,
+                   base_url,
+                   "/v1/chat/completions",
+                   std::nullopt,
+                   std::make_unique<OpenAIRequestBuilder>(),
+                   std::make_unique<OpenAIResponseParser>()) {}
 
 OpenAIClient::OpenAIClient(const std::string& api_key,
                            const std::string& base_url,
                            const retry::RetryConfig& retry_config)
+    : OpenAIClient(api_key,
+                   base_url,
+                   "/v1/chat/completions",
+                   retry_config,
+                   std::make_unique<OpenAIRequestBuilder>(),
+                   std::make_unique<OpenAIResponseParser>()) {}
+
+OpenAIClient::OpenAIClient(
+    const std::string& api_key,
+    const std::string& base_url,
+    std::string completions_endpoint_path,
+    std::optional<retry::RetryConfig> retry_config,
+    std::unique_ptr<providers::RequestBuilder> request_builder,
+    std::unique_ptr<providers::ResponseParser> response_parser)
     : BaseProviderClient(
           providers::ProviderConfig{
               .api_key = api_key,
               .base_url = base_url,
-              .completions_endpoint_path = "/v1/chat/completions",
+              .completions_endpoint_path = std::move(completions_endpoint_path),
               .embeddings_endpoint_path = "/v1/embeddings",
               .auth_header_name = "Authorization",
               .auth_header_prefix = "Bearer ",
               .extra_headers = {},
-              .retry_config = retry_config},
-          std::make_unique<OpenAIRequestBuilder>(),
-          std::make_unique<OpenAIResponseParser>()) {
+              .retry_config = std::move(retry_config)},
+          std::move(request_builder),
+          std::move(response_parser)) {
   ai::logger::log_debug(
-      "OpenAI client initialized with base_url: {} and custom retry config",
-      base_url);
+      "OpenAI client initialized with base_url: {}, endpoint: {}{}", base_url,
+      config_.completions_endpoint_path,
+      config_.retry_config ? " and custom retry config" : "");
 }
 
 StreamResult OpenAIClient::stream_text(const StreamOptions& options) {
@@ -83,12 +90,15 @@ std::string OpenAIClient::provider_name() const {
 }
 
 std::vector<std::string> OpenAIClient::supported_models() const {
-  return {// Current GPT-5 series
+  return {// GPT-6 series
+          models::kGpt62Astra, models::kGpt62Sol, models::kGpt61Terra,
+          models::kGpt6Luna,
+          // GPT-5 series
           models::kGpt56, models::kGpt56Sol, models::kGpt56Terra,
           models::kGpt56Luna, models::kGpt55, models::kGpt54, models::kGpt54Pro,
           models::kGpt54Mini, models::kGpt54Nano, models::kGpt5Mini,
           models::kGpt5Nano,
-          // Current GPT-4.1 series
+          // GPT-4.1 series
           models::kGpt41, models::kGpt41Mini};
 }
 

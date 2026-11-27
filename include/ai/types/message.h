@@ -37,9 +37,25 @@ struct ToolResultContentPart {
       : tool_call_id(std::move(id)), result(std::move(r)), is_error(err) {}
 };
 
+/// Provider-specific state with no provider-neutral representation, such as
+/// an OpenAI Responses API `reasoning` item. The provider named in `provider`
+/// produced `data` and replays it in follow-up requests (for example in
+/// `response_messages` fed back by the multi-step tool loop); every other
+/// provider ignores the part. The text and tool calls of the same turn are
+/// still carried as `TextContentPart` and `ToolCallContentPart`.
+struct ProviderContentPart {
+  std::string provider;
+  JsonValue data;
+
+  ProviderContentPart(std::string p, JsonValue d)
+      : provider(std::move(p)), data(std::move(d)) {}
+};
+
 // Content part variant
-using ContentPart =
-    std::variant<TextContentPart, ToolCallContentPart, ToolResultContentPart>;
+using ContentPart = std::variant<TextContentPart,
+                                 ToolCallContentPart,
+                                 ToolResultContentPart,
+                                 ProviderContentPart>;
 
 // Message content is now a vector of content parts
 using MessageContent = std::vector<ContentPart>;

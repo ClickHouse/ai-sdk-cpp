@@ -41,6 +41,9 @@ add_ai_example(retry_config_example retry_config_example.cpp)
 add_ai_example(test_openai test_openai.cpp)
 add_ai_example(test_anthropic test_anthropic.cpp)
 
+# OpenAI Responses API example (tool calling with the GPT-6 models)
+add_ai_example(openai_responses openai_responses.cpp)
+
 # OpenRouter example (OpenAI-compatible)
 add_ai_example(openrouter_example openrouter_example.cpp)
 
