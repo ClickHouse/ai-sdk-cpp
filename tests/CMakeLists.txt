@@ -8,6 +8,7 @@ set(AI_TEST_SOURCES
     unit/anthropic_stream_test.cpp
     unit/openai_embeddings_test.cpp
     unit/multi_step_coordinator_test.cpp
+    unit/langfuse_tracer_test.cpp
     unit/openai_responses_test.cpp
 
     # Integration tests
