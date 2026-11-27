@@ -99,9 +99,11 @@ nlohmann::json AnthropicRequestBuilder::build_request_json(
   // Add optional parameters
   // Recent Anthropic models reject sampling controls. Keep accepting the
   // provider-neutral options while omitting them for those model IDs.
-  constexpr std::array<const char*, 5> kSamplingRejectingModelPrefixes = {
-      models::kClaudeOpus5, models::kClaudeOpus48, models::kClaudeOpus47,
-      models::kClaudeFable5, models::kClaudeSonnet5};
+  // The prefixes also cover the later point releases ("claude-opus-5-5",
+  // "claude-fable-5-2", "claude-sonnet-5-5", ...).
+  constexpr std::array<const char*, 6> kSamplingRejectingModelPrefixes = {
+      models::kClaudeOpus5,  models::kClaudeOpus48,  models::kClaudeOpus47,
+      models::kClaudeFable5, models::kClaudeSonnet5, models::kClaudeHaiku55};
   const bool rejects_sampling_parameters = std::any_of(
       kSamplingRejectingModelPrefixes.begin(),
       kSamplingRejectingModelPrefixes.end(), [&options](const char* prefix) {

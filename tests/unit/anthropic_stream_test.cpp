@@ -450,5 +450,17 @@ TEST_F(AnthropicStreamEventTypesTest, MessageStopEvent) {
   EXPECT_THAT(event_data, testing::HasSubstr("message_stop"));
 }
 
+TEST_F(AnthropicStreamEventTest, MapsRefusalToContentFilter) {
+  anthropic::AnthropicStreamImpl stream;
+  stream.process_sse_chunk_for_testing(
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":"
+      "\"refusal\"}}\n\n"
+      "data: {\"type\":\"message_stop\"}\n\n");
+
+  auto finish_event = stream.get_next_event();
+  ASSERT_TRUE(finish_event.is_finish());
+  EXPECT_EQ(finish_event.finish_reason, kFinishReasonContentFilter);
+}
+
 }  // namespace test
 }  // namespace ai

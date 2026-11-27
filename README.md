@@ -54,7 +54,7 @@ int main() {
 int main() {
     // Ensure ANTHROPIC_API_KEY environment variable is set
     auto client = ai::anthropic::create_client();
-    ai::GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+    ai::GenerateOptions options(ai::anthropic::models::kClaudeSonnet55,
                                 "Explain quantum computing in simple terms.");
     options.system = "You are a helpful assistant.";
     auto result = client.generate_text(options);
@@ -174,6 +174,53 @@ int main() {
     return 0;
 }
 ```
+
+#### OpenAI Responses API
+
+`ai::openai::create_client` speaks Chat Completions, which OpenAI-compatible
+providers implement too. The GPT-6 models (`kGpt62Astra`, `kGpt62Sol`,
+`kGpt61Terra`, `kGpt6Luna`) call tools through the Responses API
+(`POST /v1/responses`) only, so use `ai::openai::create_responses_client` for
+them. It takes the same arguments as `create_client` and the same
+`GenerateOptions`; neither client falls back to the other API.
+
+```cpp
+#include <ai/openai.h>
+#include <ai/tools.h>
+#include <iostream>
+
+// get_weather as in the Tool Calling example above
+
+int main() {
+    auto client = ai::openai::create_responses_client();
+
+    ai::GenerateOptions options(ai::openai::models::kGpt62Sol,
+                                "What's the weather like in San Francisco?");
+    options.tools = {
+        {"weather", ai::create_simple_tool(
+            "weather", "Get current weather for a location",
+            {{"location", "string"}}, get_weather)}};
+    options.max_steps = 3;
+
+    auto result = client.generate_text(options);
+    if (result) {
+        std::cout << result.text << std::endl;
+    }
+    return 0;
+}
+```
+
+Requests are stateless (`store: false`), and the whole conversation is sent
+with every request. When a reasoning model calls tools, the API requires its
+`reasoning` items to be sent back with the tool results. They are returned in
+`GenerateResult::response_messages` as `ai::ProviderContentPart`s, which the
+multi-step loop (`max_steps > 1`) replays automatically, as do the next
+requests when you append `response_messages` to your conversation. Other
+providers ignore these parts. `system` becomes the `instructions` of the
+request, `max_tokens` becomes `max_output_tokens` (it counts reasoning tokens
+too), and `response_format` becomes `text.format`. The Responses API has no
+`frequency_penalty`, `presence_penalty`, or `seed`; they are ignored with a
+warning. See the [Responses API example](examples/openai_responses.cpp).
 
 #### Async Tool Calling
 
@@ -476,6 +523,7 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - [Retry Configuration](examples/retry_config_example.cpp)
 - [Basic Tool Calling](examples/tool_calling_basic.cpp)
 - [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
+- [OpenAI Responses API](examples/openai_responses.cpp) - Tool calling with the GPT-6 models
 - [Async Tool Execution](examples/tool_calling_async.cpp)
 - [Search Team Documents with Loom](examples/loom_document_search.md)
 - [OpenRouter Integration](examples/openrouter_example.cpp) - Using OpenAI-compatible APIs

@@ -125,7 +125,7 @@ class ToolTestFixtures {
   }
 };
 
-// Parameterized test class that works with both providers
+// Parameterized test class that works with every provider
 class ToolCallingIntegrationTest
     : public ::testing::TestWithParam<std::string> {
  protected:
@@ -138,6 +138,16 @@ class ToolCallingIntegrationTest
         use_real_api_ = true;
         client_ = ai::openai::create_client(api_key);
         model_ = ai::openai::models::kGpt56Luna;
+      } else {
+        use_real_api_ = false;
+      }
+    } else if (provider == "openai_responses") {
+      // GPT-6 models call tools through the Responses API only.
+      const char* api_key = std::getenv("OPENAI_API_KEY");
+      if (api_key && *api_key != '\0') {
+        use_real_api_ = true;
+        client_ = ai::openai::create_responses_client(api_key);
+        model_ = ai::openai::models::kGpt6Luna;
       } else {
         use_real_api_ = false;
       }
@@ -617,11 +627,11 @@ TEST_P(ToolCallingIntegrationTest, ToolSchemaValidation) {
   }
 }
 
-// Instantiate tests for both providers
+// Instantiate tests for every provider
 INSTANTIATE_TEST_SUITE_P(
     ProviderTests,
     ToolCallingIntegrationTest,
-    ::testing::Values("openai", "anthropic"),
+    ::testing::Values("openai", "openai_responses", "anthropic"),
     [](const ::testing::TestParamInfo<ToolCallingIntegrationTest::ParamType>&
            info) { return info.param; });
 

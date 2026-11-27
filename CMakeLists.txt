@@ -112,6 +112,11 @@ set(OPENAI_SOURCES
     src/providers/openai/openai_response_parser.cpp
     src/providers/openai/openai_stream.cpp
     src/providers/openai/openai_factory.cpp
+    src/providers/openai/openai_model_traits.cpp
+    src/providers/openai/openai_responses_client.cpp
+    src/providers/openai/openai_responses_request_builder.cpp
+    src/providers/openai/openai_responses_response_parser.cpp
+    src/providers/openai/openai_responses_stream.cpp
 )
 
 set(ANTHROPIC_SOURCES
