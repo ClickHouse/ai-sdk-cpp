@@ -30,6 +30,7 @@ class GoogleClient : public providers::BaseProviderClient {
   std::string provider_name() const override;
   /// Any model name is passed to the API, which rejects unknown ones.
   bool supports_model(const std::string& model_name) const override;
+  ModelListResult list_models() override;
   std::string config_info() const override;
   std::string default_model() const override;
 

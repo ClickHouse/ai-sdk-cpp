@@ -199,6 +199,30 @@ EmbeddingResult BaseProviderClient::embeddings(
   }
 }
 
+std::optional<std::string> BaseProviderClient::get_json(
+    const std::string& path,
+    const httplib::Headers& headers,
+    nlohmann::json& out) {
+  auto result = http_handler_->get(path, headers);
+  if (!result.is_success()) {
+    if (result.provider_metadata.has_value()) {
+      const int status_code = std::stoi(result.provider_metadata.value());
+      return response_parser_
+          ->parse_error_completion_response(status_code,
+                                            result.error.value_or(""))
+          .error_message();
+    }
+    return result.error_message();
+  }
+
+  try {
+    out = nlohmann::json::parse(result.text);
+  } catch (const nlohmann::json::exception& e) {
+    return "Failed to parse response: " + std::string(e.what());
+  }
+  return std::nullopt;
+}
+
 ModelListResult BaseProviderClient::list_models() {
   if (config_.models_endpoint_path.empty()) {
     return ModelListResult("The " + provider_name() +
@@ -213,24 +237,9 @@ ModelListResult BaseProviderClient::list_models() {
   // OpenAI returns every model at once; Anthropic pages with `has_more` and
   // `last_id` (passed back as `after_id`).
   while (true) {
-    auto result = http_handler_->get(path, headers);
-    if (!result.is_success()) {
-      if (result.provider_metadata.has_value()) {
-        const int status_code = std::stoi(result.provider_metadata.value());
-        return ModelListResult(response_parser_
-                                   ->parse_error_completion_response(
-                                       status_code, result.error.value_or(""))
-                                   .error_message());
-      }
-      return ModelListResult(result.error_message());
-    }
-
     nlohmann::json json_response;
-    try {
-      json_response = nlohmann::json::parse(result.text);
-    } catch (const nlohmann::json::exception& e) {
-      return ModelListResult("Failed to parse models response: " +
-                             std::string(e.what()));
+    if (auto error = get_json(path, headers, json_response)) {
+      return ModelListResult(std::move(*error));
     }
 
     if (!json_response.contains("data") || !json_response["data"].is_array()) {

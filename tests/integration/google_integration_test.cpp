@@ -41,6 +41,14 @@ class GoogleIntegrationTest : public AITestFixture {
     GTEST_SKIP() << "No GEMINI_API_KEY environment variable set"; \
   }
 
+TEST_F(GoogleIntegrationTest, ListModels) {
+  SKIP_WITHOUT_GEMINI_KEY();
+
+  const auto result = client_->list_models();
+  ASSERT_TRUE(result.is_success()) << result.error_message();
+  EXPECT_THAT(result.models, testing::Contains(testing::StartsWith("gemini-")));
+}
+
 TEST_F(GoogleIntegrationTest, BasicTextGeneration) {
   SKIP_WITHOUT_GEMINI_KEY();
 

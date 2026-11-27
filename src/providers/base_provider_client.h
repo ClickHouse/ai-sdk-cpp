@@ -76,6 +76,12 @@ class BaseProviderClient : public Client {
   bool is_valid() const override { return !config_.api_key.empty(); }
 
  protected:
+  // GET `path` and parse the JSON body into `out`. Returns the error message
+  // (parsed by the provider's error parser for HTTP errors) on failure.
+  std::optional<std::string> get_json(const std::string& path,
+                                      const httplib::Headers& headers,
+                                      nlohmann::json& out);
+
   // Hook for derived classes to customize behavior
   virtual GenerateResult generate_text_single_step(
       const GenerateOptions& options);

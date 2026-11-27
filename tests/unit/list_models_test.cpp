@@ -1,4 +1,5 @@
 #include "ai/anthropic.h"
+#include "ai/google.h"
 #include "ai/openai.h"
 
 #include <httplib.h>
@@ -118,6 +119,37 @@ TEST(ListModelsTest, OpenAIReturnsAllModelsAtOnce) {
   ASSERT_TRUE(result.is_success()) << result.error_message();
   EXPECT_THAT(result.models, testing::ElementsAre("gpt-6.2-sol", "gpt-6-luna"));
   EXPECT_EQ(seen_authorization, "Bearer sk-test");
+}
+
+TEST(ListModelsTest, GoogleFollowsPageTokensAndStripsPrefix) {
+  std::vector<std::string> seen_tokens;
+  std::string seen_api_key;
+  LocalServer server([&](httplib::Server& s) {
+    s.Get("/v1beta/models", [&](const httplib::Request& req,
+                                httplib::Response& res) {
+      seen_api_key = req.get_header_value("x-goog-api-key");
+      const auto token = req.get_param_value("pageToken");
+      seen_tokens.push_back(token);
+      if (token.empty()) {
+        res.set_content(R"({"models":[{"name":"models/gemini-4-hydrogen"}],)"
+                        R"("nextPageToken":"a+b/c="})",
+                        "application/json");
+      } else {
+        res.set_content(R"({"models":[{"name":"models/gemini-3.8-flash"}]})",
+                        "application/json");
+      }
+    });
+  });
+
+  auto client = google::create_client("gemini-test", server.url());
+  const auto result = client.list_models();
+
+  ASSERT_TRUE(result.is_success()) << result.error_message();
+  EXPECT_THAT(result.models,
+              testing::ElementsAre("gemini-4-hydrogen", "gemini-3.8-flash"));
+  // The token round-trips through percent-encoding.
+  EXPECT_THAT(seen_tokens, testing::ElementsAre("", "a+b/c="));
+  EXPECT_EQ(seen_api_key, "gemini-test");
 }
 
 TEST(ListModelsTest, ReportsProviderErrors) {
