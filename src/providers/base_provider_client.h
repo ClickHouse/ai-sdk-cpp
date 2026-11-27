@@ -74,6 +74,14 @@ class BaseProviderClient : public Client {
   virtual GenerateResult generate_text_single_step(
       const GenerateOptions& options);
 
+  // Path of the completion request; providers that address the model in the
+  // URL (such as Gemini's `/v1beta/models/{model}:generateContent`) override
+  // it.
+  virtual std::string completions_path(const GenerateOptions& options) const {
+    (void)options;
+    return config_.completions_endpoint_path;
+  }
+
   ProviderConfig config_;
   std::unique_ptr<http::HttpRequestHandler> http_handler_;
   std::unique_ptr<RequestBuilder> request_builder_;

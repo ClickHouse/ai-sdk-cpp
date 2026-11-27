@@ -28,7 +28,9 @@ inline GenerateResult parse_standard_error_response(
     if (json.contains("error")) {
       auto& error = json["error"];
       std::string message = error.value("message", "Unknown error");
-      std::string type = error.value("type", "");
+      // OpenAI and Anthropic name the error kind `type`; Google uses
+      // `status` (e.g. "INVALID_ARGUMENT") next to the numeric `code`.
+      std::string type = error.value("type", error.value("status", ""));
 
       std::string full_error = provider_name + " API error (" +
                                std::to_string(status_code) + "): " + message +

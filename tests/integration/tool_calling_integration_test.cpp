@@ -1,5 +1,6 @@
 #include "../utils/test_fixtures.h"
 #include "ai/anthropic.h"
+#include "ai/google.h"
 #include "ai/logger.h"
 #include "ai/openai.h"
 #include "ai/tools.h"
@@ -160,6 +161,12 @@ class ToolCallingIntegrationTest
       } else {
         use_real_api_ = false;
       }
+    } else if (provider == "google") {
+      client_ = ai::google::try_create_client();
+      use_real_api_ = client_.has_value();
+      // Thinks at the `minimal` level by default, so the small `max_tokens`
+      // of these tests is not used up by thinking.
+      model_ = ai::google::models::kGemini35FlashLite;
     }
 
     tools_ = ToolTestFixtures::createTestToolSet();
@@ -631,7 +638,7 @@ TEST_P(ToolCallingIntegrationTest, ToolSchemaValidation) {
 INSTANTIATE_TEST_SUITE_P(
     ProviderTests,
     ToolCallingIntegrationTest,
-    ::testing::Values("openai", "openai_responses", "anthropic"),
+    ::testing::Values("openai", "openai_responses", "anthropic", "google"),
     [](const ::testing::TestParamInfo<ToolCallingIntegrationTest::ParamType>&
            info) { return info.param; });
 

@@ -1,6 +1,6 @@
 # AI SDK CPP
 
-The AI SDK CPP is a modern C++ toolkit designed to help you build AI-powered applications with popular model providers like OpenAI and Anthropic. It provides a unified, easy-to-use API that abstracts away the complexity of different provider implementations.
+The AI SDK CPP is a modern C++ toolkit designed to help you build AI-powered applications with popular model providers like OpenAI, Anthropic, and Google Gemini. It provides a unified, easy-to-use API that abstracts away the complexity of different provider implementations.
 
 ## Motivation
 
@@ -18,7 +18,7 @@ You will need a C++20 compatible compiler and CMake 3.16+ installed on your deve
 
 ### Core API
 
-The AI SDK CPP Core module provides a unified API to interact with model providers like OpenAI and Anthropic.
+The AI SDK CPP Core module provides a unified API to interact with model providers like OpenAI, Anthropic, and Google Gemini.
 
 #### OpenAI Integration
 
@@ -66,6 +66,42 @@ int main() {
     return 0;
 }
 ```
+
+#### Google Gemini Integration
+
+The Google provider speaks the native Gemini API (`generateContent` and
+`streamGenerateContent`), not the OpenAI-compatibility endpoint.
+
+```cpp
+#include <ai/google.h>
+#include <ai/core.h>
+#include <iostream>
+
+int main() {
+    // Ensure GEMINI_API_KEY (or GOOGLE_API_KEY) environment variable is set
+    auto client = ai::google::create_client();
+    ai::GenerateOptions options(ai::google::models::kGemini4Hydrogen,
+                                "Explain quantum computing in simple terms.");
+    options.system = "You are a helpful assistant.";
+    auto result = client.generate_text(options);
+
+    if (result) {
+        std::cout << result.text << std::endl;
+    }
+
+    return 0;
+}
+```
+
+Tool calling, multi-step tool loops, structured output (`response_format`),
+and streaming work as with the other providers. Gemini 4 and Gemini 3 models
+attach thought signatures to their function calls and reject a follow-up
+request that does not send them back; the client keeps them in
+`response_messages` (as `ai::ProviderContentPart`), so the multi-step loop and
+conversations continued from `response_messages` replay them automatically.
+Note that thinking tokens count against `max_tokens`, and that Gemini 4 and
+Gemini 3.6+ models ignore `temperature` and `top_p` (the client does not send
+them for those models). Embeddings are not supported by this provider yet.
 
 #### Streaming Responses
 
@@ -299,7 +335,8 @@ int main() {
 ```
 
 The same retry-config overload is available from
-`ai::anthropic::create_client` for Anthropic requests.
+`ai::anthropic::create_client` for Anthropic requests and from
+`ai::google::create_client` for Gemini requests.
 
 #### Using OpenAI-Compatible APIs (OpenRouter, etc.)
 
@@ -350,7 +387,7 @@ See the [OpenRouter example](examples/openrouter_example.cpp) for a complete dem
 
 ### Currently Supported
 
-- ✅ **Text Generation**: Generate text completions with OpenAI and Anthropic models
+- ✅ **Text Generation**: Generate text completions with OpenAI, Anthropic, and Google Gemini models
 - ✅ **Streaming**: Real-time streaming of generated content
 - ✅ **Multi-turn Conversations**: Support for conversation history
 - ✅ **Error Handling**: Comprehensive error handling with optional types
@@ -364,7 +401,7 @@ See the [OpenRouter example](examples/openrouter_example.cpp) for a complete dem
 
 ### Coming Soon
 
-- 🚧 **Additional Providers**: Google, Cohere, and other providers
+- 🚧 **Additional Providers**: Cohere and other providers
 - 🚧 **Image Generation**: Support for image generation models
 
 ## Examples
@@ -379,6 +416,7 @@ Check out our [examples directory](examples/) for more comprehensive usage examp
 - [Basic Tool Calling](examples/tool_calling_basic.cpp)
 - [Multi-Step Tool Workflows](examples/tool_calling_multistep.cpp)
 - [OpenAI Responses API](examples/openai_responses.cpp) - Tool calling with the GPT-6 models
+- [Google Gemini](examples/google_gemini.cpp) - Native Gemini API: tools, structured output, streaming
 - [Async Tool Execution](examples/tool_calling_async.cpp)
 - [Search Team Documents with Loom](examples/loom_document_search.md)
 - [OpenRouter Integration](examples/openrouter_example.cpp) - Using OpenAI-compatible APIs
