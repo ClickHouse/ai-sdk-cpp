@@ -153,16 +153,40 @@ TEST_F(OpenAIClientTest, ValidateOptionsValidation) {
 TEST_F(OpenAIClientTest, Gpt5FamilyUsesChatCompletionsCompatibleReasoning) {
   openai::OpenAIRequestBuilder builder;
 
-  GenerateOptions gpt56_options(openai::models::kGpt56Luna, "Use a tool");
-  EXPECT_EQ(builder.build_request_json(gpt56_options)["reasoning_effort"],
-            "none");
-
-  // Earlier GPT-5 models reject "none"; they get the "minimal" floor.
+  // GPT-5.1 and later accept "none" and reject "minimal".
   for (const auto* model :
-       {openai::models::kGpt5Mini, openai::models::kGpt55}) {
+       {openai::models::kGpt56, openai::models::kGpt56Luna,
+        openai::models::kGpt55, openai::models::kGpt54,
+        openai::models::kGpt54Mini, openai::models::kGpt54Nano, "gpt-5.2",
+        "gpt-5.1"}) {
+    GenerateOptions options(model, "Use a tool");
+    EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"], "none")
+        << model;
+  }
+
+  // The original GPT-5 models reject "none"; they get the "minimal" floor.
+  for (const auto* model : {"gpt-5", "gpt-5-2025-08-07",
+                            openai::models::kGpt5Mini,
+                            openai::models::kGpt5Nano}) {
     GenerateOptions options(model, "Use a tool");
     EXPECT_EQ(builder.build_request_json(options)["reasoning_effort"],
               "minimal")
+        << model;
+  }
+}
+
+TEST_F(OpenAIClientTest, ReasoningEffortIsOmittedWhereItsValuesAreNotKnown) {
+  openai::OpenAIRequestBuilder builder;
+
+  // An unsupported value fails the request, so the variants with a fixed or
+  // unknown set of values, and the models outside of the family, get none.
+  for (const auto* model :
+       {openai::models::kGpt54Pro, "gpt-5-pro", "gpt-5-chat-latest",
+        "gpt-5.1-chat-latest", "gpt-5-codex", "gpt-5.1-codex",
+        openai::models::kGpt41, "gpt-4o"}) {
+    GenerateOptions options(model, "Use a tool");
+    EXPECT_FALSE(
+        builder.build_request_json(options).contains("reasoning_effort"))
         << model;
   }
 }
