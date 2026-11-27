@@ -22,7 +22,7 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/ai-sdk-cpp-targets.cmake")
 
 # Available components
-set(AI_SDK_AVAILABLE_COMPONENTS core openai anthropic langfuse)
+set(AI_SDK_AVAILABLE_COMPONENTS core openai anthropic google langfuse)
 if(AI_SDK_ENABLE_BEDROCK)
     list(APPEND AI_SDK_AVAILABLE_COMPONENTS bedrock)
 endif()

@@ -10,11 +10,14 @@ set(AI_TEST_SOURCES
     unit/multi_step_coordinator_test.cpp
     unit/langfuse_tracer_test.cpp
     unit/openai_responses_test.cpp
+    unit/google_client_test.cpp
+    unit/google_stream_test.cpp
 
     # Integration tests
     integration/openai_integration_test.cpp
     integration/openai_responses_integration_test.cpp
     integration/anthropic_integration_test.cpp
+    integration/google_integration_test.cpp
     integration/tool_calling_integration_test.cpp
     integration/clickhouse_integration_test.cpp
     integration/openai_embeddings_integration_test.cpp
