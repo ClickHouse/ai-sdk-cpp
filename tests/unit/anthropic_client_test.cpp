@@ -94,6 +94,11 @@ TEST_F(AnthropicClientTest, ConstructorWithCustomRetryConfig) {
 TEST_F(AnthropicClientTest, SupportedModelsContainsExpectedModels) {
   auto models = client_->supported_models();
 
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeFable52));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeOpus55));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeSonnet55));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeHaiku55));
+  EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeFable51));
   EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeFable5));
   EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeOpus5));
   EXPECT_THAT(models, testing::Contains(anthropic::models::kClaudeOpus48));
@@ -104,6 +109,7 @@ TEST_F(AnthropicClientTest, SupportedModelsContainsExpectedModels) {
 }
 
 TEST_F(AnthropicClientTest, SupportsValidModel) {
+  EXPECT_TRUE(client_->supports_model(anthropic::models::kDefaultModel));
   EXPECT_TRUE(client_->supports_model(anthropic::models::kClaudeFable5));
   EXPECT_TRUE(client_->supports_model(anthropic::models::kClaudeOpus5));
   EXPECT_TRUE(client_->supports_model(anthropic::models::kClaudeOpus48));
@@ -170,8 +176,11 @@ TEST_F(AnthropicClientTest, ValidateOptionsValidation) {
 TEST_F(AnthropicClientTest, RecentModelsOmitUnsupportedSamplingParameters) {
   anthropic::AnthropicRequestBuilder builder;
   for (const auto* model :
-       {anthropic::models::kClaudeOpus48, anthropic::models::kClaudeOpus47,
-        anthropic::models::kClaudeFable5, anthropic::models::kClaudeSonnet5}) {
+       {anthropic::models::kClaudeFable52, anthropic::models::kClaudeFable51,
+        anthropic::models::kClaudeOpus55, anthropic::models::kClaudeSonnet55,
+        anthropic::models::kClaudeHaiku55, anthropic::models::kClaudeOpus48,
+        anthropic::models::kClaudeOpus47, anthropic::models::kClaudeFable5,
+        anthropic::models::kClaudeSonnet5}) {
     GenerateOptions options(model, "Hello");
     options.temperature = 0.7;
     options.top_p = 0.8;
@@ -232,6 +241,8 @@ TEST_F(AnthropicClientTest, TestStopReasonParsing) {
   EXPECT_EQ(client_->parse_stop_reason("max_tokens"), kFinishReasonLength);
   EXPECT_EQ(client_->parse_stop_reason("stop_sequence"), kFinishReasonStop);
   EXPECT_EQ(client_->parse_stop_reason("tool_use"), kFinishReasonToolCalls);
+  EXPECT_EQ(client_->parse_stop_reason("refusal"),
+            kFinishReasonContentFilter);
   EXPECT_EQ(client_->parse_stop_reason("unknown"),
             kFinishReasonStop);  // Anthropic defaults unknown to stop
 }

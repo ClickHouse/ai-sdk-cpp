@@ -135,6 +135,8 @@ TEST_F(AnthropicIntegrationTest, DifferentModelSupport) {
 
   std::vector<std::string> models_to_test = {
       ai::anthropic::models::kDefaultModel,
+      ai::anthropic::models::kClaudeOpus55,
+      ai::anthropic::models::kClaudeHaiku55,
       ai::anthropic::models::kClaudeHaiku45};
 
   for (const auto& model : models_to_test) {
@@ -278,7 +280,7 @@ TEST_F(AnthropicIntegrationTest, LargePromptHandling) {
   auto large_prompt =
       TestDataGenerator::createLargePrompt(2000);  // ~2KB prompt
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5, large_prompt);
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet55, large_prompt);
   auto result = client_->generate_text(options);
 
   TestAssertions::assertSuccess(result);
@@ -299,7 +301,7 @@ TEST_F(AnthropicIntegrationTest, CustomBaseUrl) {
   auto custom_client =
       ai::anthropic::create_client(api_key, "https://api.anthropic.com");
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet55,
                           "Test custom base URL");
   auto result = custom_client.generate_text(options);
 
@@ -313,7 +315,7 @@ TEST_F(AnthropicIntegrationTest, EmptyPrompt) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5, "");
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet55, "");
 
   // Empty prompt should be caught by validation
   EXPECT_FALSE(options.is_valid());
@@ -328,7 +330,7 @@ TEST_F(AnthropicIntegrationTest, VeryLongResponse) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet55,
                           "Write a detailed explanation of quantum physics");
   options.max_tokens = 500;  // Reasonable limit for testing
 
@@ -349,7 +351,8 @@ TEST_F(AnthropicIntegrationTest, NetworkTimeout) {
 
   // Note: This test documents timeout behavior but cannot reliably trigger it
   // with the real API under normal conditions
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5, "Simple test");
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet55,
+                          "Simple test");
   auto result = client_->generate_text(options);
 
   // Under normal conditions, this should succeed
@@ -374,7 +377,7 @@ TEST_F(AnthropicIntegrationTest, NetworkFailure) {
   auto failing_client = ai::anthropic::create_client(
       api_key, "http://localhost:59999");  // Very unlikely port to be in use
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet55,
                           "Test network failure");
   auto result = failing_client.generate_text(options);
 
@@ -425,7 +428,7 @@ TEST_F(AnthropicIntegrationTest, MaxTokensRequired) {
     GTEST_SKIP() << "No ANTHROPIC_API_KEY environment variable set";
   }
 
-  GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+  GenerateOptions options(ai::anthropic::models::kClaudeSonnet55,
                           "Tell me about artificial intelligence");
   // Anthropic requires max_tokens to be set
   options.max_tokens = 100;
@@ -444,7 +447,7 @@ TEST_F(AnthropicIntegrationTest, SystemMessageHandling) {
 
   // Anthropic has specific handling for system messages
   GenerateOptions options(
-      ai::anthropic::models::kClaudeSonnet5,
+      ai::anthropic::models::kClaudeSonnet55,
       "You are Claude, an AI assistant created by Anthropic.",
       "What is your name?");
   options.max_tokens = 50;

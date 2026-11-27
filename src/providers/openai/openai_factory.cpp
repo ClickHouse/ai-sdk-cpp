@@ -2,6 +2,7 @@
 
 #include "ai/errors.h"
 #include "openai_client.h"
+#include "openai_responses_client.h"
 #include "utils/env_utils.h"
 
 #include <memory>
@@ -29,37 +30,75 @@ std::string get_api_key_or_default(const std::string& api_key) {
 std::string get_base_url_or_default(const std::string& base_url) {
   return base_url.empty() ? kDefaultBaseUrl : base_url;
 }
+
+template <typename ClientImpl>
+Client make_client(const std::string& api_key, const std::string& base_url) {
+  return Client(std::make_unique<ClientImpl>(
+      get_api_key_or_default(api_key), get_base_url_or_default(base_url)));
+}
+
+template <typename ClientImpl>
+Client make_client(const std::string& api_key,
+                   const std::string& base_url,
+                   const retry::RetryConfig& retry_config) {
+  return Client(std::make_unique<ClientImpl>(get_api_key_or_default(api_key),
+                                             get_base_url_or_default(base_url),
+                                             retry_config));
+}
+
+template <typename ClientImpl>
+std::optional<Client> try_make_client() {
+  auto api_key = utils::non_empty_env("OPENAI_API_KEY");
+  if (!api_key) {
+    return std::nullopt;
+  }
+  return Client(std::make_unique<ClientImpl>(*api_key, kDefaultBaseUrl));
+}
 }  // namespace
 
 Client create_client() {
-  return Client(std::make_unique<OpenAIClient>(get_api_key_or_default(""),
-                                               kDefaultBaseUrl));
+  return make_client<OpenAIClient>("", "");
 }
 
 Client create_client(const std::string& api_key) {
-  return Client(std::make_unique<OpenAIClient>(get_api_key_or_default(api_key),
-                                               kDefaultBaseUrl));
+  return make_client<OpenAIClient>(api_key, "");
 }
 
 Client create_client(const std::string& api_key, const std::string& base_url) {
-  return Client(std::make_unique<OpenAIClient>(
-      get_api_key_or_default(api_key), get_base_url_or_default(base_url)));
+  return make_client<OpenAIClient>(api_key, base_url);
 }
 
 Client create_client(const std::string& api_key,
                      const std::string& base_url,
                      const retry::RetryConfig& retry_config) {
-  return Client(std::make_unique<OpenAIClient>(
-      get_api_key_or_default(api_key), get_base_url_or_default(base_url),
-      retry_config));
+  return make_client<OpenAIClient>(api_key, base_url, retry_config);
 }
 
 std::optional<Client> try_create_client() {
-  auto api_key = utils::non_empty_env("OPENAI_API_KEY");
-  if (!api_key) {
-    return std::nullopt;
-  }
-  return Client(std::make_unique<OpenAIClient>(*api_key, kDefaultBaseUrl));
+  return try_make_client<OpenAIClient>();
+}
+
+Client create_responses_client() {
+  return make_client<OpenAIResponsesClient>("", "");
+}
+
+Client create_responses_client(const std::string& api_key) {
+  return make_client<OpenAIResponsesClient>(api_key, "");
+}
+
+Client create_responses_client(const std::string& api_key,
+                               const std::string& base_url) {
+  return make_client<OpenAIResponsesClient>(api_key, base_url);
+}
+
+Client create_responses_client(const std::string& api_key,
+                               const std::string& base_url,
+                               const retry::RetryConfig& retry_config) {
+  return make_client<OpenAIResponsesClient>(api_key, base_url, retry_config);
+}
+
+std::optional<Client> try_create_responses_client() {
+  return try_make_client<OpenAIResponsesClient>();
 }
 
 }  // namespace openai
