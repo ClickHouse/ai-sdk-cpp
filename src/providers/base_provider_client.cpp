@@ -3,6 +3,8 @@
 #include "ai/logger.h"
 #include "ai/tools.h"
 
+#include <set>
+
 namespace ai {
 namespace providers {
 
@@ -206,6 +208,7 @@ ModelListResult BaseProviderClient::list_models() {
   const auto headers = request_builder_->build_headers(config_);
   ModelListResult listed;
   std::string path = config_.models_endpoint_path;
+  std::set<std::string> seen_cursors;
 
   // OpenAI returns every model at once; Anthropic pages with `has_more` and
   // `last_id` (passed back as `after_id`).
@@ -250,6 +253,12 @@ ModelListResult BaseProviderClient::list_models() {
         last_id->get<std::string>().empty()) {
       return ModelListResult(
           "Unexpected models response: `has_more` without `last_id`");
+    }
+    // A server (or gateway) that ignores `after_id` would otherwise be paged
+    // forever.
+    if (!seen_cursors.insert(last_id->get<std::string>()).second) {
+      return ModelListResult("Unexpected models response: pagination cursor `" +
+                             last_id->get<std::string>() + "` repeated");
     }
     path = config_.models_endpoint_path +
            "?after_id=" + last_id->get<std::string>();

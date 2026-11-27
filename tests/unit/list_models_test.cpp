@@ -79,6 +79,26 @@ TEST(ListModelsTest, AnthropicFollowsPagination) {
   EXPECT_FALSE(seen_version.empty());
 }
 
+TEST(ListModelsTest, FailsWhenPaginationDoesNotAdvance) {
+  int requests = 0;
+  LocalServer server([&](httplib::Server& s) {
+    s.Get("/v1/models", [&](const httplib::Request&, httplib::Response& res) {
+      // Ignores `after_id` and always reports more pages.
+      ++requests;
+      res.set_content(R"({"data":[{"id":"claude-opus-5-5"}],"has_more":true,)"
+                      R"("last_id":"claude-opus-5-5"})",
+                      "application/json");
+    });
+  });
+
+  auto client = anthropic::create_client("sk-ant-test", server.url());
+  const auto result = client.list_models();
+
+  EXPECT_FALSE(result.is_success());
+  EXPECT_THAT(result.error_message(), testing::HasSubstr("repeated"));
+  EXPECT_EQ(requests, 2);
+}
+
 TEST(ListModelsTest, OpenAIReturnsAllModelsAtOnce) {
   std::string seen_authorization;
   LocalServer server([&](httplib::Server& s) {
