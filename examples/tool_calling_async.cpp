@@ -342,7 +342,7 @@ int main() {
   start_time = std::chrono::high_resolution_clock::now();
 
   ai::GenerateOptions anthropic_options;
-  anthropic_options.model = ai::anthropic::models::kClaudeSonnet5;
+  anthropic_options.model = ai::anthropic::models::kClaudeSonnet55;
   anthropic_options.prompt = R"(
     Please help me with these THREE tasks. You MUST use the tools to complete ALL of them:
     1. Use the fetch_news tool to get tech news articles  

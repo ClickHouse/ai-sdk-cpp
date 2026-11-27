@@ -16,6 +16,18 @@ namespace anthropic {
 
 namespace models {
 /// Current Anthropic model identifiers
+///
+/// Claude Fable 5.1 and later, Claude Opus 5.5 and Claude Sonnet 5.5 reject a
+/// forced tool choice (`ToolChoice::required()` and `ToolChoice::specific()`)
+/// with HTTP 400; use `ToolChoice::auto_choice()` and name the tool in the
+/// prompt instead.
+constexpr const char* kClaudeFable52 = "claude-fable-5-2";
+constexpr const char* kClaudeOpus55 = "claude-opus-5-5";
+constexpr const char* kClaudeSonnet55 = "claude-sonnet-5-5";
+constexpr const char* kClaudeHaiku55 = "claude-haiku-5-5";
+
+/// Previous-generation model identifiers (still available)
+constexpr const char* kClaudeFable51 = "claude-fable-5-1";
 constexpr const char* kClaudeFable5 = "claude-fable-5";
 constexpr const char* kClaudeOpus5 = "claude-opus-5";
 constexpr const char* kClaudeOpus48 = "claude-opus-4-8";
@@ -39,7 +51,7 @@ constexpr const char* kClaudeOpus41 =
 constexpr const char* kClaudeOpus41Snapshot = "claude-opus-4-1-20250805";
 
 /// Default model used when none is specified
-constexpr const char* kDefaultModel = kClaudeSonnet5;
+constexpr const char* kDefaultModel = kClaudeSonnet55;
 }  // namespace models
 
 /// Create an Anthropic client with default configuration

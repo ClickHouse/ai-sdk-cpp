@@ -17,24 +17,33 @@ namespace openai {
 namespace models {
 /// Common OpenAI model identifiers
 
-// GPT-5.6 series (current frontier family)
+// GPT-6 series (current frontier family). On Chat Completions, which this
+// SDK uses, these models reject sampling parameters and do not support tool
+// calling (OpenAI serves their tool calling through the Responses API only).
+constexpr const char* kGpt62Astra = "gpt-6.2-astra";
+constexpr const char* kGpt62Sol = "gpt-6.2-sol";
+constexpr const char* kGpt61Terra = "gpt-6.1-terra";
+constexpr const char* kGpt6Luna = "gpt-6-luna";
+
+// GPT-5.6 series (latest family with tool calling on Chat Completions)
 constexpr const char* kGpt56 = "gpt-5.6";  // Alias for GPT-5.6 Sol
 constexpr const char* kGpt56Sol = "gpt-5.6-sol";
 constexpr const char* kGpt56Terra = "gpt-5.6-terra";
 constexpr const char* kGpt56Luna = "gpt-5.6-luna";
 
-// Earlier current GPT-5 series
+// Earlier GPT-5 series
 constexpr const char* kGpt55 = "gpt-5.5";
 constexpr const char* kGpt54 = "gpt-5.4";
 constexpr const char* kGpt54Pro = "gpt-5.4-pro";
 constexpr const char* kGpt54Mini = "gpt-5.4-mini";
-constexpr const char* kGpt54Nano = "gpt-5.4-nano";
+constexpr const char* kGpt54Nano = "gpt-5.4-nano";  // Shutdown: 2027-04-01
 
-// GPT-5 small variants (current)
+// GPT-5 small variants (deprecated, shutdown: 2026-12-11; use kGpt61Terra
+// and kGpt6Luna)
 constexpr const char* kGpt5Mini = "gpt-5-mini";
 constexpr const char* kGpt5Nano = "gpt-5-nano";
 
-// GPT-4.1 series (still current non-reasoning leaders)
+// GPT-4.1 series (deprecated, shutdown: 2027-01-14; use kGpt6Luna)
 constexpr const char* kGpt41 = "gpt-4.1";
 constexpr const char* kGpt41Mini = "gpt-4.1-mini";
 
@@ -42,7 +51,8 @@ constexpr const char* kGpt41Mini = "gpt-4.1-mini";
 constexpr const char* kTextEmbedding3Small = "text-embedding-3-small";
 constexpr const char* kTextEmbedding3Large = "text-embedding-3-large";
 
-/// Default model used when none is specified
+/// Default model used when none is specified. It stays on GPT-5.6 because the
+/// GPT-6 series does not support tool calling on Chat Completions.
 constexpr const char* kDefaultModel = kGpt56;
 
 }  // namespace models

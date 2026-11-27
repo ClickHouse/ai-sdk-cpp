@@ -83,12 +83,15 @@ std::string OpenAIClient::provider_name() const {
 }
 
 std::vector<std::string> OpenAIClient::supported_models() const {
-  return {// Current GPT-5 series
+  return {// GPT-6 series
+          models::kGpt62Astra, models::kGpt62Sol, models::kGpt61Terra,
+          models::kGpt6Luna,
+          // GPT-5 series
           models::kGpt56, models::kGpt56Sol, models::kGpt56Terra,
           models::kGpt56Luna, models::kGpt55, models::kGpt54, models::kGpt54Pro,
           models::kGpt54Mini, models::kGpt54Nano, models::kGpt5Mini,
           models::kGpt5Nano,
-          // Current GPT-4.1 series
+          // GPT-4.1 series
           models::kGpt41, models::kGpt41Mini};
 }
 

@@ -13,13 +13,28 @@ namespace openai {
 
 namespace {
 
-// The lowest `reasoning_effort` a GPT-5 family model accepts on Chat
+// The lowest `reasoning_effort` a GPT-5 or GPT-6 family model accepts on Chat
 // Completions, or nullopt when the parameter must be left out: the model is
 // not in the family, or it is a variant whose accepted values are fixed or
 // not known. An unsupported value fails the request with HTTP 400, so the
 // field is only sent where the value is known to be accepted.
 std::optional<std::string_view> lowest_reasoning_effort(
     std::string_view model) {
+  if (model.starts_with("gpt-6")) {
+    // The pro and cyber variants have value sets of their own.
+    for (const std::string_view variant : {"-pro", "-cyber"}) {
+      if (model.find(variant) != std::string_view::npos) {
+        return std::nullopt;
+      }
+    }
+    // Every GPT-6 model accepts "low"; GPT-6.2 and later reject "none", which
+    // only GPT-6 Luna and GPT-6.1 Terra are documented to accept.
+    if (model.starts_with("gpt-6-luna") || model.starts_with("gpt-6.1-terra")) {
+      return "none";
+    }
+    return "low";
+  }
+
   if (!model.starts_with("gpt-5")) {
     return std::nullopt;
   }
@@ -141,13 +156,13 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
   }
 
   // Add optional parameters
-  // The GPT-5 family is reasoning-first on Chat Completions: it rejects
-  // sampling controls ("'temperature' does not support 0.0 with this model.
-  // Only the default (1) value is supported."). Keep accepting the
+  // The GPT-5 and GPT-6 families are reasoning-first on Chat Completions: they
+  // reject sampling controls ("'temperature' does not support 0.0 with this
+  // model. Only the default (1) value is supported."). Keep accepting the
   // provider-neutral options while omitting them for those model IDs,
   // mirroring the Anthropic builder.
-  const bool is_gpt5_family = options.model.starts_with("gpt-5");
-  const bool rejects_sampling_parameters = is_gpt5_family;
+  const bool rejects_sampling_parameters =
+      options.model.starts_with("gpt-5") || options.model.starts_with("gpt-6");
   const auto add_sampling_parameter = [&](const char* key,
                                           const std::optional<double>& value) {
     if (!value) {
@@ -181,7 +196,7 @@ nlohmann::json OpenAIRequestBuilder::build_request_json(
     request["seed"] = *options.seed;
   }
 
-  // Much of the GPT-5 family defaults to reasoning in Chat Completions. That
+  // The GPT-5 and GPT-6 families default to reasoning in Chat Completions. That
   // mode can consume the full completion budget on hidden reasoning without
   // producing user-visible text (acute with a small max_tokens), and on
   // GPT-5.6 it does not support function tools. The unified SDK currently

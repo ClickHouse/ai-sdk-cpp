@@ -54,7 +54,7 @@ int main() {
 int main() {
     // Ensure ANTHROPIC_API_KEY environment variable is set
     auto client = ai::anthropic::create_client();
-    ai::GenerateOptions options(ai::anthropic::models::kClaudeSonnet5,
+    ai::GenerateOptions options(ai::anthropic::models::kClaudeSonnet55,
                                 "Explain quantum computing in simple terms.");
     options.system = "You are a helpful assistant.";
     auto result = client.generate_text(options);
