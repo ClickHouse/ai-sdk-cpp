@@ -6,6 +6,8 @@
 #include "ai/types/stream_options.h"
 #include "ai/types/stream_result.h"
 
+#include <thread>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -127,6 +129,44 @@ TEST_F(StreamEventTest, EmitsOneFinishWithTerminalUsage) {
   ASSERT_TRUE(finish_event.is_finish());
   ASSERT_TRUE(finish_event.usage.has_value());
   EXPECT_EQ(finish_event.usage->total_tokens, 7);
+}
+
+TEST_F(StreamEventTest, EmitsReasoningDeltas) {
+  openai::OpenAIStreamImpl stream;
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{"reasoning_content":"Let me think"}}]})");
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{"reasoning":" about it"}}]})");
+  stream.process_sse_line_for_testing(
+      R"(data: {"choices":[{"delta":{"content":"Done","reasoning_content":null}}]})");
+
+  auto first = stream.get_next_event();
+  ASSERT_TRUE(first.is_reasoning_delta());
+  EXPECT_EQ(first.reasoning_delta, "Let me think");
+  EXPECT_TRUE(first.text_delta.empty());
+
+  auto second = stream.get_next_event();
+  ASSERT_TRUE(second.is_reasoning_delta());
+  EXPECT_EQ(second.reasoning_delta, " about it");
+
+  auto text = stream.get_next_event();
+  ASSERT_TRUE(text.is_text_delta());
+  EXPECT_EQ(text.text_delta, "Done");
+  EXPECT_EQ(stream.queued_event_count_for_testing(), 0);
+}
+
+TEST_F(StreamEventTest, ConsumerWaitsForEventFromAnotherThread) {
+  openai::OpenAIStreamImpl stream;
+  std::thread producer([&stream] {
+    stream.process_sse_line_for_testing(
+        R"(data: {"choices":[{"delta":{"content":"late"}}]})");
+  });
+
+  // Blocks until the producer pushes the event; no polling, no timeout.
+  auto event = stream.get_next_event();
+  producer.join();
+  ASSERT_TRUE(event.is_text_delta());
+  EXPECT_EQ(event.text_delta, "late");
 }
 
 // Mock Stream Implementation Tests

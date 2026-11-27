@@ -450,5 +450,30 @@ TEST_F(AnthropicStreamEventTypesTest, MessageStopEvent) {
   EXPECT_THAT(event_data, testing::HasSubstr("message_stop"));
 }
 
+TEST_F(AnthropicStreamEventTest, EmitsReasoningDeltasForThinking) {
+  anthropic::AnthropicStreamImpl stream;
+  stream.process_sse_chunk_for_testing(
+      R"(data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}
+
+data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Weighing options"}}
+
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"abc"}}
+
+data: {"type":"content_block_stop","index":0}
+
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Answer"}}
+
+)");
+
+  auto reasoning = stream.get_next_event();
+  ASSERT_TRUE(reasoning.is_reasoning_delta());
+  EXPECT_EQ(reasoning.reasoning_delta, "Weighing options");
+
+  auto text = stream.get_next_event();
+  ASSERT_TRUE(text.is_text_delta());
+  EXPECT_EQ(text.text_delta, "Answer");
+  EXPECT_EQ(stream.queued_event_count_for_testing(), 0);
+}
+
 }  // namespace test
 }  // namespace ai

@@ -122,6 +122,14 @@ void AnthropicStreamImpl::process_sse_event(const std::string& data) {
       } else if (json_event.contains("delta") &&
                  json_event["delta"].is_object() &&
                  string_or_empty(json_event["delta"], "type") ==
+                     "thinking_delta") {
+        // Empty unless the request asks for summarized thinking; recent
+        // models omit the thinking text by default.
+        push_event(StreamEvent::reasoning(
+            string_or_empty(json_event["delta"], "thinking")));
+      } else if (json_event.contains("delta") &&
+                 json_event["delta"].is_object() &&
+                 string_or_empty(json_event["delta"], "type") ==
                      "input_json_delta") {
         const auto index = index_or_zero(json_event);
         pending_tool_calls_[index].arguments +=

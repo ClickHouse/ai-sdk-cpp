@@ -43,6 +43,15 @@ void OpenAIStreamImpl::process_sse_line(std::string_view line) {
         push_event(StreamEvent(content));
       }
 
+      // OpenAI-compatible servers stream reasoning in a field of their own:
+      // `reasoning_content` (DeepSeek, vLLM, SGLang) or `reasoning`
+      // (OpenRouter, Ollama).
+      for (const char* key : {"reasoning_content", "reasoning"}) {
+        if (delta.contains(key) && delta[key].is_string()) {
+          push_event(StreamEvent::reasoning(delta[key].get<std::string>()));
+        }
+      }
+
       if (delta.contains("tool_calls") && delta["tool_calls"].is_array()) {
         for (const auto& fragment : delta["tool_calls"]) {
           const auto index = fragment.value("index", std::size_t{0});

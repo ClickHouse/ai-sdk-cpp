@@ -23,7 +23,10 @@ enum StreamEventType {
   kStreamEventTypeStepStart,
   kStreamEventTypeStepFinish,
   kStreamEventTypeFinish,
-  kStreamEventTypeError
+  kStreamEventTypeError,
+  /// A fragment of the model's reasoning (thinking) text, in `reasoning_delta`.
+  /// It can be empty when the provider does not return the reasoning itself.
+  kStreamEventTypeReasoningDelta
 };
 
 }  // namespace ai
