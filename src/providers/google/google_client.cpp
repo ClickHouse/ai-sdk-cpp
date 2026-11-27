@@ -6,8 +6,11 @@
 #include "google_response_parser.h"
 #include "google_stream.h"
 
+#include <cstdio>
 #include <exception>
 #include <memory>
+#include <set>
+#include <string_view>
 
 namespace ai {
 namespace google {
@@ -104,6 +107,85 @@ std::string GoogleClient::provider_name() const {
 
 bool GoogleClient::supports_model(const std::string& model_name) const {
   return !model_name.empty();
+}
+
+namespace {
+
+std::string percent_encode(const std::string& value) {
+  std::string encoded;
+  for (const unsigned char c : value) {
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+        (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' ||
+        c == '~') {
+      encoded.push_back(static_cast<char>(c));
+    } else {
+      char buffer[4];
+      std::snprintf(buffer, sizeof(buffer), "%%%02X", c);
+      encoded += buffer;
+    }
+  }
+  return encoded;
+}
+
+}  // namespace
+
+ModelListResult GoogleClient::list_models() {
+  // `GET /v1beta/models` returns `{"models": [{"name": "models/<id>", ...}],
+  // "nextPageToken": ...}`; the IDs are reported without the `models/`
+  // prefix, the way requests take them.
+  constexpr std::string_view kNamePrefix = "models/";
+  const auto headers = request_builder_->build_headers(config_);
+  ModelListResult listed;
+  std::set<std::string> seen_tokens;
+  std::string page_token;
+
+  while (true) {
+    std::string path = "/v1beta/models?pageSize=1000";
+    if (!page_token.empty()) {
+      path += "&pageToken=" + percent_encode(page_token);
+    }
+
+    nlohmann::json json_response;
+    if (auto error = get_json(path, headers, json_response)) {
+      return ModelListResult(std::move(*error));
+    }
+    if (!json_response.is_object()) {
+      return ModelListResult("Unexpected models response: not an object");
+    }
+
+    // An empty last page may omit `models`.
+    if (const auto models = json_response.find("models");
+        models != json_response.end()) {
+      if (!models->is_array()) {
+        return ModelListResult(
+            "Unexpected models response: `models` is not an array");
+      }
+      for (const auto& entry : *models) {
+        if (!entry.is_object() || !entry.contains("name") ||
+            !entry["name"].is_string()) {
+          continue;
+        }
+        std::string name = entry["name"].get<std::string>();
+        if (name.starts_with(kNamePrefix)) {
+          name.erase(0, kNamePrefix.size());
+        }
+        listed.models.push_back(std::move(name));
+      }
+    }
+
+    const auto next = json_response.find("nextPageToken");
+    if (next == json_response.end() || !next->is_string() ||
+        next->get<std::string>().empty()) {
+      break;
+    }
+    page_token = next->get<std::string>();
+    if (!seen_tokens.insert(page_token).second) {
+      return ModelListResult("Unexpected models response: page token repeated");
+    }
+  }
+
+  ai::logger::log_debug("Listed {} Gemini models", listed.models.size());
+  return listed;
 }
 
 std::string GoogleClient::config_info() const {

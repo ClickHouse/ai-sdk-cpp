@@ -215,9 +215,14 @@ int main() {
       std::cout << "OpenAI client created successfully\n";
       std::cout << "Provider: " << openai_client.provider_name() << "\n";
 
-      auto openai_models = openai_client.supported_models();
-      if (!openai_models.empty()) {
-        std::cout << "Supported models: ";
+      // Ask the API which models this key can use
+      auto listed = openai_client.list_models();
+      const auto& openai_models = listed.models;
+      if (!listed) {
+        std::cout << "Failed to list models: " << listed.error_message()
+                  << "\n";
+      } else if (!openai_models.empty()) {
+        std::cout << "Available models: ";
         for (size_t i = 0; i < openai_models.size() && i < 3; ++i) {
           std::cout << openai_models[i];
           if (i < 2 && i < openai_models.size() - 1) {

@@ -99,9 +99,7 @@ TEST_F(OpenAIClientTest, SupportsValidModel) {
   EXPECT_TRUE(client_->supports_model("gpt-4.1"));
 }
 
-TEST_F(OpenAIClientTest, DoesNotSupportInvalidModel) {
-  EXPECT_FALSE(client_->supports_model("invalid-model"));
-  EXPECT_FALSE(client_->supports_model("claude-sonnet-4-6"));
+TEST_F(OpenAIClientTest, DoesNotSupportEmptyModelName) {
   EXPECT_FALSE(client_->supports_model(""));
 }
 

@@ -529,6 +529,22 @@ cmake -B build -DAI_SDK_ENABLE_BEDROCK=ON
 cmake --build build
 ```
 
+### Models
+
+Model names are passed to the provider as is, so any model the provider serves works without an SDK update; the `ai::openai::models::k*` and `ai::anthropic::models::k*` constants are just well-known names. To see which models your API key can use, ask the provider:
+
+```cpp
+auto client = ai::anthropic::create_client();
+auto listed = client.list_models();  // GET /v1/models
+if (listed) {
+    for (const auto& model : listed.models) {
+        std::cout << model << "\n";
+    }
+} else {
+    std::cerr << listed.error_message() << "\n";
+}
+```
+
 ## Features
 
 ### Currently Supported

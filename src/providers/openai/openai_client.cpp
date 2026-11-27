@@ -48,7 +48,8 @@ OpenAIClient::OpenAIClient(
               .auth_header_name = "Authorization",
               .auth_header_prefix = "Bearer ",
               .extra_headers = {},
-              .retry_config = std::move(retry_config)},
+              .retry_config = std::move(retry_config),
+              .models_endpoint_path = "/v1/models"},
           std::move(request_builder),
           std::move(response_parser)) {
   ai::logger::log_debug(
@@ -103,8 +104,9 @@ std::vector<std::string> OpenAIClient::supported_models() const {
 }
 
 bool OpenAIClient::supports_model(const std::string& model_name) const {
-  auto models = supported_models();
-  return std::find(models.begin(), models.end(), model_name) != models.end();
+  // Any model name is forwarded to the API as is; the model catalog lives
+  // on the provider side (see `list_models`).
+  return !model_name.empty();
 }
 
 std::string OpenAIClient::config_info() const {

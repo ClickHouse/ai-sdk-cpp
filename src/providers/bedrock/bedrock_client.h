@@ -43,6 +43,7 @@ class BedrockClient : public Client {
   std::string provider_name() const override;
   std::vector<std::string> supported_models() const override;
   bool supports_model(const std::string& model_name) const override;
+  ModelListResult list_models() override;
   std::string config_info() const override;
   std::string default_model() const override;
 
