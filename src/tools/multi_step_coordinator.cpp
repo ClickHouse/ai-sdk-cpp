@@ -10,9 +10,14 @@ namespace {
 // Terminal steps never reach the tool-call feedback path below, so their
 // assistant reply has to be appended here for response_messages to satisfy
 // its contract of holding the complete conversation continuation.
+bool has_provider_tool_call_turn(const ai::GenerateResult& step_result);
+
 void append_terminal_assistant_reply(const ai::GenerateResult& step_result,
                                      ai::Messages& response_messages) {
-  if (!step_result.response_messages.empty()) {
+  // A provider-built turn is kept unless it has tool calls: those are not
+  // answered on a terminal step, and an unanswered call cannot be replayed.
+  if (!step_result.response_messages.empty() &&
+      !has_provider_tool_call_turn(step_result)) {
     response_messages.insert(response_messages.end(),
                              step_result.response_messages.begin(),
                              step_result.response_messages.end());

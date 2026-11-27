@@ -84,9 +84,16 @@ void OpenAIResponsesStreamImpl::handle_event(const nlohmann::json& event) {
         !arguments.empty() || type == "response.output_item.done") {
       pending.arguments = arguments;
     }
-    has_function_calls_ = true;
     if (type == "response.output_item.done") {
-      flush_pending_tool_call(index);
+      if (string_field(*item_it, "status") == "incomplete") {
+        // Cut off by `max_output_tokens`: the arguments are truncated.
+        ai::logger::log_warn("Dropping incomplete function call: {}",
+                             pending.name);
+        pending_tool_calls_.erase(index);
+      } else {
+        has_function_calls_ = true;
+        flush_pending_tool_call(index);
+      }
     }
     return;
   }
@@ -146,7 +153,9 @@ void OpenAIResponsesStreamImpl::finish_response(
   }
 
   finish_reason_ = *finish_reason;
-  flush_all_pending_tool_calls();
+  // Function calls are emitted when their output item is done; one that never
+  // got there was cut off.
+  pending_tool_calls_.clear();
   finished_ = true;
   if (usage_) {
     ai::logger::log_info(

@@ -346,6 +346,37 @@ TEST(OpenAIResponsesParserTest, MapsIncompleteAndFailedStatuses) {
               testing::HasSubstr("The model failed to generate a response."));
 }
 
+TEST(OpenAIResponsesParserTest, OutputLimitAfterCompletedFunctionCalls) {
+  // `max_output_tokens` counts reasoning, so it can cut a turn after a call
+  // was completed; that call is answered, the truncated one is dropped.
+  auto response = make_tool_call_response();
+  response["status"] = "incomplete";
+  response["incomplete_details"] = {{"reason", "max_output_tokens"}};
+  response["output"].push_back({{"id", "fc_2"},
+                                {"type", "function_call"},
+                                {"status", "incomplete"},
+                                {"call_id", "call_2"},
+                                {"name", "weather"},
+                                {"arguments", R"({"locat)"}});
+
+  openai::OpenAIResponsesResponseParser parser;
+  auto result = parser.parse_success_completion_response(response);
+  ASSERT_TRUE(result.is_success()) << result.error_message();
+  EXPECT_EQ(result.finish_reason, kFinishReasonToolCalls);
+  ASSERT_EQ(result.tool_calls.size(), 1u);
+  EXPECT_EQ(result.tool_calls[0].id, "call_1");
+  ASSERT_EQ(result.response_messages.size(), 1u);
+  EXPECT_EQ(result.response_messages[0].get_tool_calls().size(), 1u);
+
+  // With only the truncated call left, the turn just ran out of tokens.
+  response["output"].erase(1);
+  result = parser.parse_success_completion_response(response);
+  ASSERT_TRUE(result.is_success()) << result.error_message();
+  EXPECT_EQ(result.finish_reason, kFinishReasonLength);
+  EXPECT_TRUE(result.tool_calls.empty());
+  EXPECT_TRUE(result.response_messages.empty());
+}
+
 TEST(OpenAIResponsesParserTest, RejectsMalformedFunctionCallArguments) {
   auto response = make_tool_call_response();
   response["output"][1]["arguments"] = "{not json";
@@ -411,6 +442,31 @@ TEST(OpenAIResponsesMultiStepTest, FollowUpRequestReplaysReasoning) {
   // The continuation holds the replayable turn, the results, and the answer.
   ASSERT_EQ(result.response_messages.size(), 3u);
   EXPECT_EQ(result.response_messages.back().get_text(), "It is 72F.");
+}
+
+TEST(OpenAIResponsesMultiStepTest, TerminalStepDoesNotKeepUnansweredCalls) {
+  GenerateOptions options(openai::models::kGpt62Sol, "Weather in Paris?");
+  options.max_steps = 3;
+
+  auto result = MultiStepCoordinator::execute_multi_step(
+      options, [](const GenerateOptions&) {
+        GenerateResult step("Checking", kFinishReasonLength, Usage{});
+        step.tool_calls.emplace_back("call_1", "weather",
+                                     JsonValue{{"location", "Paris"}});
+        step.response_messages.push_back(
+            Message(kMessageRoleAssistant,
+                    {ProviderContentPart(openai::kResponsesProviderName,
+                                         kReasoningItem),
+                     TextContentPart("Checking"),
+                     ToolCallContentPart("call_1", "weather",
+                                         {{"location", "Paris"}})}));
+        return step;
+      });
+
+  // The call was never answered, so only the text of the turn is kept.
+  ASSERT_EQ(result.response_messages.size(), 1u);
+  EXPECT_FALSE(result.response_messages[0].has_tool_calls());
+  EXPECT_EQ(result.response_messages[0].get_text(), "Checking");
 }
 
 // Streaming
@@ -480,6 +536,23 @@ TEST(OpenAIResponsesStreamTest, IncompleteResponseFinishesWithLength) {
   ASSERT_TRUE(finish.is_finish());
   EXPECT_EQ(finish.finish_reason, kFinishReasonLength);
   EXPECT_EQ(finish.usage->completion_tokens, 16);
+}
+
+TEST(OpenAIResponsesStreamTest, DropsTruncatedFunctionCall) {
+  openai::OpenAIResponsesStreamImpl stream;
+  stream.process_sse_line_for_testing(
+      R"(data: {"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"weather","arguments":""}})");
+  stream.process_sse_line_for_testing(
+      R"(data: {"type":"response.function_call_arguments.delta","output_index":0,"delta":"{\"loc"})");
+  stream.process_sse_line_for_testing(
+      R"(data: {"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"weather","arguments":"{\"loc","status":"incomplete"}})");
+  stream.process_sse_line_for_testing(
+      R"(data: {"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"}}})");
+
+  ASSERT_EQ(stream.queued_event_count_for_testing(), 1u);
+  const auto finish = stream.get_next_event();
+  ASSERT_TRUE(finish.is_finish());
+  EXPECT_EQ(finish.finish_reason, kFinishReasonLength);
 }
 
 TEST(OpenAIResponsesStreamTest, FailedResponseEmitsError) {

@@ -48,7 +48,11 @@ std::optional<FinishReason> OpenAIResponsesResponseParser::parse_finish_reason(
       reason = string_field(*it, "reason");
     }
     if (reason == "max_output_tokens") {
-      return kFinishReasonLength;
+      // `max_output_tokens` counts reasoning tokens too, so the limit can be
+      // hit after function calls were completed. Those calls still have to be
+      // answered (an unanswered call cannot be replayed), so the tool loop
+      // continues; the truncated ones were dropped by the caller.
+      return has_function_calls ? kFinishReasonToolCalls : kFinishReasonLength;
     }
     if (reason == "content_filter") {
       return kFinishReasonContentFilter;
@@ -120,6 +124,12 @@ GenerateResult OpenAIResponsesResponseParser::parse_success_completion_response(
           result.text += text;
           turn.emplace_back(TextContentPart{std::move(text)});
         }
+      } else if (type == "function_call" &&
+                 string_field(item, "status") == "incomplete") {
+        // Cut off by `max_output_tokens`: the arguments are truncated, and the
+        // call cannot be executed or replayed.
+        ai::logger::log_warn("Dropping incomplete function call: {}",
+                             string_field(item, "name"));
       } else if (type == "function_call") {
         const auto call_id = string_field(item, "call_id");
         const auto name = string_field(item, "name");

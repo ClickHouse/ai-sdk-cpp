@@ -27,7 +27,8 @@ class OpenAIResponsesResponseParser : public OpenAIResponseParser {
   static Usage parse_usage(const nlohmann::json& usage);
 
   /// The finish reason of a response with the given `status` and
-  /// `incomplete_details`, or nullopt when the response did not finish
+  /// `incomplete_details` (`has_function_calls`: whether it has completed
+  /// function calls), or nullopt when the response did not finish
   /// (failed, cancelled, still in progress, or incomplete for a reason without
   /// a finish reason), in which case `error` describes why.
   static std::optional<FinishReason> parse_finish_reason(
