@@ -43,6 +43,16 @@ void OpenAIStreamImpl::process_sse_line(std::string_view line) {
         push_event(StreamEvent(content));
       }
 
+      if (delta.contains("reasoning_content") &&
+          !delta["reasoning_content"].is_null()) {
+      
+        std::string content = delta["reasoning_content"].get<std::string>();
+        ai::logger::log_debug("Received reasoning_content chunk - length: {}",
+                              content.length());
+        //TODO: currently not passing content, needs revamping of StreamEvent constructor
+        push_event(StreamEvent(StreamEventType::kStreamEventTypeReasoningDelta));
+      }      
+
       if (delta.contains("tool_calls") && delta["tool_calls"].is_array()) {
         for (const auto& fragment : delta["tool_calls"]) {
           const auto index = fragment.value("index", std::size_t{0});

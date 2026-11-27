@@ -23,7 +23,8 @@ enum StreamEventType {
   kStreamEventTypeStepStart,
   kStreamEventTypeStepFinish,
   kStreamEventTypeFinish,
-  kStreamEventTypeError
+  kStreamEventTypeError,
+  kStreamEventTypeReasoningDelta
 };
 
 }  // namespace ai
