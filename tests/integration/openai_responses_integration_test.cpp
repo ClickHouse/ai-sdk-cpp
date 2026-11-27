@@ -25,8 +25,7 @@ namespace {
 
 Tool make_weather_tool(std::atomic<int>* calls = nullptr) {
   return create_simple_tool(
-      "weather", "Get the current weather for a city",
-      {{"location", "string"}},
+      "weather", "Get the current weather for a city", {{"location", "string"}},
       [calls](const JsonValue& args, const ToolExecutionContext&) {
         if (calls != nullptr) {
           ++*calls;
@@ -49,11 +48,11 @@ Tool make_population_tool(std::atomic<int>* calls) {
 bool has_reasoning_part(const Messages& messages) {
   return std::any_of(
       messages.begin(), messages.end(), [](const Message& message) {
-        return std::any_of(message.content.begin(), message.content.end(),
-                           [](const ContentPart& part) {
-                             return std::holds_alternative<ProviderContentPart>(
-                                 part);
-                           });
+        return std::any_of(
+            message.content.begin(), message.content.end(),
+            [](const ContentPart& part) {
+              return std::holds_alternative<ProviderContentPart>(part);
+            });
       });
 }
 
@@ -97,7 +96,8 @@ TEST_F(OpenAIResponsesIntegrationTest, InstructionsAndSamplingParameters) {
   // GPT-6.2 rejects sampling parameters and the "none" effort; the request
   // must still succeed.
   GenerateOptions options(ai::openai::models::kGpt62Sol,
-                          "You always answer in French.", "Hello, how are you?");
+                          "You always answer in French.",
+                          "Hello, how are you?");
   options.temperature = 0.3;
   options.max_tokens = 400;
   auto result = client_->generate_text(options);
@@ -133,12 +133,12 @@ TEST_F(OpenAIResponsesIntegrationTest, StructuredOutput) {
         {"schema",
          {{"type", "object"},
           {"properties",
-           {{"name", {{"type", "string"}}},
-            {"country", {{"type", "string"}}}}},
+           {{"name", {{"type", "string"}}}, {"country", {{"type", "string"}}}}},
           {"required", {"name", "country"}},
           {"additionalProperties", false}}}}}};
   GenerateOptions options(ai::openai::models::kGpt6Luna, "",
-                          "Name the capital of France.", format);
+                          "Name the capital of France.",
+                          std::optional<JsonValue>(std::in_place, format));
   auto result = client_->generate_text(options);
 
   TestAssertions::assertSuccess(result);

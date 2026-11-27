@@ -81,17 +81,21 @@ TEST(OpenAIResponsesRequestTest, UsesLowestAcceptedReasoningEffort) {
 
   for (const auto* model :
        {openai::models::kGpt62Astra, openai::models::kGpt62Sol}) {
-    const auto request = builder.build_request_json(GenerateOptions(model, "Hi"));
+    const auto request =
+        builder.build_request_json(GenerateOptions(model, "Hi"));
     EXPECT_EQ(request["reasoning"]["effort"], "low") << model;
   }
   for (const auto* model :
        {openai::models::kGpt61Terra, openai::models::kGpt6Luna,
         openai::models::kGpt56}) {
-    const auto request = builder.build_request_json(GenerateOptions(model, "Hi"));
+    const auto request =
+        builder.build_request_json(GenerateOptions(model, "Hi"));
     EXPECT_EQ(request["reasoning"]["effort"], "none") << model;
   }
-  for (const auto* model : {openai::models::kGpt54Pro, openai::models::kGpt41}) {
-    const auto request = builder.build_request_json(GenerateOptions(model, "Hi"));
+  for (const auto* model :
+       {openai::models::kGpt54Pro, openai::models::kGpt41}) {
+    const auto request =
+        builder.build_request_json(GenerateOptions(model, "Hi"));
     EXPECT_FALSE(request.contains("reasoning")) << model;
   }
 }
@@ -106,9 +110,8 @@ TEST(OpenAIResponsesRequestTest, OmitsUnsupportedParameters) {
   options.presence_penalty = 0.1;
 
   const auto request = builder.build_request_json(options);
-  for (const auto* key :
-       {"temperature", "top_p", "seed", "frequency_penalty",
-        "presence_penalty"}) {
+  for (const auto* key : {"temperature", "top_p", "seed", "frequency_penalty",
+                          "presence_penalty"}) {
     EXPECT_FALSE(request.contains(key)) << key;
   }
 
@@ -156,19 +159,19 @@ TEST(OpenAIResponsesRequestTest, MapsResponseFormatToTextFormat) {
       {"additionalProperties", false}};
 
   // The Chat Completions shape is flattened.
-  GenerateOptions chat_shape(openai::models::kGpt62Sol, "", "Name a city",
-                             nlohmann::json{{"type", "json_schema"},
-                                            {"json_schema",
-                                             {{"name", "city"},
-                                              {"schema", schema},
-                                              {"strict", true}}}});
+  GenerateOptions chat_shape(
+      openai::models::kGpt62Sol, "", "Name a city",
+      nlohmann::json{
+          {"type", "json_schema"},
+          {"json_schema",
+           {{"name", "city"}, {"schema", schema}, {"strict", true}}}});
   EXPECT_EQ(builder.build_request_json(chat_shape)["text"]["format"],
             nlohmann::json({{"type", "json_schema"},
                             {"name", "city"},
                             {"schema", schema},
                             {"strict", true}}));
-  EXPECT_FALSE(builder.build_request_json(chat_shape).contains(
-      "response_format"));
+  EXPECT_FALSE(
+      builder.build_request_json(chat_shape).contains("response_format"));
 
   GenerateOptions json_object(openai::models::kGpt62Sol, "", "Name a city",
                               nlohmann::json{{"type", "json_object"}});
@@ -178,7 +181,8 @@ TEST(OpenAIResponsesRequestTest, MapsResponseFormatToTextFormat) {
 
 TEST(OpenAIResponsesRequestTest, ReplaysToolRoundTripWithReasoningInOrder) {
   openai::OpenAIResponsesResponseParser parser;
-  auto step = parser.parse_success_completion_response(make_tool_call_response());
+  auto step =
+      parser.parse_success_completion_response(make_tool_call_response());
   ASSERT_EQ(step.response_messages.size(), 1u);
 
   Messages conversation = {Message::system("Use the tools."),
@@ -196,11 +200,12 @@ TEST(OpenAIResponsesRequestTest, ReplaysToolRoundTripWithReasoningInOrder) {
   EXPECT_EQ(input[1]["role"], "user");
   // The reasoning item is replayed verbatim, before the call it led to.
   EXPECT_EQ(input[2], kReasoningItem);
-  EXPECT_EQ(input[3], nlohmann::json({{"type", "function_call"},
-                                      {"id", "fc_1"},
-                                      {"call_id", "call_1"},
-                                      {"name", "weather"},
-                                      {"arguments", R"({"location":"Paris"})"}}));
+  EXPECT_EQ(input[3],
+            nlohmann::json({{"type", "function_call"},
+                            {"id", "fc_1"},
+                            {"call_id", "call_1"},
+                            {"name", "weather"},
+                            {"arguments", R"({"location":"Paris"})"}}));
   EXPECT_EQ(input[4], nlohmann::json({{"type", "function_call_output"},
                                       {"call_id", "call_1"},
                                       {"output", R"({"temperature":72})"}}));
@@ -211,8 +216,8 @@ TEST(OpenAIResponsesRequestTest, BuildsFunctionCallsFromPlainMessages) {
   Messages conversation = {
       Message::user("Weather in Paris?"),
       Message::assistant_with_tools(
-          "Checking.", {ToolCallContentPart("call_9", "weather",
-                                            {{"location", "Paris"}})}),
+          "Checking.",
+          {ToolCallContentPart("call_9", "weather", {{"location", "Paris"}})}),
       Message::tool_results({ToolResultContentPart(
           "call_9", {{"error", "unavailable"}}, /*err=*/true)})};
 
@@ -375,8 +380,8 @@ TEST(OpenAIResponsesMultiStepTest, FollowUpRequestReplaysReasoning) {
       options, [&](const GenerateOptions& step_options) {
         requests.push_back(builder.build_request_json(step_options));
         if (requests.size() == 1) {
-          auto step =
-              parser.parse_success_completion_response(make_tool_call_response());
+          auto step = parser.parse_success_completion_response(
+              make_tool_call_response());
           step.tool_results = ToolExecutor::execute_tools_with_options(
               step.tool_calls, step_options, false);
           return step;
@@ -401,8 +406,7 @@ TEST(OpenAIResponsesMultiStepTest, FollowUpRequestReplaysReasoning) {
   EXPECT_EQ(input[2]["id"], "fc_1");
   EXPECT_EQ(input[3]["type"], "function_call_output");
   EXPECT_EQ(input[3]["call_id"], "call_1");
-  EXPECT_THAT(input[3]["output"].get<std::string>(),
-              testing::HasSubstr("72"));
+  EXPECT_THAT(input[3]["output"].get<std::string>(), testing::HasSubstr("72"));
 
   // The continuation holds the replayable turn, the results, and the answer.
   ASSERT_EQ(result.response_messages.size(), 3u);

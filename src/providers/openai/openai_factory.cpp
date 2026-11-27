@@ -33,8 +33,8 @@ std::string get_base_url_or_default(const std::string& base_url) {
 
 template <typename ClientImpl>
 Client make_client(const std::string& api_key, const std::string& base_url) {
-  return Client(std::make_unique<ClientImpl>(get_api_key_or_default(api_key),
-                                             get_base_url_or_default(base_url)));
+  return Client(std::make_unique<ClientImpl>(
+      get_api_key_or_default(api_key), get_base_url_or_default(base_url)));
 }
 
 template <typename ClientImpl>

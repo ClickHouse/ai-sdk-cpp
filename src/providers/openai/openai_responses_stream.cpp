@@ -151,8 +151,7 @@ void OpenAIResponsesStreamImpl::finish_response(
   if (usage_) {
     ai::logger::log_info(
         "Stream completed - tokens used: {} prompt, {} completion, {} total",
-        usage_->prompt_tokens, usage_->completion_tokens,
-        usage_->total_tokens);
+        usage_->prompt_tokens, usage_->completion_tokens, usage_->total_tokens);
   }
   mark_complete();
 }

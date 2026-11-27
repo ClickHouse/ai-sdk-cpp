@@ -27,12 +27,12 @@ void append_terminal_assistant_reply(const ai::GenerateResult& step_result,
 // Responses API, see `ProviderContentPart`) do so; that turn is fed back as is
 // instead of being rebuilt from the text and the tool calls.
 bool has_provider_tool_call_turn(const ai::GenerateResult& step_result) {
-  return std::any_of(
-      step_result.response_messages.begin(),
-      step_result.response_messages.end(), [](const ai::Message& message) {
-        return message.role == ai::kMessageRoleAssistant &&
-               message.has_tool_calls();
-      });
+  return std::any_of(step_result.response_messages.begin(),
+                     step_result.response_messages.end(),
+                     [](const ai::Message& message) {
+                       return message.role == ai::kMessageRoleAssistant &&
+                              message.has_tool_calls();
+                     });
 }
 }  // namespace
 

@@ -68,8 +68,8 @@ int main() {
     std::cerr << "Error: " << result.error_message() << "\n";
     return 1;
   }
-  std::cout << "Answer (" << result.steps.size()
-            << " steps): " << result.text << "\n";
+  std::cout << "Answer (" << result.steps.size() << " steps): " << result.text
+            << "\n";
   std::cout << "Tokens: " << result.usage.total_tokens << "\n\n";
 
   // 2. Continue the conversation. `response_messages` holds the assistant

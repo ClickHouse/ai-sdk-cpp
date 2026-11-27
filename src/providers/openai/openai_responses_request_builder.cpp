@@ -58,7 +58,8 @@ void append_assistant_items(const Message& message, nlohmann::json& input) {
   for (const auto& part : message.content) {
     if (const auto* text_part = std::get_if<TextContentPart>(&part)) {
       pending_text += text_part->text;
-    } else if (const auto* tool_call = std::get_if<ToolCallContentPart>(&part)) {
+    } else if (const auto* tool_call =
+                   std::get_if<ToolCallContentPart>(&part)) {
       flush_text();
       nlohmann::json item{{"type", "function_call"},
                           {"call_id", tool_call->id},
@@ -232,9 +233,8 @@ nlohmann::json OpenAIResponsesRequestBuilder::build_request_json(
           break;
         case ToolChoiceType::kSpecific:
           if (options.tool_choice.tool_name) {
-            request["tool_choice"] = {
-                {"type", "function"},
-                {"name", *options.tool_choice.tool_name}};
+            request["tool_choice"] = {{"type", "function"},
+                                      {"name", *options.tool_choice.tool_name}};
           }
           break;
       }

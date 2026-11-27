@@ -126,19 +126,18 @@ GenerateResult OpenAIResponsesResponseParser::parse_success_completion_response(
         const auto arguments_text = string_field(item, "arguments");
         JsonValue arguments;
         try {
-          arguments = arguments_text.empty()
-                          ? JsonValue::object()
-                          : JsonValue::parse(arguments_text);
+          arguments = arguments_text.empty() ? JsonValue::object()
+                                             : JsonValue::parse(arguments_text);
         } catch (const nlohmann::json::exception& e) {
           return GenerateResult("Failed to parse arguments of the " + name +
                                 " function call: " + e.what());
         }
 
         if (const auto item_id = string_field(item, "id"); !item_id.empty()) {
-          turn.emplace_back(ProviderContentPart{
-              kResponsesProviderName, {{"type", "function_call"},
-                                       {"id", item_id},
-                                       {"call_id", call_id}}});
+          turn.emplace_back(ProviderContentPart{kResponsesProviderName,
+                                                {{"type", "function_call"},
+                                                 {"id", item_id},
+                                                 {"call_id", call_id}}});
         }
         turn.emplace_back(ToolCallContentPart{call_id, name, arguments});
         result.tool_calls.emplace_back(call_id, name, std::move(arguments));
