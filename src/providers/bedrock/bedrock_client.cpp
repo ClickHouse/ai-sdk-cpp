@@ -2,37 +2,38 @@
 
 #include "ai/bedrock.h"
 #include "ai/errors.h"
+#include "ai/tools.h"
 #include "aws_sdk_manager.h"
 #include "bedrock_request_mapper.h"
 #include "bedrock_response_parser.h"
 #include "bedrock_stream.h"
-#include "circuit_breaker.h"
 #include "input_validator.h"
 #include "secure_logger.h"
 
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
-#include <fstream>
 #include <memory>
 #include <mutex>
 #include <semaphore>
 
 #include <aws/bedrock-runtime/BedrockRuntimeClient.h>
 #include <aws/bedrock-runtime/model/ConverseRequest.h>
-#include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
+#include <aws/core/auth/STSCredentialsProvider.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/sts/STSClient.h>
+#include <aws/sts/STSServiceClientModel.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
-#include <aws/sts/model/AssumeRoleWithWebIdentityRequest.h>
 
 namespace ai {
 namespace bedrock {
 
 namespace {
 
-// Helper to get region from environment
+// Refresh assumed-role credentials this long before they expire
+constexpr auto kCredentialsRefreshMargin = std::chrono::minutes(5);
+
 std::string get_region_from_env() {
   // Check AWS_REGION first, then AWS_DEFAULT_REGION
   if (const char* region = std::getenv("AWS_REGION")) {
@@ -44,53 +45,166 @@ std::string get_region_from_env() {
   return "";
 }
 
-// Read web identity token from file
-std::string read_web_identity_token(const std::string& token_file) {
-  std::ifstream file(token_file);
-  if (!file.is_open()) {
-    throw ConfigurationError("Failed to open web identity token file: " +
-                             token_file);
+/// Credentials of the source identity: the configured profile, or the
+/// default credential chain (env vars, profile, IMDS, ...)
+std::shared_ptr<Aws::Auth::AWSCredentialsProvider> make_source_provider(
+    const BedrockConfig& config) {
+  if (!config.profile.empty()) {
+    return std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
+        config.profile.c_str());
   }
-  std::string token((std::istreambuf_iterator<char>(file)),
-                    std::istreambuf_iterator<char>());
-  return token;
+  return std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>();
 }
+
+/// Credentials of an IAM role assumed via STS `AssumeRole`, refreshed before
+/// they expire. The source credentials come from the configured profile or
+/// the default credential chain.
+class AssumeRoleCredentialsProvider : public Aws::Auth::AWSCredentialsProvider {
+ public:
+  AssumeRoleCredentialsProvider(const BedrockConfig& config,
+                                const std::string& region)
+      : role_arn_(config.role_arn),
+        role_session_name_(config.role_session_name),
+        external_id_(config.external_id) {
+    Aws::STS::STSClientConfiguration sts_config;
+    sts_config.region = region;
+    sts_client_ = std::make_shared<Aws::STS::STSClient>(
+        make_source_provider(config), nullptr, sts_config);
+
+    // Fail at client creation, not at the first request, if the role cannot
+    // be assumed
+    std::lock_guard<std::mutex> lock(mutex_);
+    refresh_locked();
+  }
+
+  Aws::Auth::AWSCredentials GetAWSCredentials() override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto now = Aws::Utils::DateTime::Now();
+    const auto refresh_at =
+        credentials_.GetExpiration() -
+        std::chrono::milliseconds(kCredentialsRefreshMargin);
+    if (now >= refresh_at) {
+      try {
+        refresh_locked();
+      } catch (const ConfigurationError& e) {
+        // The request will fail with an authentication error; the
+        // credentials are not replaced by anything else.
+        SecureLogger::log_error(e.what());
+        return Aws::Auth::AWSCredentials();
+      }
+    }
+    return credentials_;
+  }
+
+ private:
+  void refresh_locked() {
+    Aws::STS::Model::AssumeRoleRequest request;
+    request.SetRoleArn(role_arn_);
+    request.SetRoleSessionName(role_session_name_);
+    if (!external_id_.empty()) {
+      request.SetExternalId(external_id_);
+    }
+
+    auto outcome = sts_client_->AssumeRole(request);
+    if (!outcome.IsSuccess()) {
+      throw ConfigurationError("Failed to assume role: " +
+                               outcome.GetError().GetMessage());
+    }
+
+    const auto& credentials = outcome.GetResult().GetCredentials();
+    credentials_ = Aws::Auth::AWSCredentials(
+        credentials.GetAccessKeyId(), credentials.GetSecretAccessKey(),
+        credentials.GetSessionToken(), credentials.GetExpiration());
+    SecureLogger::log_debug("Assumed role credentials refreshed");
+  }
+
+  std::string role_arn_;
+  std::string role_session_name_;
+  std::string external_id_;
+  std::shared_ptr<Aws::STS::STSClient> sts_client_;
+  std::mutex mutex_;
+  Aws::Auth::AWSCredentials credentials_;
+};
+
+std::shared_ptr<Aws::Auth::AWSCredentialsProvider> make_credentials_provider(
+    const BedrockConfig& config,
+    const std::string& region) {
+  // Web identity (EKS / OIDC): the SDK provider re-reads the token file and
+  // refreshes the credentials
+  if (!config.web_identity_token_file.empty()) {
+    if (config.role_arn.empty()) {
+      throw ConfigurationError(
+          "web_identity_token_file requires role_arn to be set in "
+          "BedrockConfig");
+    }
+    SecureLogger::log_debug("Using STS web identity credentials");
+    Aws::Client::ClientConfiguration::CredentialProviderConfiguration
+        provider_config;
+    provider_config.region = region;
+    provider_config.profile = config.profile;
+    provider_config.stsCredentialsProviderConfig.roleArn = config.role_arn;
+    provider_config.stsCredentialsProviderConfig.sessionName =
+        config.role_session_name;
+    provider_config.stsCredentialsProviderConfig.tokenFilePath =
+        config.web_identity_token_file;
+    return std::make_shared<
+        Aws::Auth::STSAssumeRoleWebIdentityCredentialsProvider>(
+        provider_config);
+  }
+
+  // Cross-account access via STS AssumeRole
+  if (!config.role_arn.empty()) {
+    SecureLogger::log_debug("Using STS AssumeRole credentials");
+    return std::make_shared<AssumeRoleCredentialsProvider>(config, region);
+  }
+
+  SecureLogger::log_debug(config.profile.empty()
+                              ? "Using default AWS credential chain"
+                              : "Using AWS profile for credentials");
+  return make_source_provider(config);
+}
+
+/// Releases an acquired semaphore slot on scope exit
+class SemaphoreGuard {
+ public:
+  explicit SemaphoreGuard(std::counting_semaphore<>& semaphore)
+      : semaphore_(semaphore) {
+    semaphore_.acquire();
+  }
+  ~SemaphoreGuard() { semaphore_.release(); }
+
+  SemaphoreGuard(const SemaphoreGuard&) = delete;
+  SemaphoreGuard& operator=(const SemaphoreGuard&) = delete;
+
+ private:
+  std::counting_semaphore<>& semaphore_;
+};
 
 }  // namespace
 
 // PImpl implementation - hides AWS SDK dependencies from public headers
 struct BedrockClient::Impl {
+  // Shared with streams, which may outlive the client
   std::shared_ptr<Aws::BedrockRuntime::BedrockRuntimeClient> client;
+  std::shared_ptr<std::counting_semaphore<>> request_semaphore;
+
   BedrockRequestMapper request_mapper;
   BedrockResponseParser response_parser;
   InputValidator input_validator;
-  CircuitBreaker circuit_breaker;
   std::string region;
   std::string profile;
   std::string endpoint_override;
-  SecurityConfig security_config;
   bool valid{false};
 
-  // Concurrency control - limits parallel requests to prevent overload
-  std::unique_ptr<std::counting_semaphore<>> request_semaphore;
-
-  Impl(const BedrockConfig& config)
-      : input_validator(config.security),
-        circuit_breaker(config.security),
-        security_config(config.security) {
-    // Note: AWS SDK initialization is handled by BedrockClient constructor
-    // via AwsSdkManager::acquire()
-
-    // Initialize concurrency limiter
-    request_semaphore = std::make_unique<std::counting_semaphore<>>(
+  explicit Impl(const BedrockConfig& config)
+      : input_validator(config.security) {
+    if (config.security.max_concurrent_requests <= 0) {
+      throw ConfigurationError("max_concurrent_requests must be positive");
+    }
+    request_semaphore = std::make_shared<std::counting_semaphore<>>(
         config.security.max_concurrent_requests);
 
-    // Resolve region from config or environment
-    region = config.region;
-    if (region.empty()) {
-      region = get_region_from_env();
-    }
-
+    region = config.region.empty() ? get_region_from_env() : config.region;
     if (region.empty()) {
       throw ConfigurationError(
           "AWS region not configured. Set AWS_REGION environment variable or "
@@ -100,300 +214,134 @@ struct BedrockClient::Impl {
     profile = config.profile;
     endpoint_override = config.endpoint_override;
 
-    // Configure AWS client
     Aws::Client::ClientConfiguration client_config;
     client_config.region = region;
-
-    // Set timeouts from security config
     client_config.connectTimeoutMs =
         static_cast<long>(config.security.connection_timeout.count() * 1000);
     client_config.requestTimeoutMs =
         static_cast<long>(config.security.request_timeout.count() * 1000);
-
-    // Set endpoint override if provided (for VPC endpoints or local testing)
     if (!endpoint_override.empty()) {
+      // For VPC endpoints or local testing
       client_config.endpointOverride = endpoint_override;
     }
 
-    // Create credentials provider based on configuration
-    auto credentials_provider = create_credentials_provider(config);
-
-    // Create Bedrock runtime client
     client = std::make_shared<Aws::BedrockRuntime::BedrockRuntimeClient>(
-        credentials_provider, client_config);
+        make_credentials_provider(config, region), client_config);
 
     valid = true;
     SecureLogger::log_debug("Bedrock client initialized - region: " + region);
   }
-
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
-  create_credentials_provider(const BedrockConfig& config) {
-    // Priority 1: Web Identity Token for EKS/OIDC (requires role_arn)
-    if (!config.web_identity_token_file.empty()) {
-      if (config.role_arn.empty()) {
-        throw ConfigurationError(
-            "web_identity_token_file requires role_arn to be set in "
-            "BedrockConfig");
-      }
-      return create_web_identity_provider(config);
-    }
-
-    // Priority 2: STS AssumeRole for cross-account access
-    if (!config.role_arn.empty()) {
-      return create_assume_role_provider(config);
-    }
-
-    // Priority 3: Profile-based credentials
-    if (!config.profile.empty()) {
-      SecureLogger::log_debug("Using AWS profile for credentials");
-      return std::make_shared<
-          Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
-          config.profile.c_str());
-    }
-
-    // Priority 4: Default credential chain (env vars, instance profile, etc.)
-    SecureLogger::log_debug("Using default AWS credential chain");
-    return std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>();
-  }
-
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
-  create_assume_role_provider(const BedrockConfig& config) {
-    SecureLogger::log_debug("Using STS AssumeRole for credentials");
-
-    // Create STS client with default credentials
-    Aws::Client::ClientConfiguration sts_config;
-    sts_config.region = region;
-
-    auto sts_client = std::make_shared<Aws::STS::STSClient>(sts_config);
-
-    Aws::STS::Model::AssumeRoleRequest assume_request;
-    assume_request.SetRoleArn(config.role_arn);
-    assume_request.SetRoleSessionName(config.role_session_name);
-
-    if (!config.external_id.empty()) {
-      assume_request.SetExternalId(config.external_id);
-    }
-
-    auto outcome = sts_client->AssumeRole(assume_request);
-
-    if (!outcome.IsSuccess()) {
-      throw ConfigurationError("Failed to assume role: " +
-                               outcome.GetError().GetMessage());
-    }
-
-    const auto& credentials = outcome.GetResult().GetCredentials();
-
-    // Create a simple credentials provider with the assumed role credentials
-    return std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-        credentials.GetAccessKeyId(), credentials.GetSecretAccessKey(),
-        credentials.GetSessionToken());
-  }
-
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
-  create_web_identity_provider(const BedrockConfig& config) {
-    SecureLogger::log_debug("Using Web Identity Token for credentials");
-
-    // Read the token from file
-    std::string token = read_web_identity_token(config.web_identity_token_file);
-
-    // Create STS client
-    Aws::Client::ClientConfiguration sts_config;
-    sts_config.region = region;
-
-    auto sts_client = std::make_shared<Aws::STS::STSClient>(sts_config);
-
-    Aws::STS::Model::AssumeRoleWithWebIdentityRequest request;
-    request.SetRoleArn(config.role_arn);
-    request.SetRoleSessionName(config.role_session_name);
-    request.SetWebIdentityToken(token);
-
-    auto outcome = sts_client->AssumeRoleWithWebIdentity(request);
-
-    if (!outcome.IsSuccess()) {
-      throw ConfigurationError("Failed to assume role with web identity: " +
-                               outcome.GetError().GetMessage());
-    }
-
-    const auto& credentials = outcome.GetResult().GetCredentials();
-
-    return std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-        credentials.GetAccessKeyId(), credentials.GetSecretAccessKey(),
-        credentials.GetSessionToken());
-  }
 };
 
 BedrockClient::BedrockClient(const BedrockConfig& config) {
-  // Acquire SDK reference first - ensures SDK is initialized before creating
-  // Impl
-  AwsSdkManager::instance().acquire();
-
-  // Now create the implementation (which uses AWS SDK)
+  ensure_aws_sdk_initialized();
   pimpl_ = std::make_unique<Impl>(config);
-
   SecureLogger::log_info("Bedrock client created for region: " +
                          pimpl_->region);
 }
 
-BedrockClient::~BedrockClient() {
-  // Destroy pimpl first (releases AWS resources)
-  pimpl_.reset();
-
-  // Then release SDK reference - SDK will shutdown when last client is
-  // destroyed
-  AwsSdkManager::instance().release();
-}
-
-// RAII guard for semaphore to prevent deadlocks
-class SemaphoreGuard {
- public:
-  explicit SemaphoreGuard(std::counting_semaphore<>& sem) : sem_(sem) {
-    sem_.acquire();
-  }
-  ~SemaphoreGuard() { sem_.release(); }
-
-  // Non-copyable, non-movable
-  SemaphoreGuard(const SemaphoreGuard&) = delete;
-  SemaphoreGuard& operator=(const SemaphoreGuard&) = delete;
-
- private:
-  std::counting_semaphore<>& sem_;
-};
+BedrockClient::~BedrockClient() = default;
 
 GenerateResult BedrockClient::generate_text(const GenerateOptions& options) {
-  auto start_time = std::chrono::steady_clock::now();
+  if (options.has_tools() && options.is_multi_step()) {
+    return MultiStepCoordinator::execute_multi_step(
+        options, [this](const GenerateOptions& step_options) {
+          return generate_text_single_step(step_options);
+        });
+  }
+  return generate_text_single_step(options);
+}
 
+GenerateResult BedrockClient::generate_text_single_step(
+    const GenerateOptions& options) {
+  auto start_time = std::chrono::steady_clock::now();
   SecureLogger::log_debug("generate_text called", options.model);
 
-  // Validate input parameters
-  auto validation_error = pimpl_->input_validator.validate(options);
-  if (validation_error.has_value()) {
-    SecureLogger::log_warn("Input validation failed: " +
-                           validation_error.value());
-    GenerateResult result;
+  if (auto validation_error = pimpl_->input_validator.validate(options)) {
+    SecureLogger::log_warn("Input validation failed: " + *validation_error);
+    GenerateResult result(*validation_error);
     result.finish_reason = kFinishReasonError;
-    result.error = validation_error.value();
     result.is_retryable = false;
     return result;
   }
 
-  // Check circuit breaker state
-  if (pimpl_->circuit_breaker.is_open()) {
-    SecureLogger::log_warn("Circuit breaker is open, rejecting request");
-    GenerateResult result;
-    result.finish_reason = kFinishReasonError;
-    result.error = "Service temporarily unavailable (circuit breaker open)";
-    result.is_retryable = true;
-    return result;
-  }
-
-  // Acquire semaphore for concurrency control
-  // Using RAII guard to ensure release even if exceptions occur
-  SemaphoreGuard guard(*pimpl_->request_semaphore);
-
   try {
-    // Build Converse request
     auto request = pimpl_->request_mapper.map_to_converse_request(options);
 
-    // Call AWS Bedrock Converse API
-    auto outcome = pimpl_->client->Converse(request);
+    Aws::BedrockRuntime::Model::ConverseOutcome outcome;
+    {
+      // Limit the number of concurrent requests per client
+      SemaphoreGuard guard(*pimpl_->request_semaphore);
+      outcome = pimpl_->client->Converse(request);
+    }
 
-    // Calculate latency
-    auto end_time = std::chrono::steady_clock::now();
     auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(
-        end_time - start_time);
+        std::chrono::steady_clock::now() - start_time);
 
-    GenerateResult result;
-
-    if (outcome.IsSuccess()) {
-      result =
-          pimpl_->response_parser.parse_converse_response(outcome.GetResult());
-      pimpl_->circuit_breaker.record_success();
-
-      // Log successful API call
-      std::string request_id = outcome.GetResult().GetRequestId();
-      SecureLogger::log_api_call("Converse", options.model, pimpl_->region,
-                                 request_id, latency);
-    } else {
-      result = pimpl_->response_parser.parse_converse_error(outcome.GetError());
-      pimpl_->circuit_breaker.record_failure();
-
-      // Log API error
+    if (!outcome.IsSuccess()) {
+      auto result =
+          pimpl_->response_parser.parse_converse_error(outcome.GetError());
       SecureLogger::log_api_error("Converse", options.model, pimpl_->region,
                                   outcome.GetError().GetExceptionName(),
                                   outcome.GetError().GetMessage(),
                                   result.is_retryable.value_or(false));
+      return result;
+    }
+
+    auto result =
+        pimpl_->response_parser.parse_converse_response(outcome.GetResult());
+    SecureLogger::log_api_call("Converse", options.model, pimpl_->region,
+                               outcome.GetResult().GetRequestId(), latency);
+
+    // Execute tools if the model made tool calls
+    if (result.has_tool_calls() && options.has_tools()) {
+      result.tool_results = ToolExecutor::execute_tools_with_options(
+          result.tool_calls, options, false);
     }
 
     return result;
-
   } catch (const std::exception& e) {
-    pimpl_->circuit_breaker.record_failure();
-
     SecureLogger::log_error("Bedrock API exception: " + std::string(e.what()));
-
-    GenerateResult result;
+    GenerateResult result(std::string("Bedrock API error: ") + e.what());
     result.finish_reason = kFinishReasonError;
-    result.error = std::string("Bedrock API error: ") + e.what();
     result.is_retryable = false;
     return result;
   }
 }
 
 EmbeddingResult BedrockClient::embeddings(const EmbeddingOptions& /*options*/) {
-  // Embeddings not yet supported
-  SecureLogger::log_debug("embeddings called - not supported in V1");
-
   EmbeddingResult result;
-  result.error = "Bedrock embeddings are not supported in V1";
+  result.error = "Bedrock embeddings are not supported yet";
   return result;
 }
 
 StreamResult BedrockClient::stream_text(const StreamOptions& options) {
   SecureLogger::log_debug("stream_text called", options.model);
+  const GenerateOptions& generate_options = options;
 
-  // Build GenerateOptions for validation
-  GenerateOptions gen_options;
-  gen_options.model = options.model;
-  gen_options.prompt = options.prompt;
-  gen_options.system = options.system;
-  gen_options.messages = options.messages;
-  gen_options.max_tokens = options.max_tokens;
-  gen_options.temperature = options.temperature;
-  gen_options.top_p = options.top_p;
-
-  // Validate input parameters
-  auto validation_error = pimpl_->input_validator.validate(gen_options);
-  if (validation_error.has_value()) {
-    SecureLogger::log_warn("Input validation failed: " +
-                           validation_error.value());
-    // Return a stream that immediately yields the validation error
-    auto impl = std::make_unique<BedrockStreamImpl>();
-    impl->fail(validation_error.value());
-    return StreamResult(std::move(impl));
-  }
-
-  // Check circuit breaker state
-  if (pimpl_->circuit_breaker.is_open()) {
-    SecureLogger::log_warn("Circuit breaker is open, rejecting stream request");
-    auto impl = std::make_unique<BedrockStreamImpl>();
-    impl->fail("Service temporarily unavailable (circuit breaker open)");
-    return StreamResult(std::move(impl));
-  }
-
-  // Acquire semaphore for concurrency control
-  // Note: For streaming, we acquire here but the stream impl is responsible
-  // for releasing when the stream completes or is stopped
-  pimpl_->request_semaphore->acquire();
-
-  // Create stream implementation with semaphore reference for cleanup
   auto impl = std::make_unique<BedrockStreamImpl>();
 
-  auto request =
-      pimpl_->request_mapper.map_to_converse_stream_request(gen_options);
+  if (auto validation_error =
+          pimpl_->input_validator.validate(generate_options)) {
+    SecureLogger::log_warn("Input validation failed: " + *validation_error);
+    impl->fail(*validation_error);
+    return StreamResult(std::move(impl));
+  }
 
-  // Start streaming - pass semaphore for release on completion
+  Aws::BedrockRuntime::Model::ConverseStreamRequest request;
+  try {
+    request =
+        pimpl_->request_mapper.map_to_converse_stream_request(generate_options);
+  } catch (const std::exception& e) {
+    impl->fail(std::string("Bedrock API error: ") + e.what());
+    return StreamResult(std::move(impl));
+  }
+
+  // Limit the number of concurrent requests per client; the stream releases
+  // the slot when it completes
+  pimpl_->request_semaphore->acquire();
   impl->start_stream(pimpl_->client, std::move(request),
-                     pimpl_->request_semaphore.get());
+                     pimpl_->request_semaphore);
 
   return StreamResult(std::move(impl));
 }

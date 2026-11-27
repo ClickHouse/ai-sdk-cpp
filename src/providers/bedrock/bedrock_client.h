@@ -47,6 +47,8 @@ class BedrockClient : public Client {
   std::string default_model() const override;
 
  private:
+  GenerateResult generate_text_single_step(const GenerateOptions& options);
+
   struct Impl;
   std::unique_ptr<Impl> pimpl_;
 };

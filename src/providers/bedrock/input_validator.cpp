@@ -54,28 +54,11 @@ std::optional<std::string> InputValidator::validate(
     return "Invalid model ID format: " + options.model;
   }
 
-  // Validate temperature if set
-  if (options.temperature.has_value()) {
-    if (!is_valid_temperature(options.temperature.value())) {
-      return "Temperature must be between 0.0 and 1.0, got: " +
-             std::to_string(options.temperature.value());
-    }
-  }
-
-  // Validate top_p if set
-  if (options.top_p.has_value()) {
-    if (!is_valid_top_p(options.top_p.value())) {
-      return "Top_p must be between 0.0 and 1.0, got: " +
-             std::to_string(options.top_p.value());
-    }
-  }
-
   // Validate max_tokens if set
   if (options.max_tokens.has_value()) {
     if (!is_valid_max_tokens(options.max_tokens.value())) {
-      return "Max tokens must be positive and <= " +
-             std::to_string(config_.max_tokens_limit) +
-             ", got: " + std::to_string(options.max_tokens.value());
+      return "Max tokens must be positive, got: " +
+             std::to_string(options.max_tokens.value());
     }
   }
 
@@ -144,16 +127,8 @@ bool InputValidator::is_valid_model_id(const std::string& model_id) const {
   return false;
 }
 
-bool InputValidator::is_valid_temperature(double temperature) const {
-  return temperature >= 0.0 && temperature <= 1.0;
-}
-
-bool InputValidator::is_valid_top_p(double top_p) const {
-  return top_p >= 0.0 && top_p <= 1.0;
-}
-
 bool InputValidator::is_valid_max_tokens(int max_tokens) const {
-  return max_tokens > 0 && max_tokens <= config_.max_tokens_limit;
+  return max_tokens > 0;
 }
 
 bool InputValidator::is_valid_prompt_length(const std::string& prompt) const {

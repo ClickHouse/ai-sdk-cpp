@@ -1,6 +1,7 @@
 #include "bedrock_response_parser.h"
 
 #include "ai/logger.h"
+#include "bedrock_request_mapper.h"
 
 #include <aws/bedrock-runtime/BedrockRuntimeErrors.h>
 #include <aws/bedrock-runtime/model/ContentBlock.h>
@@ -23,6 +24,17 @@ GenerateResult BedrockResponseParser::parse_converse_response(
     gen_result.text = extract_text(message.GetContent());
     ai::logger::log_debug("Extracted text length: {}",
                           gen_result.text.length());
+
+    for (const auto& block : message.GetContent()) {
+      if (!block.ToolUseHasBeenSet()) {
+        continue;
+      }
+      const auto& tool_use = block.GetToolUse();
+      gen_result.tool_calls.emplace_back(
+          tool_use.GetToolUseId(), tool_use.GetName(),
+          BedrockRequestMapper::from_document(tool_use.GetInput()));
+      ai::logger::log_debug("Parsed Bedrock tool call: {}", tool_use.GetName());
+    }
 
     // Add assistant response to messages
     if (!gen_result.text.empty()) {
@@ -192,7 +204,6 @@ std::string BedrockResponseParser::extract_text(
     if (block.TextHasBeenSet()) {
       full_text += block.GetText();
     }
-    // Note: Tool use blocks are not supported in V1
   }
 
   return full_text;

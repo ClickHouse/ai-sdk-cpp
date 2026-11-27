@@ -63,12 +63,6 @@ struct SecurityConfig {
   /// Maximum concurrent requests per client (default: 10)
   int max_concurrent_requests = 10;
 
-  /// Circuit breaker failure threshold before opening (default: 5)
-  int circuit_breaker_threshold = 5;
-
-  /// Circuit breaker reset timeout (default: 30 seconds)
-  std::chrono::seconds circuit_breaker_timeout{30};
-
   /// Connection timeout (default: 5 seconds)
   std::chrono::seconds connection_timeout{5};
 
@@ -80,9 +74,6 @@ struct SecurityConfig {
 
   /// Maximum total message content length (default: 200000)
   size_t max_message_length = 200000;
-
-  /// Maximum max_tokens value (default: 200000)
-  int max_tokens_limit = 200000;
 
   /// Model list cache TTL (default: 5 minutes)
   std::chrono::minutes model_cache_ttl{5};

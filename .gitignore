@@ -165,6 +165,3 @@ config.json
 /third_party/zlib/
 /third_party/googletest/
 /third_party/clickhouse-cpp/
-
-# Kiro specs
-.kiro/

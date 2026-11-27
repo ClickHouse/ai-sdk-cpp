@@ -64,49 +64,19 @@ TEST_F(InputValidatorTest, InvalidModelIds) {
   EXPECT_FALSE(validator_.is_valid_model_id("special!chars.model"));
 }
 
-// Test temperature validation
-TEST_F(InputValidatorTest, ValidTemperature) {
-  EXPECT_TRUE(validator_.is_valid_temperature(0.0));
-  EXPECT_TRUE(validator_.is_valid_temperature(0.5));
-  EXPECT_TRUE(validator_.is_valid_temperature(1.0));
-  EXPECT_TRUE(validator_.is_valid_temperature(0.7));
-}
-
-TEST_F(InputValidatorTest, InvalidTemperature) {
-  EXPECT_FALSE(validator_.is_valid_temperature(-0.1));
-  EXPECT_FALSE(validator_.is_valid_temperature(1.1));
-  EXPECT_FALSE(validator_.is_valid_temperature(-1.0));
-  EXPECT_FALSE(validator_.is_valid_temperature(2.0));
-}
-
-// Test top_p validation
-TEST_F(InputValidatorTest, ValidTopP) {
-  EXPECT_TRUE(validator_.is_valid_top_p(0.0));
-  EXPECT_TRUE(validator_.is_valid_top_p(0.5));
-  EXPECT_TRUE(validator_.is_valid_top_p(1.0));
-  EXPECT_TRUE(validator_.is_valid_top_p(0.9));
-}
-
-TEST_F(InputValidatorTest, InvalidTopP) {
-  EXPECT_FALSE(validator_.is_valid_top_p(-0.1));
-  EXPECT_FALSE(validator_.is_valid_top_p(1.1));
-  EXPECT_FALSE(validator_.is_valid_top_p(-1.0));
-  EXPECT_FALSE(validator_.is_valid_top_p(2.0));
-}
-
 // Test max_tokens validation
 TEST_F(InputValidatorTest, ValidMaxTokens) {
   EXPECT_TRUE(validator_.is_valid_max_tokens(1));
   EXPECT_TRUE(validator_.is_valid_max_tokens(100));
   EXPECT_TRUE(validator_.is_valid_max_tokens(1000));
   EXPECT_TRUE(validator_.is_valid_max_tokens(200000));
+  EXPECT_TRUE(validator_.is_valid_max_tokens(1000000));
 }
 
 TEST_F(InputValidatorTest, InvalidMaxTokens) {
   EXPECT_FALSE(validator_.is_valid_max_tokens(0));
   EXPECT_FALSE(validator_.is_valid_max_tokens(-1));
   EXPECT_FALSE(validator_.is_valid_max_tokens(-100));
-  EXPECT_FALSE(validator_.is_valid_max_tokens(200001));
 }
 
 // Test prompt length validation
@@ -149,28 +119,6 @@ TEST_F(InputValidatorTest, ValidationFailsOnEmptyModel) {
   auto error = validator_.validate(options);
   EXPECT_TRUE(error.has_value());
   EXPECT_NE(error->find("Model ID"), std::string::npos);
-}
-
-TEST_F(InputValidatorTest, ValidationFailsOnInvalidTemperature) {
-  GenerateOptions options;
-  options.model = models::kClaudeSonnet;
-  options.prompt = "Hello";
-  options.temperature = 1.5;
-
-  auto error = validator_.validate(options);
-  EXPECT_TRUE(error.has_value());
-  EXPECT_NE(error->find("Temperature"), std::string::npos);
-}
-
-TEST_F(InputValidatorTest, ValidationFailsOnInvalidTopP) {
-  GenerateOptions options;
-  options.model = models::kClaudeSonnet;
-  options.prompt = "Hello";
-  options.top_p = -0.5;
-
-  auto error = validator_.validate(options);
-  EXPECT_TRUE(error.has_value());
-  EXPECT_NE(error->find("Top_p"), std::string::npos);
 }
 
 TEST_F(InputValidatorTest, ValidationFailsOnInvalidMaxTokens) {

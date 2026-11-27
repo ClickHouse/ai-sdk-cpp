@@ -301,7 +301,7 @@ See the [OpenRouter example](examples/openrouter_example.cpp) for a complete dem
 
 #### Amazon Bedrock Integration
 
-Amazon Bedrock provides access to foundation models from Anthropic, Amazon, Meta, and others through AWS infrastructure. The Bedrock provider uses AWS credentials and IAM for authentication.
+Amazon Bedrock provides access to foundation models from Anthropic, Amazon, Meta, and others through AWS infrastructure. The Bedrock provider uses the [Converse API](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html), including streaming and tool calling (with multi-step tool execution via `max_steps`), and uses AWS credentials and IAM for authentication. Assumed-role and web identity credentials are refreshed automatically.
 
 ```cpp
 #include <ai/bedrock.h>
@@ -364,10 +364,6 @@ ai::bedrock::SecurityConfig security;
 // Concurrency control
 security.max_concurrent_requests = 10;
 
-// Circuit breaker settings
-security.circuit_breaker_threshold = 5;
-security.circuit_breaker_timeout = std::chrono::seconds(30);
-
 // Timeouts
 security.connection_timeout = std::chrono::seconds(5);
 security.request_timeout = std::chrono::seconds(120);
@@ -375,7 +371,6 @@ security.request_timeout = std::chrono::seconds(120);
 // Input validation limits
 security.max_prompt_length = 200000;
 security.max_message_length = 200000;
-security.max_tokens_limit = 200000;
 
 ai::bedrock::BedrockConfig config;
 config.security = security;
@@ -462,7 +457,7 @@ cmake --build build
 - ✅ **Tool Calling**: Function calling and tool integration with multi-step support
 - ✅ **Async Tools**: Asynchronous tool execution with parallel processing
 - ✅ **Configurable Retries**: Customizable retry behavior with exponential backoff
-- ✅ **Bedrock Provider**: Production-ready AWS Bedrock integration with security features
+- ✅ **Bedrock Provider**: Amazon Bedrock integration via the Converse API (optional, requires the AWS SDK for C++)
 
 ### Coming Soon
 

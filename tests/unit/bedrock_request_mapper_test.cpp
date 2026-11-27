@@ -8,7 +8,10 @@
 #include "ai/bedrock.h"
 #include "ai/types/generate_options.h"
 #include "ai/types/message.h"
+#include "ai/types/tool.h"
 #include "providers/bedrock/bedrock_request_mapper.h"
+
+#include <aws/bedrock-runtime/model/ToolResultStatus.h>
 
 namespace ai {
 namespace bedrock {
@@ -59,7 +62,7 @@ TEST_F(BedrockRequestMapperTest, MapsMaxTokens) {
 // Test temperature mapping
 TEST_F(BedrockRequestMapperTest, MapsTemperature) {
   GenerateOptions options;
-  options.model = models::kClaudeSonnet;
+  options.model = models::kNovaLite;
   options.prompt = "Test";
   options.temperature = 0.7;
 
@@ -71,7 +74,7 @@ TEST_F(BedrockRequestMapperTest, MapsTemperature) {
 // Test top_p mapping
 TEST_F(BedrockRequestMapperTest, MapsTopP) {
   GenerateOptions options;
-  options.model = models::kClaudeSonnet;
+  options.model = models::kNovaLite;
   options.prompt = "Test";
   options.top_p = 0.9;
 
@@ -112,6 +115,147 @@ TEST_F(BedrockRequestMapperTest, ConvertsMessages) {
             Aws::BedrockRuntime::Model::ConversationRole::assistant);
   EXPECT_EQ(request.GetMessages()[2].GetRole(),
             Aws::BedrockRuntime::Model::ConversationRole::user);
+}
+
+// Claude models that reject sampling parameters do not get them
+TEST_F(BedrockRequestMapperTest, DropsSamplingParametersForClaude) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.prompt = "Test";
+  options.temperature = 0.7;
+  options.top_p = 0.9;
+
+  auto request = mapper_.map_to_converse_request(options);
+
+  EXPECT_FALSE(request.GetInferenceConfig().TemperatureHasBeenSet());
+  EXPECT_FALSE(request.GetInferenceConfig().TopPHasBeenSet());
+}
+
+TEST_F(BedrockRequestMapperTest, RecognizesSamplingRejectingModels) {
+  EXPECT_TRUE(BedrockRequestMapper::rejects_sampling_parameters(
+      "anthropic.claude-opus-5-5"));
+  EXPECT_TRUE(BedrockRequestMapper::rejects_sampling_parameters(
+      "us.anthropic.claude-sonnet-5-5"));
+  EXPECT_TRUE(BedrockRequestMapper::rejects_sampling_parameters(
+      "global.anthropic.claude-fable-5-2"));
+  EXPECT_TRUE(BedrockRequestMapper::rejects_sampling_parameters(
+      "arn:aws:bedrock:us-east-1:123456789012:inference-profile/"
+      "us.anthropic.claude-haiku-5-5"));
+  EXPECT_FALSE(BedrockRequestMapper::rejects_sampling_parameters(
+      "anthropic.claude-sonnet-4-6"));
+  EXPECT_FALSE(
+      BedrockRequestMapper::rejects_sampling_parameters(models::kNovaLite));
+  EXPECT_FALSE(
+      BedrockRequestMapper::rejects_sampling_parameters(models::kLlama3_8B));
+}
+
+// System messages inside `messages` become system content blocks
+TEST_F(BedrockRequestMapperTest, MergesSystemMessagesIntoSystem) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.system = "Be brief.";
+  options.messages = {
+      Message::system("Answer in English."),
+      Message::user("Hello"),
+  };
+
+  auto request = mapper_.map_to_converse_request(options);
+
+  ASSERT_EQ(request.GetSystem().size(), 2);
+  EXPECT_EQ(request.GetSystem()[0].GetText(), "Be brief.");
+  EXPECT_EQ(request.GetSystem()[1].GetText(), "Answer in English.");
+  ASSERT_EQ(request.GetMessages().size(), 1);
+  EXPECT_EQ(request.GetMessages()[0].GetRole(),
+            Aws::BedrockRuntime::Model::ConversationRole::user);
+}
+
+ToolSet make_weather_tools() {
+  ToolSet tools;
+  tools["get_weather"] =
+      Tool("Get the weather for a city",
+           {{"type", "object"},
+            {"properties", {{"city", {{"type", "string"}}}}},
+            {"required", {"city"}}},
+           [](const JsonValue&, const ToolExecutionContext&) {
+             return JsonValue{{"temperature", 20}};
+           });
+  return tools;
+}
+
+TEST_F(BedrockRequestMapperTest, MapsToolsAndToolChoice) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.prompt = "Weather in Paris?";
+  options.tools = make_weather_tools();
+
+  auto request = mapper_.map_to_converse_request(options);
+
+  ASSERT_TRUE(request.ToolConfigHasBeenSet());
+  const auto& tools = request.GetToolConfig().GetTools();
+  ASSERT_EQ(tools.size(), 1);
+  EXPECT_EQ(tools[0].GetToolSpec().GetName(), "get_weather");
+  EXPECT_EQ(tools[0].GetToolSpec().GetDescription(),
+            "Get the weather for a city");
+  EXPECT_EQ(BedrockRequestMapper::from_document(
+                tools[0].GetToolSpec().GetInputSchema().GetJson())["required"],
+            nlohmann::json::array({"city"}));
+  EXPECT_TRUE(request.GetToolConfig().GetToolChoice().AutoHasBeenSet());
+
+  options.tool_choice = ToolChoice::specific("get_weather");
+  request = mapper_.map_to_converse_request(options);
+  EXPECT_EQ(request.GetToolConfig().GetToolChoice().GetTool().GetName(),
+            "get_weather");
+
+  options.tool_choice = ToolChoice::none();
+  request = mapper_.map_to_converse_request(options);
+  EXPECT_FALSE(request.ToolConfigHasBeenSet());
+}
+
+TEST_F(BedrockRequestMapperTest, MapsToolCallsAndResults) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.tools = make_weather_tools();
+  options.messages = {
+      Message::user("Weather in Paris?"),
+      Message::assistant_with_tools(
+          "Let me check.",
+          {ToolCallContentPart("call_1", "get_weather", {{"city", "Paris"}})}),
+      Message::tool_results({ToolResultContentPart(
+          "call_1", JsonValue{{"temperature", 20}}, false)}),
+  };
+
+  auto request = mapper_.map_to_converse_request(options);
+
+  ASSERT_EQ(request.GetMessages().size(), 3);
+
+  const auto& assistant = request.GetMessages()[1];
+  EXPECT_EQ(assistant.GetRole(),
+            Aws::BedrockRuntime::Model::ConversationRole::assistant);
+  ASSERT_EQ(assistant.GetContent().size(), 2);
+  EXPECT_EQ(assistant.GetContent()[0].GetText(), "Let me check.");
+  const auto& tool_use = assistant.GetContent()[1].GetToolUse();
+  EXPECT_EQ(tool_use.GetToolUseId(), "call_1");
+  EXPECT_EQ(tool_use.GetName(), "get_weather");
+  EXPECT_EQ(BedrockRequestMapper::from_document(tool_use.GetInput()),
+            (nlohmann::json{{"city", "Paris"}}));
+
+  const auto& results = request.GetMessages()[2];
+  EXPECT_EQ(results.GetRole(),
+            Aws::BedrockRuntime::Model::ConversationRole::user);
+  ASSERT_EQ(results.GetContent().size(), 1);
+  const auto& tool_result = results.GetContent()[0].GetToolResult();
+  EXPECT_EQ(tool_result.GetToolUseId(), "call_1");
+  EXPECT_EQ(tool_result.GetStatus(),
+            Aws::BedrockRuntime::Model::ToolResultStatus::success);
+  ASSERT_EQ(tool_result.GetContent().size(), 1);
+  EXPECT_EQ(BedrockRequestMapper::from_document(
+                tool_result.GetContent()[0].GetJson()),
+            (nlohmann::json{{"temperature", 20}}));
+
+  // With tool calls in the conversation the tools are sent even for "none"
+  options.tool_choice = ToolChoice::none();
+  request = mapper_.map_to_converse_request(options);
+  EXPECT_TRUE(request.ToolConfigHasBeenSet());
 }
 
 // Test stream request mapping

@@ -12,6 +12,9 @@
 #include <aws/bedrock-runtime/BedrockRuntimeErrors.h>
 #include <aws/bedrock-runtime/model/ConverseResult.h>
 #include <aws/bedrock-runtime/model/StopReason.h>
+#include <aws/bedrock-runtime/model/TokenUsage.h>
+#include <aws/bedrock-runtime/model/ToolUseBlock.h>
+#include <aws/core/utils/Document.h>
 
 namespace ai {
 namespace bedrock {
@@ -21,6 +24,52 @@ class BedrockResponseParserTest : public ::testing::Test {
  protected:
   BedrockResponseParser parser_;
 };
+
+// Text, tool calls, stop reason, and usage are extracted from the response
+TEST_F(BedrockResponseParserTest, ParsesTextAndToolCalls) {
+  namespace Model = Aws::BedrockRuntime::Model;
+
+  Model::ContentBlock text_block;
+  text_block.SetText("Let me check.");
+
+  Model::ToolUseBlock tool_use;
+  tool_use.SetToolUseId("call_1");
+  tool_use.SetName("get_weather");
+  tool_use.SetInput(Aws::Utils::Document(Aws::String(R"({"city":"Paris"})")));
+  Model::ContentBlock tool_block;
+  tool_block.SetToolUse(tool_use);
+
+  Model::Message message;
+  message.SetRole(Model::ConversationRole::assistant);
+  message.AddContent(text_block);
+  message.AddContent(tool_block);
+
+  Model::ConverseOutput output;
+  output.SetMessage(message);
+
+  Model::TokenUsage usage;
+  usage.SetInputTokens(12);
+  usage.SetOutputTokens(34);
+
+  Model::ConverseResult converse_result;
+  converse_result.SetOutput(output);
+  converse_result.SetStopReason(Model::StopReason::tool_use);
+  converse_result.SetUsage(usage);
+
+  auto result = parser_.parse_converse_response(converse_result);
+
+  EXPECT_TRUE(result.is_success());
+  EXPECT_EQ(result.text, "Let me check.");
+  EXPECT_EQ(result.finish_reason, kFinishReasonToolCalls);
+  ASSERT_EQ(result.tool_calls.size(), 1);
+  EXPECT_EQ(result.tool_calls[0].id, "call_1");
+  EXPECT_EQ(result.tool_calls[0].tool_name, "get_weather");
+  EXPECT_EQ(result.tool_calls[0].arguments,
+            (nlohmann::json{{"city", "Paris"}}));
+  EXPECT_EQ(result.usage.prompt_tokens, 12);
+  EXPECT_EQ(result.usage.completion_tokens, 34);
+  EXPECT_EQ(result.usage.total_tokens, 46);
+}
 
 // Test error retryability - ThrottlingException
 TEST_F(BedrockResponseParserTest, ThrottlingErrorIsRetryable) {

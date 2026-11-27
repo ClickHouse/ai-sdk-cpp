@@ -143,7 +143,6 @@ if(AI_SDK_ENABLE_BEDROCK)
         src/providers/bedrock/input_validator.cpp
         src/providers/bedrock/credential_redactor.cpp
         src/providers/bedrock/secure_logger.cpp
-        src/providers/bedrock/circuit_breaker.cpp
         src/providers/bedrock/model_discovery.cpp
         # SDK lifecycle management
         src/providers/bedrock/aws_sdk_manager.cpp

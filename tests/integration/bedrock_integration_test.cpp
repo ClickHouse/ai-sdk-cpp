@@ -146,32 +146,6 @@ TEST_F(BedrockIntegrationTest, ConfigInfoContainsRegion) {
   EXPECT_NE(info.find("region"), std::string::npos);
 }
 
-// Test input validation - invalid temperature
-TEST_F(BedrockIntegrationTest, RejectsInvalidTemperature) {
-  GenerateOptions options;
-  options.model = models::kClaudeSonnet;
-  options.prompt = "Hello";
-  options.temperature = 1.5;  // Invalid - must be 0.0-1.0
-
-  auto result = client_.generate_text(options);
-
-  EXPECT_TRUE(result.error.has_value());
-  EXPECT_NE(result.error->find("Temperature"), std::string::npos);
-}
-
-// Test input validation - invalid top_p
-TEST_F(BedrockIntegrationTest, RejectsInvalidTopP) {
-  GenerateOptions options;
-  options.model = models::kClaudeSonnet;
-  options.prompt = "Hello";
-  options.top_p = -0.5;  // Invalid - must be 0.0-1.0
-
-  auto result = client_.generate_text(options);
-
-  EXPECT_TRUE(result.error.has_value());
-  EXPECT_NE(result.error->find("Top_p"), std::string::npos);
-}
-
 // Test input validation - invalid max_tokens
 TEST_F(BedrockIntegrationTest, RejectsInvalidMaxTokens) {
   GenerateOptions options;

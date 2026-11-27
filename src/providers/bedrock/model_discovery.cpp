@@ -47,7 +47,7 @@ std::string extract_provider(const std::string& model_id) {
 ModelDiscovery::ModelDiscovery(const BedrockConfig& config)
     : cache_ttl_(config.security.model_cache_ttl) {
   // Ensure AWS SDK is initialized before creating any AWS clients
-  AwsSdkManager::instance().ensure_initialized();
+  ensure_aws_sdk_initialized();
   initialize_client(config);
 }
 

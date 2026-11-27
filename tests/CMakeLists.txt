@@ -32,7 +32,6 @@ if(AI_SDK_ENABLE_BEDROCK)
         # Security component tests
         unit/input_validator_test.cpp
         unit/credential_redactor_test.cpp
-        unit/circuit_breaker_test.cpp
         integration/bedrock_integration_test.cpp
     )
 endif()

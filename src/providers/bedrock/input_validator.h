@@ -32,17 +32,8 @@ class InputValidator {
   /// @return true if valid format
   bool is_valid_model_id(const std::string& model_id) const;
 
-  /// Validate temperature range [0.0, 1.0]
-  /// @param temperature The temperature value
-  /// @return true if within valid range
-  bool is_valid_temperature(double temperature) const;
-
-  /// Validate top_p range [0.0, 1.0]
-  /// @param top_p The top_p value
-  /// @return true if within valid range
-  bool is_valid_top_p(double top_p) const;
-
-  /// Validate max_tokens is positive and within bounds
+  /// Validate max_tokens is positive (the upper bound depends on the model and
+  /// is checked by Bedrock)
   /// @param max_tokens The max_tokens value
   /// @return true if valid
   bool is_valid_max_tokens(int max_tokens) const;
