@@ -153,12 +153,26 @@ Aws::Vector<Model::Message> BedrockRequestMapper::convert_messages(
     }
     // Converse requires alternating roles; dropping system (or empty)
     // messages can leave two turns of the same role next to each other, so
-    // merge such turns (as the Anthropic API does itself)
+    // merge such turns (as the Anthropic API does itself). In a merged turn
+    // the tool results go first: Claude requires `tool_result` blocks to
+    // come before any other content of the user turn that answers the tool
+    // calls (text may follow them).
     if (!bedrock_messages.empty() &&
         bedrock_messages.back().GetRole() == converted->GetRole()) {
-      for (auto& block : converted->GetContent()) {
-        bedrock_messages.back().AddContent(block);
+      auto& previous = bedrock_messages.back();
+      Aws::Vector<Model::ContentBlock> merged;
+      merged.reserve(previous.GetContent().size() +
+                     converted->GetContent().size());
+      for (const bool tool_results : {true, false}) {
+        for (const auto* turn : {&previous, &*converted}) {
+          for (const auto& block : turn->GetContent()) {
+            if (block.ToolResultHasBeenSet() == tool_results) {
+              merged.push_back(block);
+            }
+          }
+        }
       }
+      previous.SetContent(std::move(merged));
     } else {
       bedrock_messages.push_back(std::move(*converted));
     }

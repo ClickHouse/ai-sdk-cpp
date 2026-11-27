@@ -209,6 +209,35 @@ TEST_F(BedrockRequestMapperTest, MergesAdjacentSameRoleTurns) {
             Aws::BedrockRuntime::Model::ConversationRole::assistant);
 }
 
+// When a text turn and a tool result turn are merged, the tool results come
+// first, as Claude requires
+TEST_F(BedrockRequestMapperTest, MergedTurnPutsToolResultsFirst) {
+  GenerateOptions options;
+  options.model = models::kClaudeSonnet;
+  options.messages = {
+      Message::user("Weather in Paris?"),
+      Message::assistant_with_tools(
+          "",
+          {ToolCallContentPart("call_1", "get_weather", {{"city", "Paris"}})}),
+      Message::user("Also, answer in French."),
+      Message::tool_results({ToolResultContentPart(
+          "call_1", JsonValue{{"temperature", 20}}, false)}),
+      Message::user("Thanks!"),
+  };
+
+  auto request = mapper_.map_to_converse_request(options);
+
+  ASSERT_EQ(request.GetMessages().size(), 3);
+  const auto& merged = request.GetMessages()[2];
+  EXPECT_EQ(merged.GetRole(),
+            Aws::BedrockRuntime::Model::ConversationRole::user);
+  ASSERT_EQ(merged.GetContent().size(), 3);
+  EXPECT_TRUE(merged.GetContent()[0].ToolResultHasBeenSet());
+  EXPECT_EQ(merged.GetContent()[0].GetToolResult().GetToolUseId(), "call_1");
+  EXPECT_EQ(merged.GetContent()[1].GetText(), "Also, answer in French.");
+  EXPECT_EQ(merged.GetContent()[2].GetText(), "Thanks!");
+}
+
 ToolSet make_weather_tools() {
   ToolSet tools;
   tools["get_weather"] =
