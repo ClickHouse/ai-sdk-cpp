@@ -159,7 +159,8 @@ TEST_F(OpenAIResponsesIntegrationTest, ToolCallingWithGpt62Sol) {
   options.max_tokens = 1000;
   auto result = client_->generate_text(options);
 
-  TestAssertions::assertSuccess(result);
+  // A single step stops at the tool calls, so there is no text to expect.
+  ASSERT_TRUE(result.is_success()) << result.error_message();
   EXPECT_EQ(result.finish_reason, kFinishReasonToolCalls);
   ASSERT_FALSE(result.tool_calls.empty());
   EXPECT_EQ(result.tool_calls[0].tool_name, "weather");
